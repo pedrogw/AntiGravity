@@ -18,3 +18,43 @@ schema: spec-driven
 #       - Always include a "Non-goals" section
 #     tasks:
 #       - Break tasks into chunks of max 2 hours
+
+context: |
+  Todas os artefatos devem ser em Português do Brasil
+
+  #TECH STACK - BACKEND
+  - FastAPI
+  - SQLAlchemy
+  - PostgreSQL
+  - Pydantic
+  - JWT
+  - Pytest
+  - Swagger UI
+
+  #TECH STACK - FRONTEND
+  - Next.js
+  - TypeScript
+  - Tailwind CSS
+  - Shadcn/UI
+  - React
+  - Redux Toolkit
+  - React Router
+  - Axios
+  - Jest
+  - React Testing Library
+  - Storybook
+  - Figma
+
+rules: |
+  - Toda nova proposta deve especificar claramente os objetivos, não-obejtivos e decisões que serão tomadas
+
+specs: |
+  - Use sempre o formato Given/When/Then (Dado/Quando/Então) para descrever os cenários
+
+design: |
+  - Backend: Detalhe os modelos do banco de dados (PostgreSQL) e como o schema do FastAPI/Pydantic garante o Type-safety ponta a ponta
+  - Frontend: Detalhe os componentes do shadc/ui que serão utlizados e como o Next.js será utulizado para criar o dashboard
+
+tasks: |
+  - Sempre inclua tarefas que viabilizem o TDO(Desenvolvimento orientado por testes), ou seja, primeiro deve-se criar o testo, para depois criar a funcionalidade definida.
+  - Manteha os itens pequenos, sequenciais e fáceis de serem implementados em uma única sessão de trabalho  

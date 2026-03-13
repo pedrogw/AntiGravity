@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+
+<html lang="pt-br"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Logistics System - Login</title>
+<!-- Tailwind CSS v3 CDN with plugins -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Google Fonts: Fira Sans -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@300;400;500;600&amp;display=swap" rel="stylesheet"/>
+<style data-purpose="typography">
+    body {
+      font-family: 'Fira Sans', sans-serif;
+    }
+  </style>
+<style data-purpose="custom-transitions">
+    .btn-transition {
+      transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .input-focus {
+      transition: border-color 200ms ease-in-out, box-shadow 200ms ease-in-out;
+    }
+  </style>
+<script data-purpose="tailwind-config">
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            industrial: {
+              bg: '#EFF6FF',
+              border: '#E2E8F0',
+              primary: '#2563EB',
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-[#EFF6FF] min-h-screen flex items-center justify-center p-4">
+<!-- BEGIN: LoginContainer -->
+<main class="w-full max-w-md" data-purpose="login-card-container">
+<div class="bg-white border border-[#E2E8F0] rounded-lg shadow-sm p-8 md:p-10" data-purpose="login-card">
+<!-- BEGIN: HeaderSection -->
+<header class="flex flex-col items-center mb-8" data-purpose="card-header">
+<!-- Modern Linear Truck Icon (Lucide style) -->
+<div class="mb-6 p-4 bg-blue-50 rounded-full" data-purpose="icon-wrapper">
+<svg fill="none" height="48" stroke="#2563EB" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="48" xmlns="http://www.w3.org/2000/svg">
+<path d="M10 17h4"></path>
+<path d="M3 9h15a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z"></path>
+<path d="M13 9V4a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v5"></path>
+<circle cx="7" cy="17" r="2"></circle>
+<circle cx="17" cy="17" r="2"></circle>
+</svg>
+</div>
+<h1 class="text-xl font-semibold text-slate-800 tracking-tight">Sistema Industrial</h1>
+<p class="text-sm text-slate-500 mt-1">Gestão de Logística de Alta Precisão</p>
+</header>
+<!-- END: HeaderSection -->
+<!-- BEGIN: AccessTypeSelector -->
+<nav class="mb-8" data-purpose="role-selector">
+<div class="flex p-1 bg-slate-50 rounded-md border border-[#E2E8F0]">
+<button class="flex-1 text-xs font-medium py-2 px-1 rounded transition-colors text-blue-600 bg-white shadow-sm border border-[#E2E8F0]/50" data-role="motorista" onclick="selectRole(this)" type="button">
+            Motorista
+          </button>
+<button class="flex-1 text-xs font-medium py-2 px-1 rounded transition-colors text-slate-500 hover:text-slate-700" data-role="lojista" onclick="selectRole(this)" type="button">
+            Lojista
+          </button>
+<button class="flex-1 text-xs font-medium py-2 px-1 rounded transition-colors text-slate-500 hover:text-slate-700" data-role="operador" onclick="selectRole(this)" type="button">
+            Fornecedor
+          </button>
+</div>
+</nav>
+<!-- END: AccessTypeSelector -->
+<!-- BEGIN: LoginForm -->
+<form action="#" class="space-y-6" data-purpose="login-form" method="POST">
+<!-- Input for Username -->
+<div class="space-y-2">
+<label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider" for="username">
+            Usuário
+          </label>
+<input class="w-full px-4 py-3 bg-slate-50 border border-[#E2E8F0] rounded text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 input-focus" id="username" name="username" placeholder="Digite seu usuário" required="" type="text"/>
+</div>
+<!-- Input for Password -->
+<div class="space-y-2">
+<div class="flex justify-between items-center">
+<label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider" for="password">
+              Senha
+            </label>
+<a class="text-xs text-blue-600 hover:text-blue-700 font-medium" href="#">Esqueceu a senha?</a>
+</div>
+<input class="w-full px-4 py-3 bg-slate-50 border border-[#E2E8F0] rounded text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 input-focus" id="password" name="password" placeholder="••••••••" required="" type="password"/>
+</div>
+<!-- Login Button -->
+<div class="pt-2">
+<button class="w-full bg-[#2563EB] hover:bg-blue-700 text-white font-medium py-3 rounded btn-transition shadow-lg shadow-blue-500/20 active:transform active:scale-[0.98]" type="submit">
+            Entrar
+          </button>
+</div>
+</form>
+<!-- END: LoginForm -->
+<!-- BEGIN: FooterLinks -->
+<footer class="mt-8 text-center" data-purpose="card-footer">
+<p class="text-xs text-slate-400">
+          Acesso restrito a pessoal autorizado.<br/>
+          © 2023 Logística Industrial S.A.
+        </p>
+</footer>
+<!-- END: FooterLinks -->
+</div>
+</main>
+<!-- END: LoginContainer -->
+<script data-purpose="ui-logic">
+    /**
+     * Handles the switching of visual states for the role selector
+     * @param {HTMLElement} element - The button clicked
+     */
+    function selectRole(element) {
+      // Find all buttons in the same container
+      const buttons = element.parentElement.querySelectorAll('button');
+      
+      buttons.forEach(btn => {
+        // Reset classes for unselected state
+        btn.classList.remove('text-blue-600', 'bg-white', 'shadow-sm', 'border', 'border-[#E2E8F0]/50');
+        btn.classList.add('text-slate-500', 'hover:text-slate-700');
+      });
+
+      // Apply active classes to selected button
+      element.classList.remove('text-slate-500', 'hover:text-slate-700');
+      element.classList.add('text-blue-600', 'bg-white', 'shadow-sm', 'border', 'border-[#E2E8F0]/50');
+    }
+  </script>
+</body></html>

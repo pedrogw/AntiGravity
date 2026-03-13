@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+
+<html class="light" lang="pt-br"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Torre de Controle Logística | Operador</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&amp;family=Fira+Sans:wght@300;400;500;600;700&amp;family=Public+Sans:wght@400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ec5b13",
+                        "background-light": "#f8f6f6",
+                        "background-dark": "#221610",
+                    },
+                    fontFamily: {
+                        "display": ["Fira Sans", "Public Sans"],
+                        "mono": ["Fira Code", "monospace"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Fira Sans', sans-serif; }
+        .font-mono { font-family: 'Fira Code', monospace; }
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            grid-auto-rows: minmax(100px, auto);
+            gap: 1rem;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display">
+<div class="flex h-screen overflow-hidden">
+<div class="flex-1 flex flex-col min-w-0 overflow-y-auto">
+<header class="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md px-6 py-3">
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-2 text-primary">
+<span class="material-symbols-outlined text-3xl">navigation</span>
+<h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white uppercase italic">Torre de Controle</h2>
+</div>
+<div class="hidden md:flex items-center gap-4 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
+<span class="material-symbols-outlined text-slate-500">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm w-64 placeholder-slate-400" placeholder="Buscar veículo ou planta..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="flex items-center gap-2 text-xs font-mono px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700">
+<span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                        SISTEMA OPERACIONAL
+                    </div>
+<button class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+</div>
+</header>
+<main class="p-6">
+<div class="mb-6 space-y-3">
+<div class="flex items-center justify-between">
+<h3 class="text-xs font-bold uppercase tracking-widest text-red-500 flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">emergency</span> Alertas Críticos (3)
+                        </h3>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+<div class="bg-white dark:bg-slate-900 border-l-4 border-red-500 shadow-sm p-4 rounded-lg flex justify-between items-center group">
+<div>
+<p class="text-xs font-mono text-red-500">ALERTA #8842</p>
+<p class="text-sm font-semibold">SP-RJ: Quebra Mecânica</p>
+</div>
+<button class="text-xs bg-red-50 dark:bg-red-900/20 text-red-600 px-3 py-1 rounded-full font-bold hover:bg-red-500 hover:text-white transition-all">RESOLVER</button>
+</div>
+<div class="bg-white dark:bg-slate-900 border-l-4 border-red-500 shadow-sm p-4 rounded-lg flex justify-between items-center">
+<div>
+<p class="text-xs font-mono text-red-500">ALERTA #9102</p>
+<p class="text-sm font-semibold">Planta Curitiba: Greve Fiscal</p>
+</div>
+<button class="text-xs bg-red-50 dark:bg-red-900/20 text-red-600 px-3 py-1 rounded-full font-bold hover:bg-red-500 hover:text-white transition-all">DETALHES</button>
+</div>
+<div class="bg-white dark:bg-slate-900 border-l-4 border-amber-500 shadow-sm p-4 rounded-lg flex justify-between items-center">
+<div>
+<p class="text-xs font-mono text-amber-500">AVISO #7721</p>
+<p class="text-sm font-semibold">Bloqueio Rodoviário BR-101</p>
+</div>
+<button class="text-xs bg-amber-50 dark:bg-amber-900/20 text-amber-600 px-3 py-1 rounded-full font-bold hover:bg-amber-500 hover:text-white transition-all">VER ROTA</button>
+</div>
+</div>
+</div>
+<div class="bento-grid">
+<div class="col-span-12 md:col-span-3 bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+<div class="flex justify-between items-start mb-4">
+<span class="material-symbols-outlined text-blue-500 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">local_shipping</span>
+<span class="text-xs font-mono text-green-500">+2.4%</span>
+</div>
+<p class="text-sm font-medium text-slate-500">Frota Ativa</p>
+<h4 class="text-3xl font-mono font-bold mt-1">1.284</h4>
+<div class="mt-4 h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+<div class="h-full bg-blue-500 w-[85%]"></div>
+</div>
+</div>
+<div class="col-span-12 md:col-span-3 bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+<div class="flex justify-between items-start mb-4">
+<span class="material-symbols-outlined text-primary p-2 bg-primary/10 rounded-lg">factory</span>
+<span class="text-xs font-mono text-green-500">+0.1%</span>
+</div>
+<p class="text-sm font-medium text-slate-500">Status Fábricas</p>
+<h4 class="text-3xl font-mono font-bold mt-1">98.5%</h4>
+<div class="mt-4 flex gap-1">
+<div class="h-2 flex-1 bg-green-500 rounded-sm"></div>
+<div class="h-2 flex-1 bg-green-500 rounded-sm"></div>
+<div class="h-2 flex-1 bg-green-500 rounded-sm"></div>
+<div class="h-2 flex-1 bg-red-500 rounded-sm"></div>
+</div>
+</div>
+<div class="col-span-12 md:col-span-6 row-span-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col">
+<div class="p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
+<h4 class="text-sm font-bold flex items-center gap-2">
+<span class="material-symbols-outlined text-blue-500">map</span> Rastreamento em Tempo Real
+                            </h4>
+<div class="flex gap-2">
+<button class="text-[10px] font-mono border border-slate-300 dark:border-slate-700 px-2 py-0.5 rounded">FROTA_A</button>
+<button class="text-[10px] font-mono border border-slate-300 dark:border-slate-700 px-2 py-0.5 rounded">FROTA_B</button>
+</div>
+</div>
+<div class="flex-1 bg-slate-200 dark:bg-slate-800 relative min-h-[300px]" data-alt="Mapa logístico com rotas e pontos de entrega" data-location="Sao Paulo" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBV3Pl94q6XotbVZHccWTUH6HYR1mqC4GqKG7S_MLed5Pss1i9K9bulTgGDUmyk0CILJDpj3IdFL7Ek19gOZCbOGQDZum-AF5FqgytZ6IHXxBW6eAAOHyfnpJm3AAjTB8ycFLjcgYVcV42zriBJFK6PS8b1E69qUeMyWyTLfFo2sNh1GJD39emwwj5lnLyvGHMqV7zOM7p12KtvQRXQQ6__JCesof6N0QCeeQSQd236xUEs2RhHZFyasZJrtZJWZDflbSY9s8rWcEo'); background-size: cover; background-position: center;">
+<div class="absolute top-4 left-4 bg-white/90 dark:bg-slate-900/90 p-2 rounded shadow-lg text-[10px] font-mono">
+                                LAT: -23.5505 | LONG: -46.6333
+                            </div>
+</div>
+</div>
+<div class="col-span-12 md:col-span-3 bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+<p class="text-sm font-medium text-slate-500 mb-2">Entregas no Prazo</p>
+<h4 class="text-3xl font-mono font-bold text-primary">94.2%</h4>
+<p class="text-xs text-red-500 mt-2 flex items-center gap-1 font-mono">
+<span class="material-symbols-outlined text-xs">trending_down</span> -0.5% (24h)
+                        </p>
+</div>
+<div class="col-span-12 md:col-span-3 bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+<p class="text-sm font-medium text-slate-500 mb-2">Custo Logístico/Km</p>
+<h4 class="text-3xl font-mono font-bold">R$ 4.12</h4>
+<div class="mt-4 h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full">
+<div class="h-full bg-primary w-[60%]"></div>
+</div>
+</div>
+<div class="col-span-12 md:col-span-8 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+<div class="p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
+<h4 class="text-sm font-bold">Monitor de Veículos (High Priority)</h4>
+<span class="text-[10px] font-mono text-slate-400">SYNC: AGORA</span>
+</div>
+<table class="w-full text-left text-xs">
+<thead class="bg-slate-50 dark:bg-slate-800/50 text-slate-500 uppercase">
+<tr>
+<th class="px-4 py-2 font-semibold">ID</th>
+<th class="px-4 py-2 font-semibold">Condutor</th>
+<th class="px-4 py-2 font-semibold">Carga</th>
+<th class="px-4 py-2 font-semibold">Status</th>
+<th class="px-4 py-2 font-semibold">Progresso</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+<tr>
+<td class="px-4 py-3 font-mono">#TRK-774</td>
+<td class="px-4 py-3">R. Santos</td>
+<td class="px-4 py-3">Perecíveis</td>
+<td class="px-4 py-3"><span class="px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">EM ROTA</span></td>
+<td class="px-4 py-3">
+<div class="w-24 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full">
+<div class="h-full bg-blue-500 w-[78%]"></div>
+</div>
+</td>
+</tr>
+<tr>
+<td class="px-4 py-3 font-mono">#TRK-812</td>
+<td class="px-4 py-3">M. Lima</td>
+<td class="px-4 py-3">Eletrônicos</td>
+<td class="px-4 py-3"><span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">PARADO</span></td>
+<td class="px-4 py-3">
+<div class="w-24 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full">
+<div class="h-full bg-amber-500 w-[45%]"></div>
+</div>
+</td>
+</tr>
+<tr>
+<td class="px-4 py-3 font-mono">#TRK-233</td>
+<td class="px-4 py-3">J. Ferreira</td>
+<td class="px-4 py-3">Automotivo</td>
+<td class="px-4 py-3"><span class="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">COLETA</span></td>
+<td class="px-4 py-3">
+<div class="w-24 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full">
+<div class="h-full bg-slate-400 w-[10%]"></div>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="col-span-12 md:col-span-4 bg-primary text-white p-6 rounded-xl shadow-lg flex flex-col justify-between">
+<div>
+<p class="text-xs font-mono uppercase opacity-80 tracking-widest">Eficiência Energética</p>
+<h4 class="text-4xl font-mono font-bold mt-2">82%</h4>
+</div>
+<div class="mt-8 space-y-3">
+<div class="flex justify-between text-xs border-b border-white/20 pb-2">
+<span>Redução CO2</span>
+<span class="font-mono">14.2t</span>
+</div>
+<div class="flex justify-between text-xs border-b border-white/20 pb-2">
+<span>Frota Elétrica</span>
+<span class="font-mono">128 un.</span>
+</div>
+</div>
+<button class="mt-6 w-full py-2 bg-white text-primary font-bold rounded-lg text-sm hover:bg-slate-100 transition-colors">
+                            DOWNLOAD RELATÓRIO ESG
+                        </button>
+</div>
+</div>
+</main>
+</div>
+<aside class="w-80 bg-slate-50 dark:bg-slate-900/50 border-l border-slate-200 dark:border-slate-800 flex flex-col fixed right-0 h-full relative z-20">
+<div class="p-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+<h3 class="text-sm font-bold flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">psychiatry</span> Simulador de Caos
+                </h3>
+<p class="text-xs text-slate-500 mt-1 italic">Stress-test operacional em tempo real</p>
+</div>
+<div class="flex-1 overflow-y-auto p-4 space-y-6">
+<div>
+<h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Eventos Rápidos</h4>
+<div class="grid grid-cols-1 gap-2">
+<button class="flex items-center gap-3 p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-primary transition-all group text-left">
+<span class="material-symbols-outlined text-slate-400 group-hover:text-primary">thunderstorm</span>
+<div>
+<p class="text-xs font-bold">Tempestade Severa</p>
+<p class="text-[10px] text-slate-500">Bloqueio imediato de portos</p>
+</div>
+</button>
+<button class="flex items-center gap-3 p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-primary transition-all group text-left">
+<span class="material-symbols-outlined text-slate-400 group-hover:text-primary">factory</span>
+<div>
+<p class="text-xs font-bold">Parada de Linha</p>
+<p class="text-[10px] text-slate-500">Gargalo em Curitiba/PR</p>
+</div>
+</button>
+<button class="flex items-center gap-3 p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-primary transition-all group text-left">
+<span class="material-symbols-outlined text-slate-400 group-hover:text-primary">payments</span>
+<div>
+<p class="text-xs font-bold">Alta Diesel +15%</p>
+<p class="text-[10px] text-slate-500">Recalcular margem de lucro</p>
+</div>
+</button>
+</div>
+</div>
+<div>
+<h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Nível de Contingência</h4>
+<div class="space-y-4">
+<div class="flex justify-between items-center text-xs">
+<span>Nível Atual</span>
+<span class="font-mono text-primary font-bold">CRITICAL_S2</span>
+</div>
+<div class="h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+<div class="h-full bg-gradient-to-r from-green-500 via-amber-500 to-red-500 w-[75%]"></div>
+</div>
+</div>
+</div>
+<div class="bg-slate-900 text-white p-4 rounded-xl space-y-3">
+<p class="text-[10px] font-mono text-primary">PREVISÃO_IA</p>
+<p class="text-xs leading-relaxed">
+                        Probabilidade de 64% de atraso na malha Sudeste nas próximas 4h devido a condições climáticas.
+                    </p>
+<button class="w-full py-2 bg-slate-800 text-[10px] font-bold uppercase rounded border border-white/10 hover:bg-slate-700">
+                        Ativar Plano B (Rodo-Ferro)
+                    </button>
+</div>
+</div>
+<div class="p-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+<button class="w-full flex items-center justify-center gap-2 py-3 bg-slate-900 text-white rounded-lg font-bold text-sm">
+<span class="material-symbols-outlined text-sm">rocket_launch</span> EXECUTAR SIMULAÇÃO
+                </button>
+</div>
+</aside>
+</div>
+</body></html>
