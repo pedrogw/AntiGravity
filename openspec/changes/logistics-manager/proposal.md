@@ -33,6 +33,7 @@ Projeto de TCC para Bacharelado em Sistemas de Informação (BSI) com carga de 6
 - `safe-check`: Monitoramento de segurança com ping/lazy evaluation e alerta por desvio de rota
 - `demo-endpoint`: Endpoint de demonstração que orquestra o fluxo completo para apresentação
 - `frontend-dashboard`: Interface web (Next.js/Tailwind/shadcn) consumindo a API para visualização e injeção do caos (Operador/Lojista).
+- `resilience`: Tratamento global de exceções contra quedas de infraestrutura (DB) e validações robustas de contrato client-side e server-side (Pydantic).
 
 ### Modified Capabilities
 _(nenhuma — projeto greenfield)_

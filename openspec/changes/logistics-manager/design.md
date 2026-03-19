@@ -105,6 +105,55 @@ Múltiplos eventos se acumulam multiplicativamente. O frontend terá um painel e
 - `eta_history`: registra cada mudança de ETA (before, after, reason). Será exibido em um componente Timeline no frontend.
 - `chaos_event_log`: backup permanente de todos os eventos para análise futura de ML.
 
+### 10. Global Exception Handling e Resiliência (Non-Functional)
+
+**Decisão:**
+A aplicação deve ser resiliente a falhas sistêmicas e imprecisões no contrato de dados.
+- **Backend (FastAPI):** Um middleware ou exception handler global (`@app.exception_handler`) interceptará todas as falhas não tratadas. Erros de infraestrutura (ex: `asyncpg.exceptions.ConnectionDoesNotExist` ou timeout do PostgreSQL) retornarão HTTP 503 Service Unavailable, mascarando a stack trace do usuário. Erros de validação (Pydantic `ValidationError`) retornarão HTTP 422 padronizado.
+- **Frontend (Next.js):** Todas as formulários e interações que enviam payload (ex: injeção de evento de caos) validarão os dados localmente (client-side) antes do envio. Caso o servidor responda com 503 ou 500, toasts da biblioteca shadcn/ui serão exibidos notificando a "Instabilidade na plataforma".
+
+**Rationale:** Exigência de infraestrutura resiliente. Isola falhas de banco de dados para não expor segurança e economiza round-trips de rede validando dados incorretos no Next.js precocemente.
+
+## Low-Level Engineering & Architecture
+
+Para garantir precisão durante a fase de implementação e mitigar alucinações de código, a fundação técnica abaixo deve ser rigorosamente seguida.
+
+### 1. Database Structure (PostgreSQL Schema)
+Modelagem relacional focada em consistência via SQLAlchemy 2.0:
+- **`users`**: `id` (UUID PK), `email` (VARCHAR, Unique), `password_hash` (VARCHAR), `role` (ENUM: operador, lojista, motorista), `created_at` (TIMESTAMPTZ UTC).
+- **`factories`**: `id` (UUID PK), `name` (VARCHAR), `lat` (FLOAT), `lng` (FLOAT).
+- **`stores`**: `id` (UUID PK), `name` (VARCHAR), `lat` (FLOAT), `lng` (FLOAT), `owner_id` (FK -> users.id).
+- **`deliveries`**: `id` (UUID PK), `factory_id` (FK -> factories.id), `store_id` (FK -> stores.id), `driver_id` (FK -> users.id), `status` (ENUM: pendente, em_transito, entregue, cancelada), `eta_original` (TIMESTAMPTZ), `eta_current` (TIMESTAMPTZ), `departed_at` (TIMESTAMPTZ).
+- **`eta_history`**: `id` (UUID PK), `delivery_id` (FK -> deliveries.id), `eta_before` (TIMESTAMPTZ), `eta_after` (TIMESTAMPTZ), `reason` (VARCHAR), `created_at` (TIMESTAMPTZ).
+**Indices:** B-Tree em `deliveries.driver_id`, `deliveries.store_id` e `eta_history.delivery_id` para acelerar queries paginadas do painel.
+
+### 2. TypeSafe Contracts (SQLAlchemy -> Pydantic)
+- **Data Transfer Objects (DTOs):** A camada da API nunca retornará as instâncias brutas do SQLAlchemy. Pydantic v2 `BaseModel` será usado para filtrar dados.
+- Exemplo prático: O modelo de banco `User` contém `password_hash`. A rota de login/listagem usará o schema Pydantic `UserResponse` que exclui a senha e expõe apenas `id`, `email` e `role`.
+- O strict mode do Pydantic (`model_config = ConfigDict(strict=True)`) deve ser ativado para as rotas C-Level (caos, rotas).
+
+### 3. Next.js Architecture (App Router Flow)
+Uso pragmático de Server vs Client Components para isolar estado interativo de buscas de banco (SSR):
+- **Server Components:** `app/dashboard/page.tsx` fará fetch server-side usando o token mantido em HttpOnly cookies. Não usará a diretiva `"use client"`. Transfere HTML limpo para o browser.
+- **Client Components:** Só usado nos "galhos" da árvore. `components/dashboard/chaos-injector.tsx` usará `"use client"` para gerenciar o `useState` do select box e prender validações no front antes do `fetch()`.
+
+### 4. Mapeamento de UI (shadcn/ui Allowlist)
+Para manter o design system coeso e limpo nas 60h, fica PROIBIDO criar componentes interativos UI complexos em Tailwind puro se existir equivalente no shadcn.
+**Lista de Componentes Autorizados:**
+- `Button` (Ações gerais)
+- `Card` (Para agrupar métricas e formulários)
+- `Table` / `DataTable` (Listagem de entregas para operadores e lojistas)
+- `Dialog` (Modal sobreposto para injeção visual do caos)
+- `Badge` (Cores semânticas para Status: Pendente=Cinza, Em_Transito=Azul, Entregue=Verde)
+- `Toast` (Para exibir erros 422/503 e sucesso nas operações de caos)
+
+### 5. Topologia Docker (Network e Env Vars)
+Estrutura exata do `docker-compose.yml` para blindagem de rede interna:
+- **Rede `logistics-net`:** Bridge network customizada isolando os containeres.
+- **Service `db`:** Imagem `postgres:15-alpine`. Portas `5432:5432` abertas apenas pro host local. Env: `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`.
+- **Service `api`:** Build do `./backend`. Portas `8000:8000`. Depende via `depends_on: [db]`. Env crucial: `DATABASE_URL=postgresql+asyncpg://user:pass@db:5432/logistics`.
+- **Service `web`:** Build do `./frontend`. Portas `3000:3000`. Depende via `depends_on: [api]`. Env crucial: `NEXT_PUBLIC_API_URL=http://localhost:8000`.
+
 ## Risks / Trade-offs
 
 - **[Escopo de 60h + Frontend + Docker]** → Desenvolver backend, frontend e orquestração Docker em 60h é desafiador. A mitigação é o MVP: o frontend terá apenas telas essenciais, e o Dockerfile focará apenas em execução local, sem pipelines CI/CD complexos.
