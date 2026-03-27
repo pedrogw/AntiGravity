@@ -3,34 +3,34 @@
 ### Requirement: Catálogo de eventos de caos
 O sistema SHALL suportar 4 tipos de eventos de caos pré-definidos: chuva (impact_factor=1.3), alagamento (delay=45min), engarrafamento (impact_factor=1.5, delay=15min), acidente (delay=60min). Cada evento MUST ter tipo, severidade, impact_factor e delay_minutes. Eventos NÃO alteram a rota — apenas o tempo estimado.
 
-#### Scenario: Listar tipos de evento disponíveis
+#### Scenario: Listar tipos de evento disponíveis no ambiente
 - **GIVEN** que o catálogo de eventos de caos possui 4 eventos pré-cadastrados (chuva, alagamento, engarrafamento, acidente)
-- **WHEN** o operador faz GET em `/chaos/event-types`
+- **WHEN** o banco de testes bate em GET `/chaos/event-types`
 - **THEN** o sistema retorna os 4 tipos exatos com seus parâmetros técnicos padrões (impact_factor e delay_minutes)
 
-### Requirement: Injeção de evento de caos
-O sistema SHALL permitir ao operador injetar um evento de caos em uma entrega ativa. Ao injetar, o ETA MUST ser recalculado imediatamente e a mudança registrada em eta_history.
+### Requirement: Injeção Autônoma/Scriptada de Caos
+O sistema SHALL expor hooks restritos para acoplamento do clima num teste. Ao ser submetido, o ETA MUST ser recalculado na hora pela fórmula temporal.
 
-#### Scenario: Injetar evento de chuva
-- **GIVEN** uma entrega com o status "em_transito"
-- **WHEN** o operador faz POST em `/chaos/events` fornecendo o `delivery_id` e type="chuva"
+#### Scenario: Carga climática afeta a viagem
+- **GIVEN** uma entrega com o status "em_transito" cruzando uma rodovia
+- **WHEN** a ferramenta de Banca Administrativa submete via POST em `/chaos/events` o id e type="chuva"
 - **THEN** o sistema cria ativamente o evento, recalcula o ETA restante aplicando fator 1.3, registra em eta_history e retorna HTTP 201 com o novo ETA
 
-#### Scenario: Injetar evento em entrega não ativa
+#### Scenario: Hook rejeitado por entrega inativa
 - **GIVEN** uma entrega que já foi finalizada com o status "entregue"
-- **WHEN** o operador tenta injetar qualquer cenário de caos nesta entrega
+- **WHEN** a automação Admin clica em trigger de cenários passados
 - **THEN** o sistema bloqueia a ação e retorna HTTP 422 "Só é possível injetar caos em entregas em trânsito"
 
-### Requirement: Remoção de evento de caos
-O sistema SHALL permitir ao operador remover um evento de caos ativo. Ao remover, o ETA MUST ser recalculado sem aquele evento e a mudança registrada em eta_history.
+### Requirement: Remoção e Limpeza Climática Temporal
+O sistema SHALL suportar finalização limpa de intempéries atreladas a uma corrida atual via DevEndpoints.
 
-#### Scenario: Remover evento de chuva
+#### Scenario: Ponto Cego de Chuva finalizado
 - **GIVEN** que existe um evento de caos do tipo "chuva" atrelado e afetando o ETA de uma entrega
-- **WHEN** o operador faz DELETE em `/chaos/events/{event_id}`
+- **WHEN** a automação cessa e finaliza através de DELETE em `/chaos/events/{event_id}`
 - **THEN** o sistema cessa a influência do evento, reverte o impacto de 1.3 no ETA restante, cria um marco em eta_history apontando a melhoria e retorna HTTP 200
 
-### Requirement: Visibilidade dos eventos para todos os roles
-O sistema SHALL expor os eventos de caos ativos para lojistas e motoristas em suas entregas. Todos os roles MUST visualizar quais eventos estão impactando o ETA.
+### Requirement: Transparência Universal B2B do Caos
+O sistema SHALL anexar visualizações explícitas de impedimentos temporais logados, permitindo Lojista entender porquê fura seu SLA.
 
 #### Scenario: Lojista visualiza eventos de caos em sua entrega
 - **GIVEN** que um ou mais eventos de caos foram injetados na carga destinada ao lojista
@@ -45,12 +45,12 @@ O sistema SHALL manter um log permanente (chaos_event_log) de todos os eventos d
 - **WHEN** a transação de banco de dados do evento de caos for finalizada
 - **THEN** o sistema espelha (append-only) a criação no `chaos_event_log` gravando contexto, `timestamp_start` e impacto
 
-#### Scenario: Evento removido atualiza timestamp_end no log
+#### Scenario: Evento remoto concluído crava stamp ML final
 - **GIVEN** um registro prévio e pendente no `chaos_event_log`
-- **WHEN** o operador remove e finaliza o evento ativo da tabela principal de caos
+- **WHEN** o ambiente encerra e destrói registro no core database da viagem ativa
 - **THEN** o sistema injeta o `timestamp_end` no registro permanente de ML sem deletar a linha
 
-#### Scenario: Consultar log de caos para análise
+#### Scenario: Analista de ML acessa raw pipeline
 - **GIVEN** que a tabela de log de simulação de caos contém milhares de registros acumulados
-- **WHEN** o operador faz GET em `/chaos/log?limit=50&offset=0`
+- **WHEN** se extrai as métricas paginadas de GET `/chaos/log?limit=50&offset=0`
 - **THEN** o sistema devolve apenas a página restrita com os 50 registros mais recentes para alimentar os engenheiros de dados

@@ -16,18 +16,18 @@ Projeto greenfield para TCC de BSI (60h). Não há código existente. O sistema 
 **Goals:**
 - Arquitetura de Monorepo (pastas `backend/` e `frontend/`) orquestrada via docker-compose
 - API REST completa e bem documentada via OpenAPI/Swagger
-- Frontend focado nas telas de demonstração da banca (Painel do Operador e Visão do Motorista)
-- Multi-role transparente (operador, lojista, motorista)
-- Simulador de caos que recalcula ETA em tempo real (rota fixa, só tempo muda)
+- Frontend focado nas telas de demonstração da banca (Painel do Lojista e Visão do Motorista)
+- Arquitetura Server-Client B2B direta (lojista espera a mercadoria, motorista leva a mercadoria)
+- Simulador de caos que recalcula ETA em tempo real (Painel Admin/Dev oculta da aplicação para testes na banca)
 - Reroute pelo motorista quando ele efetivamente muda de rota
 - Histórico de ETA + log de caos para acúmulo de dados de ML futuro
-- Sistema de safe-check com lazy evaluation para segurança do motorista
+- Sistema de safe-check estruturado com lazy evaluation (redução de custo cognitivo)
 - Endpoint de demonstração para apresentação na banca
 
 **Non-Goals:**
 - Telas de configuração complexas no Frontend (ex: CRUD total de lojas e janelas será via API/Swagger para poupar escopo de UI nas 60h)
-- Integração com APIs de mapas reais interativos no frontend (usaremos visualizações simplificadas)
-- Eventos de caos customizáveis pelo operador (só os 4 pré-definidos)
+- Integração com APIs de mapas reais interativos no frontend (usaremos visualizações focadas em TEMPO/ETA)
+- Eventos de caos abertos aos usuários (Caos é ambiental - simulado via Dev Tools da Banca)
 - Treinamento de modelos de ML (só acúmulo de dados)
 - Legislação de descanso obrigatório (CLT/Lei do Motorista)
 - Notificações push ou WebSocket (fora do escopo das 60h, frontend usará polling se necessário)
@@ -79,15 +79,13 @@ logistics-manager/
 
 **Recálculo:** `novo_ETA = (ETA_restante × impact_factor) + delay_minutes`
 
-Múltiplos eventos se acumulam multiplicativamente. O frontend terá um painel exclusivo ("Painel de Caos") para injetar visualmente esses eventos em uma entrega ativa.
+Múltiplos eventos se acumulam multiplicativamente. O uso da injeção será puramente infraestrutural/sistêmico via DevTools (Admin API Key ou Dev Panel embutido).
 
 ### 5. Reroute pelo motorista
 
 **Decisão:** O motorista pode informar que mudou de rota via endpoint de reroute. O sistema recalcula a distância restante usando Haversine e aplica eventos de caos ativos.  No Frontend haverá uma tela "Driver View" com um grande botão de Pânico/Reroute simulando o app mobile.
 
-### 6. Safe-Check com lazy evaluation
-
-**Decisão:** Quando o motorista reporta velocidade = 0 km/h, o backend gera um `ping` com timer (5 min). A expiração é verificada por **lazy evaluation**. O frontend do operador fará polling na listagem de alertas para exibi-los no dashboard.
+**Decisão:** Quando o motorista reporta velocidade = 0 km/h num local atípico, o backend computa a ocorrência. A validação do tempo silencioso (>10 min) é verificada por **lazy evaluation** somente quando a doca receptora (Lojista) consome os dados atuais.
 
 ### 7. PostgreSQL com SQLAlchemy 2.0 async + UTC
 
@@ -120,7 +118,7 @@ Para garantir precisão durante a fase de implementação e mitigar alucinaçõe
 
 ### 1. Database Structure (PostgreSQL Schema)
 Modelagem relacional focada em consistência via SQLAlchemy 2.0:
-- **`users`**: `id` (UUID PK), `email` (VARCHAR, Unique), `password_hash` (VARCHAR), `role` (ENUM: operador, lojista, motorista), `created_at` (TIMESTAMPTZ UTC).
+- **`users`**: `id` (UUID PK), `email` (VARCHAR, Unique), `password_hash` (VARCHAR), `role` (ENUM: lojista, motorista), `created_at` (TIMESTAMPTZ UTC).
 - **`factories`**: `id` (UUID PK), `name` (VARCHAR), `lat` (FLOAT), `lng` (FLOAT).
 - **`stores`**: `id` (UUID PK), `name` (VARCHAR), `lat` (FLOAT), `lng` (FLOAT), `owner_id` (FK -> users.id).
 - **`deliveries`**: `id` (UUID PK), `factory_id` (FK -> factories.id), `store_id` (FK -> stores.id), `driver_id` (FK -> users.id), `status` (ENUM: pendente, em_transito, entregue, cancelada), `eta_original` (TIMESTAMPTZ), `eta_current` (TIMESTAMPTZ), `departed_at` (TIMESTAMPTZ).
@@ -142,10 +140,15 @@ Para manter o design system coeso e limpo nas 60h, fica PROIBIDO criar component
 **Lista de Componentes Autorizados:**
 - `Button` (Ações gerais)
 - `Card` (Para agrupar métricas e formulários)
-- `Table` / `DataTable` (Listagem de entregas para operadores e lojistas)
+- `Table` / `DataTable` (Listagem de entregas para lojistas no dashboard core)
 - `Dialog` (Modal sobreposto para injeção visual do caos)
 - `Badge` (Cores semânticas para Status: Pendente=Cinza, Em_Transito=Azul, Entregue=Verde)
 - `Toast` (Para exibir erros 422/503 e sucesso nas operações de caos)
+
+**Contrato Visual Restrito (Anti-Alucinação Visual):**
+- **Ícones Oficiais:** O sistema utilizará EXCLUSIVAMENTE a biblioteca genérica nativa do shadcn, que é o **`lucide-react`**. Fica terminantemente PROIBIDO o uso de ícones de outras bibliotecas (como FontAwesome ou Heroicons) para manter a coesão de peso e traço.
+- **Proibição de Emojis:** É **TOTALMENTE PROIBIDO** o uso de emojis nativos de sistema operacional (ex: 🚚, 📦, ❌) em qualquer parte estrutural da interface (botões, menus, tabelas, alertas). Apenas ícones vetoriais do `lucide-react` estão autorizados. O ícone de logo do sistema será o componente `<Package />` do Lucide.
+- **Wireframes (Figma):** A implementação visual das telas (Dashboard do Lojista e Simulador do Motorista) deve se basear ESTRITAMENTE nos arquivos de imagem PNG (com o painel Lojista absorvendo a tabela principal). Elementos de posicionamento, gutters e grids devem seguir o layout da imagem fornecida; se não houver tela correspondente, manter o padrão minimalista do shadcn.
 
 ### 5. Topologia Docker (Network e Env Vars)
 Estrutura exata do `docker-compose.yml` para blindagem de rede interna:
@@ -153,6 +156,11 @@ Estrutura exata do `docker-compose.yml` para blindagem de rede interna:
 - **Service `db`:** Imagem `postgres:15-alpine`. Portas `5432:5432` abertas apenas pro host local. Env: `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`.
 - **Service `api`:** Build do `./backend`. Portas `8000:8000`. Depende via `depends_on: [db]`. Env crucial: `DATABASE_URL=postgresql+asyncpg://user:pass@db:5432/logistics`.
 - **Service `web`:** Build do `./frontend`. Portas `3000:3000`. Depende via `depends_on: [api]`. Env crucial: `NEXT_PUBLIC_API_URL=http://localhost:8000`.
+
+### 6. Test-Driven Development (TDD)
+O núcleo matemático da aplicação (Motor de ETA, Fator de Caos, Haversine) deve ser construído usando **Test-Driven Development (TDD) via Pytest**.
+- Os cenários `GIVEN/WHEN/THEN` documentados estritamente nos arquivos `specs/*.md` são a fonte isolada de verdade para os assertions.
+- A IA/Engenheiro obrigatoriamente escreverá o teste inicial no `tests/domain/` (estado RED) antes de codificar a lógica real no `app/domain/` (estado GREEN). Mocks de banco de dados não devem ser necessários para testar as regras de domínio espacial/matemático.
 
 ## Risks / Trade-offs
 

@@ -1,12 +1,12 @@
 ## ADDED Requirements
 
-### Requirement: Registro de usuário com role
-O sistema SHALL permitir o registro de novos usuários com atribuição de role (operador, lojista ou motorista). Cada usuário MUST ter email único, senha com hash seguro e role definida no momento do registro.
+### Requirement: Registro de usuário com type mapping
+O sistema SHALL permitir o registro de novos usuários na arquitetura B2B, marcando rigidamente como role="lojista" ou "motorista". Cada usuário MUST ter email único, senha com hash seguro.
 
-#### Scenario: Registro bem-sucedido de operador
-- **GIVEN** que os dados de email, senha e permissões desejadas providos pelo cliente são válidos e o email é inédito
-- **WHEN** um POST é feito em `/auth/register` requisitando a role="operador"
-- **THEN** o sistema cria o usuário na base, retorna HTTP 201 e exibe o ID e o email protegendo o hash da senha
+#### Scenario: Registro bem-sucedido de Lojista Proprietário
+- **GIVEN** que os dados de email, senha e permissões desejadas providos são válidos e o email é inédito
+- **WHEN** um POST é feito em `/auth/register` requisitando a role="lojista"
+- **THEN** o sistema cria o usuário na base B2B, retorna HTTP 201 exibindo ID blindando hash interno
 
 #### Scenario: Registro com email duplicado
 - **GIVEN** que o banco de dados já possui um usuário ativo com o email `contato@teste.com`
@@ -26,18 +26,18 @@ O sistema SHALL autenticar usuários via email/senha e retornar um token JWT con
 - **WHEN** um POST é feito em `/auth/login` submetendo intencionalmente uma senha incorreta
 - **THEN** o sistema nega acesso por segurança, retornando HTTP 401 com a mensagem "Credenciais inválidas" sem revelar se o email existe
 
-### Requirement: Controle de acesso por role
-O sistema SHALL restringir endpoints por role usando dependency injection. Operador acessa tudo, lojista acessa seus dados e entregas destinadas a ele, motorista acessa suas rotas e atualizações de posição.
+### Requirement: Controle de segurança B2B Server-Client
+O sistema SHALL proteger a soberania de dados do lojista (Dependency Injection check). O Motorista escreve pings; O Lojista lê pings de rotas próprias. Entidades não cruzam escopos.
 
-#### Scenario: Operador acessa endpoint administrativo
-- **GIVEN** um token JWT válido pertencente a um usuário com a role="operador"
-- **WHEN** este usuário faz um GET em `/deliveries/` (endpoint de visibilidade total da frota)
-- **THEN** o sistema autoriza a requisição via Dependency Injection e retorna HTTP 200 com todas as entregas
+#### Scenario: Lojista Consumidor analisa Dashboard
+- **GIVEN** um token JWT válido pertencente a um usuário com a role="lojista"
+- **WHEN** ele faz um GET em `/deliveries/`
+- **THEN** a injeção retorna HTTP 200 populada EXCLUSIVAMENTE pelas entregas linkadas a ele
 
-#### Scenario: Lojista tenta acessar endpoint de operador
-- **GIVEN** um token JWT válido, porém pertencente a um usuário com a role="lojista"
-- **WHEN** este lojista tenta executar um POST em `/chaos/events` (rota restrita aos controladores de tráfego)
-- **THEN** o middleware de autorização do sistema intervém, bloqueia a chamada e retorna HTTP 403 "Acesso negado"
+#### Scenario: Motorista tenta quebrar tenant de Lojista
+- **GIVEN** um token JWT válido do app Mobile (role="motorista")
+- **WHEN** este ator bate acidentalmente na raiz comercial `/deliveries/reports`
+- **THEN** o guard middleware barra a requisição retornando HTTP 403 "Privilégio insuficiente"
 
 #### Scenario: Requisição sem token
 - **GIVEN** qualquer endpoint da API marcado como protegido pelas dependências de segurança
