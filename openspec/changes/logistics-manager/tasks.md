@@ -1,20 +1,20 @@
     ## FASE 1: Infraestrutura Base (Docker e PostgreSQL)
-- [ ] 1.1 Criar estrutura de pastas root: `backend/` e `frontend/`.
-- [ ] 1.2 Criar arquivo `docker-compose.yml` na raiz mapeando apenas o serviço `db` (postgres:15-alpine) com porta 5432 e variáveis de ambiente (User, Password, DB).
-- [ ] 1.3 **Validação:** Rodar `docker-compose up -d db` e garantir via logs (`docker logs db`) que o banco PostgreSQL subiu e está aceitando conexões na porta 5432.
+- [x] 1.1 Criar estrutura de pastas root: `backend/` e `frontend/`.
+- [x] 1.2 Criar arquivo `docker-compose.yml` na raiz mapeando apenas o serviço `db` (postgres:15-alpine) com porta 5432 e variáveis de ambiente (User, Password, DB).
+- [x] 1.3 **Validação:** Rodar `docker-compose up -d db` e garantir via logs (`docker logs db`) que o banco PostgreSQL subiu e está aceitando conexões na porta 5432.
 
 ## FASE 2: Core do Backend (FastAPI + Pydantic + SQLAlchemy)
-- [ ] 2.1 No `backend/`: Inicializar projeto Python com dependências (fastapi, uvicorn, sqlalchemy, asyncpg, pydantic, alembic, passlib, python-jose).
-- [ ] 2.2 Criar `Dockerfile` do backend, definir volumes de dev e adicioná-lo ao `docker-compose.yml`. Configurar CORS no FastAPI.
-- [ ] 2.3 Configurar Database Engine (SQLAlchemy Async), Base Declarative e Alembic.
-- [ ] 2.4 Criar Modelos e Schemas base: Users, Factories, Stores, Deliveries, EtaHistory, ChaosEvents, Alerts.
-- [ ] 2.5 Gerar e rodar migração Alembic para construir as tabelas no banco de dados da Fase 1.
-- [ ] 2.6 Criar Router de Autenticação (Registro e JWT Login) e plugar no `main.py`.
-- [ ] 2.7 Construir Lógica e Endpoints de CRUD Logístico: Locais, Janelas de Recebimento e Gerenciamento de Entregas.
-- [ ] 2.8 **(TDD Loop RED)**: Instalar `pytest` e criar a pasta `tests/domain/`. Escrever **obrigatoriamente >30 testes automatizados de CÓDIGO (unitários/integração)** FALHOS baseados nas referências BDD (`specs/`) para o Motor Analítico (Cálculo Haversine, ETA, Simulador de Caos e Lazy Evaluation do SafeCheck) antes da aplicação no backend.
-- [ ] 2.9 **(TDD Loop GREEN)**: Implementar a lógica pura do Motor Analítico em `app/domain/` até todos os 30+ assertions escritos no passo 2.8 passarem.
-- [ ] 2.10 Criar Exception Handler Global no FastAPI para interceptar erros de banco de dados (503) e validação (422) e criar seed script.
-- [ ] 2.11 **Validação TDD/API:** Rodar o comando `pytest tests/domain/` no backend e atestar `100% Passed`. Em seguida, subir o backend (`docker-compose up -d api`), abrir o Swagger UI (`http://localhost:8000/docs`) e rodar fluxo de teste manual E2E independentemente do Front-end.
+- [x] 2.1 No `backend/`: Inicializar projeto Python com dependências (fastapi, uvicorn, sqlalchemy, asyncpg, pydantic, alembic, passlib, python-jose).
+- [x] 2.2 Criar `Dockerfile` do backend, definir volumes de dev e adicioná-lo ao `docker-compose.yml`. Configurar CORS no FastAPI.
+- [x] 2.3 Configurar Database Engine (SQLAlchemy Async), Base Declarative e Alembic.
+- [x] 2.4 Criar Modelos e Schemas base: Users, Factories, Stores, Deliveries, EtaHistory, ChaosEvents, Alerts.
+- [x] 2.5 Gerar e rodar migração Alembic para construir as tabelas no banco de dados da Fase 1.
+- [x] 2.6 Criar Router de Autenticação (Registro e JWT Login) e plugar no `main.py`.
+- [x] 2.7 Construir Lógica e Endpoints de CRUD Logístico: Locais, Janelas de Recebimento e Gerenciamento de Entregas.
+- [x] 2.8 **(TDD Loop RED)**: Instalar `pytest` e criar a pasta `tests/domain/`. Escrever **obrigatoriamente >30 testes automatizados de CÓDIGO (unitários/integração)** FALHOS baseados nas referências BDD (`specs/`) para o Motor Analítico (Cálculo Haversine, ETA, Simulador de Caos e Lazy Evaluation do SafeCheck) antes da aplicação no backend.
+- [x] 2.9 **(TDD Loop GREEN)**: Implementar a lógica pura do Motor Analítico em `app/domain/` até todos os 30+ assertions escritos no passo 2.8 passarem.
+- [x] 2.10 Criar Exception Handler Global no FastAPI para interceptar erros de banco de dados (503) e validação (422) e criar seed script.
+- [x] 2.11 **Validação TDD/API:** Rodar o comando `pytest tests/domain/` no backend e atestar `100% Passed`. Em seguida, subir o backend (`docker-compose up -d api`), abrir o Swagger UI (`http://localhost:8000/docs`) e rodar fluxo de teste manual E2E independentemente do Front-end.
 
 ## FASE 3: Frontend Foundation (Next.js + shadcn/ui)
 - [ ] 3.1 No `frontend/`: Inicializar Next.js App Router com TypeScript e TailwindCSS. Remover boilerplate default.

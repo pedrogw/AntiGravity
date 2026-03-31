@@ -1,0 +1,38 @@
+services:
+  api:
+    build:
+      context: ./backend
+    container_name: logistics-api
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://user:password@db:5432/logistics
+    depends_on:
+      - db
+    networks:
+      - logistics-net
+
+
+  db:
+    image: postgres:15-alpine
+    container_name: logistics-db
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: logistics
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - logistics-net
+
+volumes:
+  postgres_data:
+
+networks:
+  logistics-net:
+    driver: bridge
