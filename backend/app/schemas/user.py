@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 import uuid
 from datetime import datetime
 from app.models.user import UserRole
@@ -8,7 +8,7 @@ class UserBase(BaseModel):
     email: EmailStr
 
 class UserCreate(UserBase):
-    password: str
+    password: str = Field(..., min_length=1)
     role: UserRole
 
 # Properties to return to client

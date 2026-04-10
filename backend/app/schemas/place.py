@@ -1,10 +1,10 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import uuid
 
 class FactoryBase(BaseModel):
-    name: str
-    lat: float
-    lng: float
+    name: str = Field(..., min_length=1)
+    lat: float = Field(..., ge=-90, le=90)
+    lng: float = Field(..., ge=-180, le=180)
 
 class FactoryCreate(FactoryBase):
     pass
@@ -14,9 +14,9 @@ class FactoryResponse(FactoryBase):
     model_config = {"from_attributes": True}
 
 class StoreBase(BaseModel):
-    name: str
-    lat: float
-    lng: float
+    name: str = Field(..., min_length=1)
+    lat: float = Field(..., ge=-90, le=90)
+    lng: float = Field(..., ge=-180, le=180)
     owner_id: uuid.UUID
 
 class StoreCreate(StoreBase):

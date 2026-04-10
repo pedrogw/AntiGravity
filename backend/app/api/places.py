@@ -5,11 +5,12 @@ from typing import List
 from app.db.session import get_db
 from app.models.place import Factory, Store
 from app.schemas.place import FactoryCreate, FactoryResponse, StoreCreate, StoreResponse
+from app.api.deps import require_role
 
 router = APIRouter()
 
 @router.post("/factories", response_model=FactoryResponse, status_code=status.HTTP_201_CREATED)
-async def create_factory(factory_in: FactoryCreate, db: AsyncSession = Depends(get_db)):
+async def create_factory(factory_in: FactoryCreate, db: AsyncSession = Depends(get_db), current_user: dict = Depends(require_role("lojista"))):
     db_factory = Factory(**factory_in.model_dump())
     db.add(db_factory)
     await db.commit()
@@ -22,7 +23,7 @@ async def list_factories(limit: int = 50, offset: int = 0, db: AsyncSession = De
     return result.scalars().all()
 
 @router.post("/stores", response_model=StoreResponse, status_code=status.HTTP_201_CREATED)
-async def create_store(store_in: StoreCreate, db: AsyncSession = Depends(get_db)):
+async def create_store(store_in: StoreCreate, db: AsyncSession = Depends(get_db), current_user: dict = Depends(require_role("lojista"))):
     db_store = Store(**store_in.model_dump())
     db.add(db_store)
     await db.commit()
