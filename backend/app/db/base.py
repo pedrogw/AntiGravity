@@ -1,6 +1,6 @@
 from app.db.base_class import Base
-from app.models.user import User
-from app.models.place import Factory, Store
-from app.models.delivery import Delivery, EtaHistory
-from app.models.chaos import ChaosEventLog
-from app.models.alert import Alert
+from app.infrastructure.orm.user import User
+from app.infrastructure.orm.place import Factory, Store
+from app.infrastructure.orm.delivery import Delivery, EtaHistory
+from app.infrastructure.orm.chaos import ChaosEventLog
+from app.infrastructure.orm.alert import Alert

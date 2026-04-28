@@ -1,7 +1,7 @@
 from pydantic import BaseModel, EmailStr, Field
 import uuid
 from datetime import datetime
-from app.models.user import UserRole
+from app.domain.entities.user import UserRole
 
 # Shared properties
 class UserBase(BaseModel):

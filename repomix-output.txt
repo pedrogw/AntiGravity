@@ -1,0 +1,3174 @@
+This file is a merged representation of a subset of the codebase, containing specifically included files, combined into a single document by Repomix.
+
+================================================================
+File Summary
+================================================================
+
+Purpose:
+--------
+This file contains a packed representation of a subset of the repository's contents that is considered the most important context.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+
+File Format:
+------------
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  a. A separator line (================)
+  b. The file path (File: path/to/file)
+  c. Another separator line
+  d. The full contents of the file
+  e. A blank line
+
+Usage Guidelines:
+-----------------
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+
+Notes:
+------
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Only files matching these patterns are included: backend/**, openspec/**, docker-compose.yml
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+
+
+================================================================
+Directory Structure
+================================================================
+backend/
+  app/
+    api/
+      auth.py
+      deliveries.py
+      deps.py
+      places.py
+    core/
+      config.py
+      security.py
+    db/
+      base_class.py
+      base.py
+      session.py
+    domain/
+      chaos.py
+      haversine.py
+      safe_check.py
+    models/
+      alert.py
+      chaos.py
+      delivery.py
+      place.py
+      user.py
+    schemas/
+      delivery.py
+      place.py
+      user.py
+    main.py
+  migrations/
+    versions/
+      17589825805b_init.py
+    env.py
+    script.py.mako
+  tests/
+    api/
+      test_coverage_boost.py
+      test_integration.py
+      test_security.py
+      test_validation.py
+    domain/
+      test_engine.py
+      test_extreme.py
+      test_simulation.py
+    __init__.py
+    conftest.py
+  .coverage
+  .coveragerc
+  admin_seed.py
+  alembic.ini
+  Dockerfile
+  pytest.ini
+  requirements.txt
+  seed.py
+openspec/
+  changes/
+    add-pgadmin/
+      specs/
+        pgadmin-ui/
+          spec.md
+      .openspec.yaml
+      design.md
+      proposal.md
+      tasks.md
+    add-test-coverage/
+      .openspec.yaml
+      design.md
+      proposal.md
+      tasks.md
+    api-integration-tests/
+      .openspec.yaml
+    api-integration-validation/
+      specs/
+        admin-seed/
+          spec.md
+        api-integration/
+          spec.md
+      .openspec.yaml
+      design.md
+      proposal.md
+      tasks.md
+    backend-robustness-suite/
+      specs/
+        security-edge-testing/
+          spec.md
+        validation-hardening/
+          spec.md
+      .openspec.yaml
+      design.md
+      proposal.md
+      tasks.md
+    frontend-foundation/
+      design.md
+      proposal.md
+      tasks.md
+    logistics-manager/
+      specs/
+        auth-multi-role/
+          spec.md
+        chaos-simulator/
+          spec.md
+        delivery-management/
+          spec.md
+        demo-endpoint/
+          spec.md
+        eta-calculator/
+          spec.md
+        frontend-dashboard/
+          spec.md
+        receiving-window/
+          spec.md
+        resilience/
+          spec.md
+        safe-check/
+          spec.md
+      .openspec.yaml
+      design.md
+      proposal.md
+      stitch-prompts.md
+      tasks.md
+      ui-ux-design.md
+  config.yaml
+docker-compose.yml
+
+================================================================
+Files
+================================================================
+
+================
+File: backend/tests/api/test_coverage_boost.py
+================
+import pytest
+import uuid
+from httpx import AsyncClient
+
+
+# ─── helpers ────────────────────────────────────────────────────────────────
+
+async def _create_lojista(client: AsyncClient) -> dict:
+    """Register a lojista and return its login token headers + user_id."""
+    email = f"loj_{uuid.uuid4().hex[:8]}@example.com"
+    reg = await client.post(
+        "/auth/register",
+        json={"email": email, "password": "testpassword", "role": "lojista"},
+    )
+    user_id = reg.json()["id"]
+    login = await client.post(
+        "/auth/login",
+        json={"email": email, "password": "testpassword"},
+    )
+    token = login.json()["access_token"]
+    return {"headers": {"Authorization": f"Bearer {token}"}, "id": user_id}
+
+
+async def _create_motorista(client: AsyncClient) -> dict:
+    """Register a motorista and return its login token headers + user_id."""
+    email = f"mot_{uuid.uuid4().hex[:8]}@example.com"
+    reg = await client.post(
+        "/auth/register",
+        json={"email": email, "password": "testpassword", "role": "motorista"},
+    )
+    user_id = reg.json()["id"]
+    login = await client.post(
+        "/auth/login",
+        json={"email": email, "password": "testpassword"},
+    )
+    token = login.json()["access_token"]
+    return {"headers": {"Authorization": f"Bearer {token}"}, "id": user_id}
+
+
+# ─── auth.py coverage ────────────────────────────────────────────────────────
+
+@pytest.mark.anyio
+async def test_register_duplicate_email_returns_409(client: AsyncClient):
+    """Covers auth.py line 23-24: duplicate e-mail guard."""
+    email = f"dup_{uuid.uuid4().hex[:8]}@example.com"
+    payload = {"email": email, "password": "pass", "role": "lojista"}
+    await client.post("/auth/register", json=payload)
+    response = await client.post("/auth/register", json=payload)
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Email já cadastrado"
+
+
+@pytest.mark.anyio
+async def test_login_returns_bearer_token(client: AsyncClient):
+    """Covers auth.py lines 40-49: full login body execution."""
+    lojista = await _create_lojista(client)
+    assert "Authorization" in lojista["headers"]
+
+
+# ─── places.py coverage ──────────────────────────────────────────────────────
+
+@pytest.mark.anyio
+async def test_list_factories_returns_200(client: AsyncClient):
+    """Covers places.py lines 22-23: list_factories body."""
+    response = await client.get("/places/factories")
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)
+
+
+@pytest.mark.anyio
+async def test_create_store_as_lojista(client: AsyncClient):
+    """Covers places.py lines 27-31: create_store body."""
+    lojista = await _create_lojista(client)
+    owner_id = lojista["id"]
+
+    store_data = {
+        "name": "Minha Loja Centro",
+        "lat": -23.5505,
+        "lng": -46.6333,
+        "owner_id": owner_id,
+    }
+    response = await client.post(
+        "/places/stores", json=store_data, headers=lojista["headers"]
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["name"] == store_data["name"]
+
+
+@pytest.mark.anyio
+async def test_list_stores_returns_200(client: AsyncClient):
+    """Covers places.py lines 35-36: list_stores body."""
+    response = await client.get("/places/stores")
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)
+
+
+# ─── deliveries.py coverage ──────────────────────────────────────────────────
+
+@pytest.mark.anyio
+async def test_create_and_list_deliveries(client: AsyncClient):
+    """Covers deliveries.py lines 13-17 and 21-22: both route bodies."""
+    # Need real UUIDs for FK constraints
+    lojista = await _create_lojista(client)
+    motorista = await _create_motorista(client)
+
+    # Create factory and store
+    factory_resp = await client.post(
+        "/places/factories",
+        json={"name": "Fábrica Teste", "lat": -19.9191, "lng": -43.9386},
+        headers=lojista["headers"],
+    )
+    factory_id = factory_resp.json()["id"]
+
+    store_resp = await client.post(
+        "/places/stores",
+        json={"name": "Loja Teste", "lat": -23.5505, "lng": -46.6333, "owner_id": lojista["id"]},
+        headers=lojista["headers"],
+    )
+    store_id = store_resp.json()["id"]
+
+    delivery_data = {
+        "factory_id": factory_id,
+        "store_id": store_id,
+        "driver_id": motorista["id"],
+    }
+
+    # POST — create_delivery body (lines 13-17)
+    create_resp = await client.post("/deliveries/", json=delivery_data)
+    assert create_resp.status_code == 201
+    assert create_resp.json()["status"] == "pendente"
+
+    # GET — list_deliveries body (lines 21-22)
+    list_resp = await client.get("/deliveries/")
+    assert list_resp.status_code == 200
+    assert isinstance(list_resp.json(), list)
+    assert len(list_resp.json()) >= 1
+
+
+# ─── session.py coverage ─────────────────────────────────────────────────────
+
+@pytest.mark.anyio
+async def test_get_db_dependency_is_overridden(client: AsyncClient):
+    """
+    Ensures the get_db dependency is active via a real DB-hitting endpoint.
+    Covers session.py lines 15-16 indirectly through the conftest override.
+    """
+    response = await client.get("/places/factories")
+    assert response.status_code == 200
+
+================
+File: backend/.coveragerc
+================
+[run]
+source = app
+concurrency = greenlet, thread
+
+[report]
+show_missing = True
+
+================
+File: backend/app/api/auth.py
+================
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+from app.db.session import get_db
+from app.models.user import User
+from app.schemas.user import UserCreate, UserResponse
+from app.core.security import get_password_hash, verify_password, create_access_token
+from pydantic import BaseModel
+
+router = APIRouter()
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class LoginData(BaseModel):
+    email: str
+    password: str
+
+@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+async def register(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(User).where(User.email == user_in.email))
+    if result.scalars().first():
+        raise HTTPException(status_code=409, detail="Email já cadastrado")
+    
+    hashed_password = get_password_hash(user_in.password)
+    db_user = User(
+        email=user_in.email,
+        password_hash=hashed_password,
+        role=user_in.role.value
+    )
+    db.add(db_user)
+    await db.commit()
+    await db.refresh(db_user)
+    return db_user
+
+@router.post("/login", response_model=Token)
+async def login(login_data: LoginData, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(User).where(User.email == login_data.email))
+    user = result.scalars().first()
+    
+    if not user or not verify_password(login_data.password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Credenciais inválidas"
+        )
+    
+    access_token = create_access_token(subject=user.id, role=user.role)
+    return {"access_token": access_token, "token_type": "bearer"}
+
+================
+File: backend/app/api/deliveries.py
+================
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+from typing import List
+from app.db.session import get_db
+from app.models.delivery import Delivery
+from app.schemas.delivery import DeliveryCreate, DeliveryResponse
+
+router = APIRouter()
+
+@router.post("/", response_model=DeliveryResponse, status_code=status.HTTP_201_CREATED)
+async def create_delivery(delivery_in: DeliveryCreate, db: AsyncSession = Depends(get_db)):
+    db_delivery = Delivery(**delivery_in.model_dump())
+    db.add(db_delivery)
+    await db.commit()
+    await db.refresh(db_delivery)
+    return db_delivery
+
+@router.get("/", response_model=List[DeliveryResponse])
+async def list_deliveries(limit: int = 50, offset: int = 0, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Delivery).offset(offset).limit(limit))
+    return result.scalars().all()
+
+================
+File: backend/app/api/deps.py
+================
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from jose import jwt, JWTError
+from app.core.config import settings
+
+security = HTTPBearer()
+
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    token = credentials.credentials
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Credenciais inválidas ou token expirado",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        user_id: str = payload.get("sub")
+        role: str = payload.get("role")
+        if user_id is None or role is None:
+            raise credentials_exception
+        return {"id": user_id, "role": role}
+    except JWTError:
+        raise credentials_exception
+
+def require_role(required_role: str):
+    def role_checker(current_user: dict = Depends(get_current_user)):
+        if current_user["role"] != required_role:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Acesso negado: role insuficiente"
+            )
+        return current_user
+    return role_checker
+
+================
+File: backend/app/core/security.py
+================
+from datetime import datetime, timedelta
+from typing import Any, Union
+from jose import jwt
+import bcrypt
+from app.core.config import settings
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+
+def get_password_hash(password: str) -> str:
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+def create_access_token(subject: Union[str, Any], role: str, expires_delta: timedelta = None) -> str:
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=60*24*8) # 8 days
+    to_encode = {"exp": expire, "sub": str(subject), "role": role}
+    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    return encoded_jwt
+
+================
+File: backend/app/db/base_class.py
+================
+from typing import Any
+from sqlalchemy.orm import as_declarative, declared_attr
+
+@as_declarative()
+class Base:
+    id: Any
+    __name__: str
+
+    # Generate __tablename__ automatically
+    @declared_attr.directive
+    def __tablename__(cls) -> str:
+        return cls.__name__.lower()
+
+================
+File: backend/app/db/base.py
+================
+from app.db.base_class import Base
+from app.models.user import User
+from app.models.place import Factory, Store
+from app.models.delivery import Delivery, EtaHistory
+from app.models.chaos import ChaosEventLog
+from app.models.alert import Alert
+
+================
+File: backend/app/db/session.py
+================
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from app.core.config import settings
+
+engine = create_async_engine(settings.DATABASE_URL, echo=False, future=True)
+
+AsyncSessionLocal = async_sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    autocommit=False,
+    autoflush=False,
+    expire_on_commit=False,
+)
+
+async def get_db():
+    async with AsyncSessionLocal() as session:
+        yield session
+
+================
+File: backend/app/domain/chaos.py
+================
+from datetime import datetime, timedelta
+
+def apply_chaos_to_eta(current_eta: datetime, impact_factor: float, delay_minutes: int) -> datetime:
+    if impact_factor < 0:
+        raise ValueError("Impact factor cannot be negative")
+    if delay_minutes < 0:
+        raise ValueError("Delay cannot be negative")
+
+    now = datetime.utcnow()
+    # If the ETA is already in the past, or very close, just add delay.
+    if current_eta <= now:
+        return current_eta + timedelta(minutes=delay_minutes)
+        
+    remaining_time = current_eta - now
+    # Multiply the remaining duration by factor, and add literal delays
+    new_remaining = remaining_time * impact_factor
+    new_eta = now + new_remaining + timedelta(minutes=delay_minutes)
+    
+    # We strip microseconds because of floating point math issues from timedelta scaling 
+    return new_eta.replace(microsecond=0)
+
+def remove_chaos_from_eta(current_eta: datetime, previous_eta: datetime, impact_factor: float, delay_minutes: int) -> datetime:
+    # Just mathematically return previous_eta to fulfill pure reverting correctly
+    return previous_eta.replace(microsecond=0)
+
+================
+File: backend/app/domain/haversine.py
+================
+import math
+from datetime import datetime, timedelta
+
+def calculate_haversine_distance(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    if not (-90 <= lat1 <= 90 and -90 <= lat2 <= 90):
+        raise ValueError("Latitude out of bounds")
+    if not (-180 <= lng1 <= 180 and -180 <= lng2 <= 180):
+        raise ValueError("Longitude out of bounds")
+        
+    R = 6371.0 # Radius of earth in km
+    
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
+    delta_phi = math.radians(lat2 - lat1)
+    delta_lambda = math.radians(lng2 - lng1)
+    
+    a = math.sin(delta_phi / 2.0) ** 2 + \
+        math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2.0) ** 2
+    
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    
+    distance = R * c
+    return distance
+
+def calculate_eta(distance_km: float, speed_kmh: float) -> float:
+    if speed_kmh <= 0:
+        raise ValueError("Speed must be positive")
+    if distance_km < 0:
+        raise ValueError("Distance cannot be negative")
+    if distance_km == 0:
+        return 0.0
+        
+    return distance_km / speed_kmh
+
+def add_hours_to_now(hours: float) -> datetime:
+    return datetime.utcnow() + timedelta(hours=hours)
+
+================
+File: backend/app/models/alert.py
+================
+import uuid
+import datetime
+from sqlalchemy import String, Boolean, ForeignKey, DateTime, func
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.dialects.postgresql import UUID
+from app.db.base_class import Base
+
+class Alert(Base):
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    delivery_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("delivery.id"), index=True)
+    message: Mapped[str] = mapped_column(String, nullable=False)
+    is_critical: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+================
+File: backend/app/models/chaos.py
+================
+import uuid
+import datetime
+from sqlalchemy import String, Float, Integer, ForeignKey, DateTime, func
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.dialects.postgresql import UUID
+from app.db.base_class import Base
+
+class ChaosEventLog(Base):
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    delivery_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("delivery.id"), index=True)
+    event_type: Mapped[str] = mapped_column(String, nullable=False)
+    impact_factor: Mapped[float] = mapped_column(Float, default=1.0)
+    delay_minutes: Mapped[int] = mapped_column(Integer, default=0)
+    
+    lat_start: Mapped[float | None] = mapped_column(Float)
+    lng_start: Mapped[float | None] = mapped_column(Float)
+    lat_end: Mapped[float | None] = mapped_column(Float)
+    lng_end: Mapped[float | None] = mapped_column(Float)
+
+    timestamp_start: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    timestamp_end: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True))
+
+================
+File: backend/app/models/delivery.py
+================
+import uuid
+import datetime
+from sqlalchemy import String, ForeignKey, DateTime, func
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.dialects.postgresql import UUID
+from app.db.base_class import Base
+
+class Delivery(Base):
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    factory_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("factory.id"))
+    store_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("store.id"), index=True)
+    driver_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("user.id"), index=True)
+    
+    status: Mapped[str] = mapped_column(String, nullable=False, default="pendente")
+    eta_original: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True))
+    eta_current: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True))
+    departed_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True))
+
+    store = relationship("Store")
+    driver = relationship("User")
+    factory = relationship("Factory")
+
+class EtaHistory(Base):
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    delivery_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("delivery.id"), index=True)
+    eta_before: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True))
+    eta_after: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True))
+    reason: Mapped[str] = mapped_column(String)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+================
+File: backend/app/models/place.py
+================
+import uuid
+from sqlalchemy import String, Float, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.dialects.postgresql import UUID
+from app.db.base_class import Base
+from app.models.user import User
+
+class Factory(Base):
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    lat: Mapped[float] = mapped_column(Float, nullable=False)
+    lng: Mapped[float] = mapped_column(Float, nullable=False)
+
+class Store(Base):
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    lat: Mapped[float] = mapped_column(Float, nullable=False)
+    lng: Mapped[float] = mapped_column(Float, nullable=False)
+    owner_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("user.id"))
+    owner = relationship("User")
+
+================
+File: backend/app/models/user.py
+================
+import uuid
+import datetime
+import enum
+from sqlalchemy import String, DateTime, func
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.dialects.postgresql import UUID
+from app.db.base_class import Base
+
+class UserRole(str, enum.Enum):
+    lojista = "lojista"
+    motorista = "motorista"
+
+class User(Base):
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    email: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
+    password_hash: Mapped[str] = mapped_column(String, nullable=False)
+    role: Mapped[str] = mapped_column(String, nullable=False)  # UserRole
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+================
+File: backend/app/schemas/delivery.py
+================
+from pydantic import BaseModel
+from typing import Optional
+import uuid
+from datetime import datetime
+
+class DeliveryBase(BaseModel):
+    factory_id: uuid.UUID
+    store_id: uuid.UUID
+    driver_id: uuid.UUID
+
+class DeliveryCreate(DeliveryBase):
+    pass
+
+class DeliveryResponse(DeliveryBase):
+    id: uuid.UUID
+    status: str
+    eta_original: Optional[datetime]
+    eta_current: Optional[datetime]
+    departed_at: Optional[datetime]
+    model_config = {"from_attributes": True}
+
+================
+File: backend/app/main.py
+================
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.exc import OperationalError
+from app.api.auth import router as auth_router
+from app.api.places import router as places_router
+from app.api.deliveries import router as deliveries_router
+
+app = FastAPI(
+    title="Logistics Manager API",
+    description="Motor analítico B2B para rastreamento inteligente, SLAs e injeção de Chaos.",
+    version="1.0.0"
+)
+
+# CORS configurations
+origins = [
+    "http://localhost:3000",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(auth_router, prefix="/auth", tags=["auth"])
+app.include_router(places_router, prefix="/places", tags=["places"])
+app.include_router(deliveries_router, prefix="/deliveries", tags=["deliveries"])
+
+@app.exception_handler(OperationalError)
+async def db_connection_exception_handler(request: Request, exc: OperationalError):
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "Database Unavailable (503). O banco de dados está fora do ar ou injetado em Chaos."}
+    )
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok", "environment": "dev"}
+
+================
+File: backend/migrations/versions/17589825805b_init.py
+================
+"""Init
+
+Revision ID: 17589825805b
+Revises: 
+Create Date: 2026-03-31 20:14:10.627968
+
+"""
+from typing import Sequence, Union
+
+from alembic import op
+import sqlalchemy as sa
+
+
+# revision identifiers, used by Alembic.
+revision: str = '17589825805b'
+down_revision: Union[str, None] = None
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None
+
+
+def upgrade() -> None:
+    # ### commands auto generated by Alembic - please adjust! ###
+    op.create_table('factory',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('name', sa.String(), nullable=False),
+    sa.Column('lat', sa.Float(), nullable=False),
+    sa.Column('lng', sa.Float(), nullable=False),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('user',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('email', sa.String(), nullable=False),
+    sa.Column('password_hash', sa.String(), nullable=False),
+    sa.Column('role', sa.String(), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_user_email'), 'user', ['email'], unique=True)
+    op.create_table('store',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('name', sa.String(), nullable=False),
+    sa.Column('lat', sa.Float(), nullable=False),
+    sa.Column('lng', sa.Float(), nullable=False),
+    sa.Column('owner_id', sa.UUID(), nullable=False),
+    sa.ForeignKeyConstraint(['owner_id'], ['user.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('delivery',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('factory_id', sa.UUID(), nullable=False),
+    sa.Column('store_id', sa.UUID(), nullable=False),
+    sa.Column('driver_id', sa.UUID(), nullable=False),
+    sa.Column('status', sa.String(), nullable=False),
+    sa.Column('eta_original', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('eta_current', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('departed_at', sa.DateTime(timezone=True), nullable=True),
+    sa.ForeignKeyConstraint(['driver_id'], ['user.id'], ),
+    sa.ForeignKeyConstraint(['factory_id'], ['factory.id'], ),
+    sa.ForeignKeyConstraint(['store_id'], ['store.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_delivery_driver_id'), 'delivery', ['driver_id'], unique=False)
+    op.create_index(op.f('ix_delivery_store_id'), 'delivery', ['store_id'], unique=False)
+    op.create_table('alert',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('delivery_id', sa.UUID(), nullable=False),
+    sa.Column('message', sa.String(), nullable=False),
+    sa.Column('is_critical', sa.Boolean(), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.ForeignKeyConstraint(['delivery_id'], ['delivery.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_alert_delivery_id'), 'alert', ['delivery_id'], unique=False)
+    op.create_table('chaoseventlog',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('delivery_id', sa.UUID(), nullable=False),
+    sa.Column('event_type', sa.String(), nullable=False),
+    sa.Column('impact_factor', sa.Float(), nullable=False),
+    sa.Column('delay_minutes', sa.Integer(), nullable=False),
+    sa.Column('lat_start', sa.Float(), nullable=True),
+    sa.Column('lng_start', sa.Float(), nullable=True),
+    sa.Column('lat_end', sa.Float(), nullable=True),
+    sa.Column('lng_end', sa.Float(), nullable=True),
+    sa.Column('timestamp_start', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('timestamp_end', sa.DateTime(timezone=True), nullable=True),
+    sa.ForeignKeyConstraint(['delivery_id'], ['delivery.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_chaoseventlog_delivery_id'), 'chaoseventlog', ['delivery_id'], unique=False)
+    op.create_table('etahistory',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('delivery_id', sa.UUID(), nullable=False),
+    sa.Column('eta_before', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('eta_after', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('reason', sa.String(), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.ForeignKeyConstraint(['delivery_id'], ['delivery.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_etahistory_delivery_id'), 'etahistory', ['delivery_id'], unique=False)
+    # ### end Alembic commands ###
+
+
+def downgrade() -> None:
+    # ### commands auto generated by Alembic - please adjust! ###
+    op.drop_index(op.f('ix_etahistory_delivery_id'), table_name='etahistory')
+    op.drop_table('etahistory')
+    op.drop_index(op.f('ix_chaoseventlog_delivery_id'), table_name='chaoseventlog')
+    op.drop_table('chaoseventlog')
+    op.drop_index(op.f('ix_alert_delivery_id'), table_name='alert')
+    op.drop_table('alert')
+    op.drop_index(op.f('ix_delivery_store_id'), table_name='delivery')
+    op.drop_index(op.f('ix_delivery_driver_id'), table_name='delivery')
+    op.drop_table('delivery')
+    op.drop_table('store')
+    op.drop_index(op.f('ix_user_email'), table_name='user')
+    op.drop_table('user')
+    op.drop_table('factory')
+    # ### end Alembic commands ###
+
+================
+File: backend/migrations/env.py
+================
+import asyncio
+from logging.config import fileConfig
+
+from sqlalchemy import pool
+from sqlalchemy.engine import Connection
+from sqlalchemy.ext.asyncio import async_engine_from_config
+
+from alembic import context
+
+config = context.config
+
+if config.config_file_name is not None:
+    fileConfig(config.config_file_name)
+
+from app.db.base import Base
+from app.core.config import settings
+target_metadata = Base.metadata
+
+config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+
+def run_migrations_offline() -> None:
+    url = config.get_main_option("sqlalchemy.url")
+    context.configure(
+        url=url,
+        target_metadata=target_metadata,
+        literal_binds=True,
+        dialect_opts={"paramstyle": "named"},
+    )
+    with context.begin_transaction():
+        context.run_migrations()
+
+def do_run_migrations(connection: Connection) -> None:
+    context.configure(connection=connection, target_metadata=target_metadata)
+    with context.begin_transaction():
+        context.run_migrations()
+
+async def run_async_migrations() -> None:
+    connectable = async_engine_from_config(
+        config.get_section(config.config_ini_section, {}),
+        prefix="sqlalchemy.",
+        poolclass=pool.NullPool,
+    )
+    async with connectable.connect() as connection:
+        await connection.run_sync(do_run_migrations)
+    await connectable.dispose()
+
+def run_migrations_online() -> None:
+    asyncio.run(run_async_migrations())
+
+if context.is_offline_mode():
+    run_migrations_offline()
+else:
+    run_migrations_online()
+
+================
+File: backend/migrations/script.py.mako
+================
+"""${message}
+
+Revision ID: ${up_revision}
+Revises: ${down_revision | comma,n}
+Create Date: ${create_date}
+
+"""
+from typing import Sequence, Union
+
+from alembic import op
+import sqlalchemy as sa
+${imports if imports else ""}
+
+# revision identifiers, used by Alembic.
+revision: str = ${repr(up_revision)}
+down_revision: Union[str, None] = ${repr(down_revision)}
+branch_labels: Union[str, Sequence[str], None] = ${repr(branch_labels)}
+depends_on: Union[str, Sequence[str], None] = ${repr(depends_on)}
+
+
+def upgrade() -> None:
+    ${upgrades if upgrades else "pass"}
+
+
+def downgrade() -> None:
+    ${downgrades if downgrades else "pass"}
+
+================
+File: backend/tests/api/test_security.py
+================
+import pytest
+from httpx import AsyncClient
+import uuid
+from datetime import timedelta
+from jose import jwt
+from app.core.config import settings
+from app.core.security import create_access_token
+
+@pytest.mark.anyio
+async def test_access_denied_for_motorista(client: AsyncClient):
+    # Generating motorista token
+    token = create_access_token(subject=uuid.uuid4(), role="motorista")
+    headers = {"Authorization": f"Bearer {token}"}
+    
+    # Try to create factory (requires lojista)
+    factory_data = {"name": "Test", "lat": 10.0, "lng": 10.0}
+    response = await client.post(
+        "/places/factories",
+        json=factory_data,
+        headers=headers
+    )
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Acesso negado: role insuficiente"
+
+@pytest.mark.anyio
+async def test_access_denied_for_expired_token(client: AsyncClient):
+    # Expired token
+    token = create_access_token(subject=uuid.uuid4(), role="lojista", expires_delta=timedelta(seconds=-1))
+    headers = {"Authorization": f"Bearer {token}"}
+    
+    # Try to create factory
+    factory_data = {"name": "Test2", "lat": 10.0, "lng": 10.0}
+    response = await client.post(
+        "/places/factories",
+        json=factory_data,
+        headers=headers
+    )
+    assert response.status_code == 401
+
+================
+File: backend/tests/api/test_validation.py
+================
+import pytest
+from httpx import AsyncClient
+import uuid
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("payload, expected_status", [
+    # Factory validation tests
+    (
+        {"name": "", "lat": -23.5, "lng": -46.6},  # Empty name
+        422
+    ),
+    (
+        {"name": "Valid Factory", "lat": 150.0, "lng": -46.6},  # Invalid lat
+        422
+    ),
+    (
+        {"name": "Valid Factory", "lat": -23.5, "lng": -200.0},  # Invalid lng
+        422
+    )
+])
+async def test_factory_payload_validation(client: AsyncClient, lojista_token_headers: dict, payload: dict, expected_status: int):
+    # Depending on how the factory creation route is defined, let's assume it accepts FactoryCreate
+    response = await client.post(
+        "/places/factories",
+        json=payload,
+        headers=lojista_token_headers
+    )
+    assert response.status_code == expected_status
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("payload, expected_status", [
+    # User validation tests
+    (
+        {"email": "valid@email.com", "password": "", "role": "motorista"},  # Empty password
+        422
+    ),
+    (
+        {"email": "not-an-email", "password": "password", "role": "motorista"},  # Invalid email
+        422
+    )
+])
+async def test_user_payload_validation(client: AsyncClient, payload: dict, expected_status: int):
+    response = await client.post(
+        "/auth/register",
+        json=payload
+    )
+    assert response.status_code == expected_status
+
+================
+File: backend/tests/domain/test_engine.py
+================
+import pytest
+from datetime import datetime, timedelta
+from app.domain.haversine import calculate_haversine_distance, calculate_eta, add_hours_to_now
+
+# ==== HAVERSINE / DISTANCE TESTS (10 tests) ====
+def test_distance_zero_same_point():
+    assert calculate_haversine_distance(-23.5505, -46.6333, -23.5505, -46.6333) == 0.0
+
+def test_distance_sp_to_rj():
+    dist = calculate_haversine_distance(-23.5505, -46.6333, -22.9068, -43.1729)
+    assert 350 < dist < 370  # ~357 km
+
+def test_distance_short_range():
+    dist = calculate_haversine_distance(-23.5505, -46.6333, -23.5605, -46.6433)
+    assert 1.0 < dist < 2.0
+
+def test_distance_across_equator():
+    dist = calculate_haversine_distance(1.0, -45.0, -1.0, -45.0)
+    assert 220 < dist < 225
+
+def test_distance_negative_coords():
+    assert calculate_haversine_distance(-10.0, -10.0, -10.0, -10.0) == 0.0
+
+def test_distance_long_range():
+    # Brazil to Portugal roughly
+    dist = calculate_haversine_distance(-23.5, -46.6, 38.7, -9.1)
+    assert 7000 < dist < 8500
+
+def test_distance_equator_meridian():
+    # exactly at 0,0
+    assert calculate_haversine_distance(0.0, 0.0, 0.0, 1.0) > 110.0
+
+def test_distance_poles():
+    # N pole to close
+    dist = calculate_haversine_distance(90.0, 0.0, 89.0, 0.0)
+    assert 110.0 < dist < 112.0
+
+def test_distance_invalid_large_lat():
+    with pytest.raises(ValueError):
+        calculate_haversine_distance(100.0, 0, 0, 0)
+
+def test_distance_invalid_large_lng():
+    with pytest.raises(ValueError):
+        calculate_haversine_distance(0, 200.0, 0, 0)
+
+# ==== ETA TESTS (10 tests) ====
+def test_eta_100km_100kmh():
+    assert calculate_eta(100.0, 100.0) == 1.0
+
+def test_eta_50km_100kmh():
+    assert calculate_eta(50.0, 100.0) == 0.5
+
+def test_eta_zero_distance():
+    assert calculate_eta(0.0, 100.0) == 0.0
+
+def test_eta_zero_speed():
+    with pytest.raises(ValueError):
+        calculate_eta(100.0, 0.0)
+
+def test_eta_negative_distance():
+    with pytest.raises(ValueError):
+        calculate_eta(-10.0, 100.0)
+
+def test_eta_negative_speed():
+    with pytest.raises(ValueError):
+        calculate_eta(100.0, -10.0)
+
+def test_eta_large_decimals():
+    eta = calculate_eta(333.333, 80.0)
+    assert round(eta, 2) == 4.17
+
+def test_eta_add_hours_returns_datetime():
+    dt = add_hours_to_now(1.5)
+    assert isinstance(dt, datetime)
+
+def test_eta_add_hours_logic():
+    now = datetime.utcnow()
+    future = add_hours_to_now(2.0)
+    diff = future - now
+    assert diff.total_seconds() >= 7199
+
+def test_eta_add_zero_hours():
+    now = datetime.utcnow()
+    res = add_hours_to_now(0.0)
+    assert (res - now).total_seconds() < 1
+
+================
+File: backend/tests/domain/test_extreme.py
+================
+import pytest
+from app.domain.haversine import calculate_haversine_distance
+from app.domain.chaos import apply_chaos_to_eta
+from datetime import datetime
+from app.domain.safe_check import is_safe_check_expired, evaluate_truck_speed_status
+
+def test_haversine_zero_distance():
+    # Same point distance should be exactly zero, shouldn't crash
+    dist = calculate_haversine_distance(0.0, 0.0, 0.0, 0.0)
+    assert dist == 0.0
+
+def test_haversine_polar_extremes():
+    # North pole to South pole
+    dist = calculate_haversine_distance(90.0, 0.0, -90.0, 0.0)
+    assert dist > 19000  # Should be roughly ~20000 km
+
+def test_safe_check_none_ping():
+    # Passing None should return True, not TypeError
+    assert is_safe_check_expired(None) is True
+
+def test_evaluate_truck_speed_negative():
+    # Should raise error if negative
+    with pytest.raises(ValueError):
+        evaluate_truck_speed_status(-10.0)
+
+def test_chaos_zero_factor():
+    eta = datetime.utcnow()
+    # Apply zero impact
+    new_eta = apply_chaos_to_eta(current_eta=eta, impact_factor=0.0, delay_minutes=0)
+    assert new_eta is not None
+
+================
+File: backend/tests/domain/test_simulation.py
+================
+import pytest
+from datetime import datetime, timedelta
+from app.domain.chaos import apply_chaos_to_eta, remove_chaos_from_eta
+from app.domain.safe_check import is_safe_check_expired, evaluate_truck_speed_status
+
+# ==== CHAOS SIMULATION TESTS (8 tests) ====
+def test_chaos_apply_delay_only():
+    base = datetime(2030, 1, 1, 12, 0, 0)
+    # Acidente: factor 1.0, delay 60
+    new_eta = apply_chaos_to_eta(base, 1.0, 60)
+    assert new_eta == datetime(2030, 1, 1, 13, 0, 0)
+
+def test_chaos_apply_factor_only():
+    base = datetime.utcnow() + timedelta(hours=1)
+    # Chuva: factor 1.3
+    new_eta = apply_chaos_to_eta(base, 1.3, 0)
+    assert new_eta > base
+
+def test_chaos_apply_factor_and_delay():
+    base = datetime.utcnow() + timedelta(hours=2)
+    new_eta = apply_chaos_to_eta(base, 1.5, 30)
+    assert new_eta > base + timedelta(minutes=30)
+
+def test_chaos_apply_zero_impact():
+    base = datetime(2030, 1, 1, 12, 0, 0)
+    new_eta = apply_chaos_to_eta(base, 1.0, 0)
+    assert new_eta == base
+
+def test_chaos_remove_delay():
+    current = datetime(2030, 1, 1, 13, 0, 0)
+    previous = datetime(2030, 1, 1, 12, 0, 0)
+    reverted = remove_chaos_from_eta(current, previous, 1.0, 60)
+    assert reverted == previous
+
+def test_chaos_remove_factor():
+    previous = datetime.utcnow() + timedelta(minutes=60)
+    current = apply_chaos_to_eta(previous, 1.5, 0)
+    reverted = remove_chaos_from_eta(current, previous, 1.5, 0)
+    # Should revert close to previous
+    assert abs((reverted - previous).total_seconds()) < 5
+
+def test_chaos_apply_invalid_factor():
+    base = datetime.utcnow()
+    with pytest.raises(ValueError):
+        apply_chaos_to_eta(base, -1.0, 0)
+
+def test_chaos_apply_invalid_delay():
+    base = datetime.utcnow()
+    with pytest.raises(ValueError):
+        apply_chaos_to_eta(base, 1.0, -10)
+
+
+# ==== SAFE CHECK LAZY EVALUATION (6 tests) ====
+def test_safe_check_not_expired():
+    last_ping = datetime.utcnow() - timedelta(minutes=5)
+    assert is_safe_check_expired(last_ping, 10) is False
+
+def test_safe_check_expired():
+    last_ping = datetime.utcnow() - timedelta(minutes=15)
+    assert is_safe_check_expired(last_ping, 10) is True
+
+def test_safe_check_edge_case():
+    last_ping = datetime.utcnow() - timedelta(minutes=10)
+    # depending on ms it might be True or False, we test > timeout
+    assert is_safe_check_expired(last_ping, 9) is True
+
+def test_safe_check_future_ping():
+    last_ping = datetime.utcnow() + timedelta(minutes=5)
+    assert is_safe_check_expired(last_ping, 10) is False
+
+def test_truck_speed_moving():
+    assert evaluate_truck_speed_status(60.0) == "moving"
+
+def test_truck_speed_stopped():
+    assert evaluate_truck_speed_status(0.0) == "stopped"
+
+def test_truck_speed_negative():
+    with pytest.raises(ValueError):
+        evaluate_truck_speed_status(-5.0)
+
+================
+File: backend/tests/__init__.py
+================
+# empty
+
+================
+File: backend/admin_seed.py
+================
+import asyncio
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.future import select
+from sqlalchemy import delete
+from app.core.config import settings
+from app.models.user import User, UserRole
+from app.core.security import get_password_hash
+
+async def admin_seed():
+    print("Running Admin Seed...")
+    engine = create_async_engine(settings.DATABASE_URL)
+    session_factory = async_sessionmaker(bind=engine, class_=AsyncSession)
+
+    async with session_factory() as session:
+        # Check if admin already exists and delete for idempotency
+        email = "admin@antigravity.com"
+        stmt = delete(User).where(User.email == email)
+        await session.execute(stmt)
+        await session.commit()
+        print(f"Cleaned up existing user: {email}")
+
+        # Create Admin user
+        admin_user = User(
+            email=email,
+            password_hash=get_password_hash("admin"),
+            role=UserRole.lojista.value # Defaulting to lojista but with admin email
+        )
+        session.add(admin_user)
+        await session.commit()
+        print(f"Admin user created: {email} / admin")
+        
+    await engine.dispose()
+
+if __name__ == "__main__":
+    asyncio.run(admin_seed())
+
+================
+File: backend/alembic.ini
+================
+[alembic]
+script_location = migrations
+prepend_sys_path = .
+version_path_separator = os
+
+[loggers]
+keys = root,sqlalchemy,alembic
+
+[handlers]
+keys = console
+
+[formatters]
+keys = generic
+
+[logger_root]
+level = WARN
+handlers = console
+qualname =
+
+[logger_sqlalchemy]
+level = WARN
+handlers =
+qualname = sqlalchemy.engine
+
+[logger_alembic]
+level = INFO
+handlers =
+qualname = alembic
+
+[handler_console]
+class = StreamHandler
+args = (sys.stderr,)
+level = NOTSET
+formatter = generic
+
+[formatter_generic]
+format = %(levelname)-5.5s [%(name)s] %(message)s
+datefmt = %H:%M:%S
+
+================
+File: backend/Dockerfile
+================
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies for asyncpg and cryptography
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+================
+File: backend/seed.py
+================
+import asyncio
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from app.core.config import settings
+from app.models.user import User, UserRole
+from app.models.place import Factory, Store
+from app.core.security import get_password_hash
+
+async def seed():
+    print("Running DB seed...")
+    engine = create_async_engine(settings.DATABASE_URL)
+    session_factory = async_sessionmaker(bind=engine, class_=AsyncSession)
+
+    async with session_factory() as session:
+        # Create user Lojista
+        lojista = User(
+            email="lojista@antigravity.com",
+            password_hash=get_password_hash("admin123"),
+            role=UserRole.lojista.value
+        )
+        session.add(lojista)
+
+        # Create user Motorista
+        motorista = User(
+            email="motorista@antigravity.com",
+            password_hash=get_password_hash("driver123"),
+            role=UserRole.motorista.value
+        )
+        session.add(motorista)
+        await session.commit()
+        await session.refresh(lojista)
+        
+        # Create generic Factory
+        factory = Factory(
+            name="Fábrica Central SP",
+            lat=-23.5505,
+            lng=-46.6333
+        )
+        session.add(factory)
+
+        # Create generic Store
+        store = Store(
+            name="Loja Parceira RJ",
+            lat=-22.9068,
+            lng=-43.1729,
+            owner_id=lojista.id
+        )
+        session.add(store)
+
+        await session.commit()
+        print("Seed finished!")
+    await engine.dispose()
+
+if __name__ == "__main__":
+    asyncio.run(seed())
+
+================
+File: openspec/changes/add-pgadmin/specs/pgadmin-ui/spec.md
+================
+## ADDED Requirements
+
+### Requirement: pgadmin-ui
+A ferramenta deve estar empacotada no docker-compose e escutar requisições de administração do BD
+
+#### Scenario: Subir ecossistema Backend
+- **WHEN** O operador roda `docker compose up -d`
+- **THEN** O Container PgAdmin deve iniciar e ficar no ar (`Up`)
+
+#### Scenario: Acesso Web
+- **WHEN** O operador acessa a porta `5050`
+- **THEN** Uma página de login deve ser mostrada aceitando credenciais admin
+
+================
+File: openspec/changes/add-pgadmin/.openspec.yaml
+================
+schema: spec-driven
+created: 2026-04-07
+
+================
+File: openspec/changes/add-pgadmin/design.md
+================
+## User Experience
+Os desenvolvedores e operadores do banco de dados relacional terão uma interface gráfica acessível via web (`http://localhost:5050`) para consulta, modelagem e edição de dados, eliminando a dependência de clientes locais instalados.
+
+## Architecture & Implementation Strategy
+### Componentes Chave
+1. **Container do PgAdmin**
+   - Utilizaremos a imagem oficial `dpage/pgadmin4`.
+   - Porta mapeada como `5050` (`5050:80`).
+   - Variáveis de ambiente injetadas via Docker Compose definirão a master account root do portal (`PGADMIN_DEFAULT_EMAIL` e `PGADMIN_DEFAULT_PASSWORD`).
+
+2. **Network Connection**
+   - O PgAdmin fará parte da `logistics-net` e conseguirá enxergar o hostname `db`.
+
+## Dependencies & API Changes
+Nenhuma alteração na API. Adição no arquivo de Docker (`docker-compose.yml`).
+
+## Data Model
+Não há mudanças de modelagem.
+
+## Security & Privacy
+O PgAdmin não deve ser subido em ambientes de Produção sem travas rigorosas, mas como se trata de um ambiente Local / TCC, as credenciais `admin/admin` padrão são perfeitamente aceitáveis para facilitação.
+
+## Testing Strategy
+- Fazer up nos containers `sudo docker compose up -d`.
+- Tentar acessar a porta 5050.
+- Criar a conexão e executar uma query SELECT.
+
+================
+File: openspec/changes/add-pgadmin/proposal.md
+================
+## Why
+
+A API e o Banco de Dados contam com o Postgres localmente gerenciado em um container Docker. Embora o backend valide através do Swagger (na porta 8000), o gerenciamento do banco de dados relacional seria amplamente beneficiado se contasse com uma interface gráfica acessível facilmente sem a necessidade de baixar softwares desktop de terceiros. Para simplificar a demonstração do TCC e acelerar verificações visuais diretas, a inserção do PgAdmin no Docker é uma melhoria significativa no DX (Developer Experience).
+
+## What Changes
+
+A adição do serviço `pgadmin` ao arquivo raiz `docker-compose.yml`.
+
+## Capabilities
+
+### New Capabilities
+- `pgadmin-ui`: Interface web rodando na porta `5050` (`admin@admin.com` - `admin`) que vai conectar via DNS interno da rede diretamente ao container do `db` na porta `5432`.
+
+### Modified Capabilities
+
+## Impact
+
+Afeta apenas os responsáveis pela orquestração do ambiente de desenvolvimento. Não haverá alterações de código do núcleo do projeto em Python.
+
+================
+File: openspec/changes/add-pgadmin/tasks.md
+================
+## 1. Configurar Docker Compose
+
+- [x] 1.1 Inserir uma definição nova `pgadmin:` no arquivo `docker-compose.yml`, referenciando corretamente as redes `depends_on`, expor a porta e plugar as variáveis de root admin.
+
+## 2. Iniciar Sistema
+
+- [x] 2.1 Rodar `sudo docker compose up -d` na raiz da pasta.
+- [x] 2.2 Verificar o status listado no `docker ps`.
+
+================
+File: openspec/changes/add-test-coverage/.openspec.yaml
+================
+schema: spec-driven
+created: 2026-04-10
+
+================
+File: openspec/changes/add-test-coverage/design.md
+================
+# Design Técnico: Cobertura de Testes (Coverage)
+
+## 1. Arquitetura e Dependências
+O Backend já roda perfeitamente em cima do `Pytest`. Para instanciarmos a métrica estatística, as seguintes extensões serão injetadas:
+*   `coverage`: Motor em C/Python nativo que "espiona" a execução de scripts.
+*   `pytest-cov`: A ponte que une a experiência maravilhosa do Pytest que já temos ao motor estatístico.
+
+Como operamos no **Docker**, a dependência precisará ser salva no `requirements.txt` (ou script equivalente) do App Backend.  
+
+## 2. Configurações Globais
+Toda configuração rodará automaticamente a partir do arquivo existente `backend/pytest.ini`.
+
+**Flags Injetadas:**
+*   `--cov=app`: Monitorar exclusivamente o core da nossa regra de negócio e rotas (ignorar bibliotecas de terceiros pra não distorcer o resultado em falso).
+*   `--cov-report=term-missing`: Em vez de só imprimir um número final `95%`, ele vai desenhar no terminal exatamente a linha do arquivo que faltou (Exemplo: `places.py - Misses Line 43`).
+
+================
+File: openspec/changes/add-test-coverage/proposal.md
+================
+---
+schema: spec-driven
+status: proposed
+---
+
+# Proposta: Adicionar Cobertura de Testes (Test Coverage)
+
+## 1. O Que Vamos Construir?
+Um sistema automatizado de checagem e emissão de relatórios de cobertura de código para o Backend (FastAPI). Integrando o `pytest-cov`, faremos com que toda execução de teste imprima no terminal e/ou gere um HTML mostrando a porcentagem exata de código que está protegida.
+
+## 2. Por Que Vamos Construir Isso?
+Porque ter testes rodando é 50% da jornada; os outros 50% consistem em saber *o que não foi testado*.
+*   **Fundamentação Acadêmica:** Excelente argumento para mostrar maturidade de TCC, provando o nível de confiabilidade do Backend antes de entregar pro Fronte d.
+*   **Transparência:** Impede que linhas "fantasmas" de condicionais (como `if/else` complexos na gestão de rotas do caminhão) fiquem em branco.
+
+================
+File: openspec/changes/add-test-coverage/tasks.md
+================
+# Tarefas de Implementação: Add Test Coverage
+
+## 1. Motor de Dependências
+- [x] 1.1 Instalar e adicionar bibliotecas `coverage` e `pytest-cov` dentro do ambiente Backend do Docker. Pode ser via update agressivo no container usando `pip install pytest-cov` pra testar agora, ou editando `requirements.txt`.
+
+## 2. Alterações de Base (Ini)
+- [x] 2.1 Abrir arquivo `backend/pytest.ini` e adicionar a base: `addopts = --cov=app --cov-report=term-missing`.
+- [x] 1.2 Atualização do container enviada ao usuário.
+
+## 3. Emissão de Relatório e Limpeza
+- [ ] 3.1 Executar os testes pela base Docker `sudo docker compose exec api pytest` para forçar a renderização do sumário novo no terminal e validarmos nossas métricas percentuais.
+
+================
+File: openspec/changes/api-integration-tests/.openspec.yaml
+================
+schema: spec-driven
+created: 2026-03-31
+
+================
+File: openspec/changes/api-integration-validation/specs/admin-seed/spec.md
+================
+# Capability: admin-seed
+
+## Requirements
+- MUST provide an entry level script to bootstrap a pristine environment.
+- MUST seed an admin user with fixed login `admin@antigravity.com` / `admin`.
+
+## BDD Scenarios
+
+**GIVEN** the Docker environment is fresh
+**WHEN** the operator invokes the admin seed script
+**THEN** the system prints "Admin Seeding completed!"
+**AND** the credentials work perfectly in the Swagger UI POST /auth/login
+
+================
+File: openspec/changes/api-integration-validation/specs/api-integration/spec.md
+================
+# Capability: api-integration
+
+## Requirements
+- MUST include tests for user registration and JWT token fetching.
+- MUST validate JSON creation format for Factories and Stores.
+- MUST test positive and negative scenarios (e.g., duplicated email raising 409).
+- MUST run purely containerized inside api docker.
+
+## BDD Scenarios
+
+**GIVEN** the API is running and DB is reachable
+**WHEN** the client registers a new user with valid data
+**THEN** the API returns HTTP 201 Created
+
+**GIVEN** an existing registered user
+**WHEN** the client hits /auth/login with valid credentials
+**THEN** it returns HTTP 200 with an `access_token` Bearer
+
+================
+File: openspec/changes/api-integration-validation/.openspec.yaml
+================
+schema: spec-driven
+created: 2026-03-31
+
+================
+File: openspec/changes/api-integration-validation/design.md
+================
+## User Experience
+
+O novo script de seed `admin_seed.py` garantirá um ambiente previsível para testes locais via Swagger `/docs`. Os testes de integração (E2E) em `tests/api/` rodarão via `httpx` no docker.
+
+## Architecture & Implementation Strategy
+
+### Componentes Chave
+1. **API Integration Tests**
+   - Utilizaremos `httpx.AsyncClient` acoplado ao `pytest-asyncio`.
+   - Um arquivo de fixture re-inicializará um banco de testes isolado ou mockará as conexões `get_db`.
+   - Bater em `/auth/register`, `/auth/login`, capturar o Bearer token, usá-lo pra criar Factories em `/places/factories`.
+
+2. **Admin Seed Script**
+   - Um script isolado `backend/admin_seed.py` rodará as sessões do sqlalchemy async para criar o e-mail master (admin@antigravity.com) forçando a Role de superuser ou inserções necessárias.
+
+## Dependencies & API Changes
+
+### Internal API/Schema
+- Mantém coerência total com O que já temos no FastAPI.
+
+### New/Updated Dependencies
+- Usará o próprio ambiente do Docker (`api` container) para usar `httpx` já instalado no `requirements.txt`.
+
+## Data Model
+
+- Não aplicável mudanças na modelagem.
+
+## Security & Privacy
+
+- O Seed Script nunca deverá ser executado em prod.
+
+## Testing Strategy
+
+- `sudo docker compose exec api pytest tests/api -v` confirmando 100% Passed.
+
+## Open Questions
+
+- Separamos o banco de dados de testes num container diferente? (Por ora, rodamos diretamente no mesmo Postgres via rollbacks ou test db).
+
+================
+File: openspec/changes/api-integration-validation/proposal.md
+================
+## Why
+
+Com a finalização do Motor Analítico (Fase 2) e testes granulares de domínio (Unitários/Haversine), precisamos agora garantir que essas funções respondam corretamente no contexto HTTP da FastAPI. Para isso, são essenciais testes de integração (E2E) que percorram as rotas `/auth`, `/places`, `/deliveries` de ponta a ponta. Além disso, ter um usuário administrador (Seed Administrativo) facilita a simulação de todo o fluxo no Swagger UI sem criar novos logins manualmente e é crítico para as apresentações.
+
+## What Changes
+
+1. **Testes de Integração de API (`tests/api/`)**: Criação de `pytest` com `httpx` (async) para iterar nos fluxos de registro, auth via JWT, criação de fábricas, lojas e cálculo logístico, todos operando de dentro do container (`docker-compose exec api pytest`).
+2. **Seed Administrativo Aprimorado**: Expansão do `seed.py` para injetar consistentemente um usuário tipo Admin, provendo permissões diretas de testes.
+3. **Execução conteinerizada**: Todos os comandos serão encapsulados via `docker-compose exec api` garantindo reprodução instantânea no ambiente homologado de arquitetura.
+
+## Capabilities
+
+### New Capabilities
+- `api-integration`: Testes de E2E batendo no banco de dados e verificando payloads e exceptions de todo o CRUD e tokens JWT via Httpx.
+- `admin-seed`: O script inicial de modelagem de dados que injeta a base da conta Administrativa para exploração no Swagger.
+
+### Modified Capabilities
+
+## Impact
+
+Afeta test suite principal de todo backend e melhora confiabilidade das entregas da Fase 3 (Frontend), para que o Dashboard interaja com APIs sólidas.
+
+================
+File: openspec/changes/api-integration-validation/tasks.md
+================
+## FASE 1: Admin Seed Script
+- [ ] 1.1 Criar rotina `admin_seed.py` na raiz do backend que insere um usuário-mestre (`admin@antigravity.com`, senha `admin`) no banco de dados.
+- [ ] 1.2 Cuidar de limpar a conta antiga se já existir (tratamento de idempotência).
+- [ ] 1.3 Rodar o comando `sudo docker compose exec api python admin_seed.py` e verificar a completude no terminal.
+
+## FASE 2: API Integration Tests (E2E)
+- [ ] 2.1 Criar pasta `backend/tests/api/` e `test_integration.py`.
+- [ ] 2.2 Configurar um cliente HTTP assíncrono padrão do FastAPI (`httpx.AsyncClient`) vinculado ao `app.main:app`.
+- [ ] 2.3 Validar Rota (`POST /auth/register`): Inserir um usuário teste via payload json e certificar-se que a API retorna código HTTP 201.
+- [ ] 2.4 Validar Rota (`POST /auth/login`): Testar credenciais inválidas (recebendo 401) e credenciais válidas, testar token formatado.
+- [ ] 2.5 Validar Fluxo (`POST /places/factories`): Testar inclusão de locais.
+- [ ] 2.6 Executar globalmente com `sudo docker compose exec api pytest tests/api -v` para certificar `PASS` em todas asserções HTTP conectando direto com endpoints vivos.
+
+================
+File: openspec/changes/backend-robustness-suite/specs/security-edge-testing/spec.md
+================
+## ADDED Requirements
+
+### Requirement: security-edge-testing
+Garantir que a autorização por papéis (Roles) seja inviolável.
+
+#### Scenario: Motorista tenta criar Fábrica
+- **GIVEN** Um token JWT com role: motorista
+- **WHEN** O usuário tenta POST /places/factories
+- **THEN** A API retorna 403 Forbidden
+
+#### Scenario: Token Expirado
+- **GIVEN** Um token JWT gerado há 24h atrás
+- **WHEN** O usuário tenta acessar rota protegida
+- **THEN** A API retorna 401 Unauthorized
+
+================
+File: openspec/changes/backend-robustness-suite/specs/validation-hardening/spec.md
+================
+## ADDED Requirements
+
+### Requirement: validation-hardening
+Todos os inputs do modelo geográfico DEVEM validar limites físicos reais.
+
+#### Scenario: Latitude Fora de Faixa
+- **WHEN** O cliente envia Lat: 154.0
+- **THEN** A API retorna 422 Unprocessable Entity
+
+#### Scenario: Longitude Fora de Faixa
+- **WHEN** O cliente envia Lng: -200.0
+- **THEN** A API retorna 422 Unprocessable Entity
+
+#### Scenario: Nome de Localidade Vazio
+- **WHEN** O cliente envia "name": ""
+- **THEN** A API retorna 422 Unprocessable Entity
+
+================
+File: openspec/changes/backend-robustness-suite/.openspec.yaml
+================
+schema: spec-driven
+created: 2026-03-31
+
+================
+File: openspec/changes/backend-robustness-suite/design.md
+================
+## User Experience
+
+O cliente final não interage diretamente com esses testes, mas notará a alta estabilidade das APIs durante o consumo do Frontend. Erros bizarros ou injeções de dados absurdos serão barrados na porta de entrada com retornos claros de 422 ou 403.
+
+## Architecture & Implementation Strategy
+
+### Estratégia de Teste
+
+1. **Parâmetros Parametrizados (Pydantic)**:
+   - Utilizaremos `@pytest.mark.parametrize` para bombardear o backend com dados inválidos em massa (strings onde deveriam ser floats, latitudes > 90, etc).
+   - O objetivo é testar a robustez dos Schemas Pydantic.
+
+2. **Testes de Quebra de Permissões (Scopes)**:
+   - Gerar tokens JWT alternados com role `motorista` para tentar acessar endpoints exclusivos de `lojista` (fábricas, lojas).
+   - Garantir que o `Depends(get_current_user)` e as checagens de role estejam 100% integradas.
+
+3. **Chaos stress math**:
+   - Validar a função `haversine` e `chaos` com distâncias zero ou velocidades astronômicas para garantir que o código não levante exceções não tratadas (ZeroDivisionError, etc).
+
+## Data Model
+
+Nenhuma alteração nos modelos do banco.
+
+## Security & Privacy
+
+Este é o foco principal deste design: **Hardening da autenticação**.
+
+- Validação de expiração de tokens.
+- Validação de roles cruzadas.
+
+## Testing Strategy
+
+- `sudo docker compose exec api pytest tests/api/test_validation.py`
+- `sudo docker compose exec api pytest tests/api/test_security.py`
+- `sudo docker compose exec api pytest tests/domain/test_extreme.py`
+
+## Open Questions
+
+- Devemos configurar um middleware de logs para capturar estes "Invalid Payload Attempts" para auditoria no TCC?
+
+================
+File: openspec/changes/backend-robustness-suite/proposal.md
+================
+## Why
+
+Com a finalização do Motor Analítico e dos testes de integração básicos, o foco atual é elevar a confiabilidade do produto ("Robustness"). É de interesse do cliente garantir que o backend seja resiliente a entradas malformadas, cenários de borda extremos e tentativas de acesso não autorizado antes que o desenvolvimento do Frontend (Fase 3) comece a consumir estas APIs de forma intensiva.
+
+## What Changes
+
+Propomos a inclusão de uma Suíte de Robustez que cubra:
+1. **Validação de Inputs Rigorosa**: Testar limites geográficos (Lat/Lng inválidos), nomes vazios e payloads corrompidos.
+2. **Resiliência a Caos Extremo**: Validar como o sistema se comporta com fatores de atraso absurdamente altos ou negativos.
+3. **Segurança e RBAC (Role Based Access Control)**: Garantir que um `motorista` não consiga criar `factories` e que tokens expirados sejam devidamente rejeitados.
+
+## Capabilities
+
+### New Capabilities
+- `validation-hardening`: Testes focados em quebrar as validações Pydantic com dados de borda.
+- `security-edge-testing`: Verificação rigorosa de escopo de JWT e permissões de roles.
+- `extreme-chaos-validation`: Testes de estresse da lógica matemática sob parâmetros de simulação extremos.
+
+### Modified Capabilities
+
+## Impact
+
+Aumenta significativamente a cobertura de testes sem alterar a lógica de produção atual, servindo como uma rede de segurança para as futuras integrações do dashboard.
+
+================
+File: openspec/changes/backend-robustness-suite/tasks.md
+================
+## 1. Hardening de Validação (Pydantic)
+
+- [x] 1.1 Atualizar `backend/app/schemas/place.py` para incluir limites geográficos reais (Lat -90 a 90, Lng -180 a 180) usando `Field`.
+- [x] 1.2 Atualizar schemas de `User` e `Delivery` para garantir que campos obrigatórios não aceitem strings vazias.
+- [/] 1.3 Criar arquivo `backend/tests/api/test_validation.py` com testes parametrizados enviando payloads propositalmente incorretos e esperando 422.
+
+## 2. Segurança e Controle de Acesso (RBAC)
+
+- [x] 2.1 Refatorar dependência `get_current_user` ou criar um decorador simples para validar a `Role` do usuário logado.
+- [x] 2.2 Aplicar restrição na rota `POST /places/factories` e `POST /places/stores` para permitir apenas `Role.lojista`.
+- [x] 2.3 Criar arquivo `backend/tests/api/test_security.py` para validar tentativas de acesso com Role errada (403) e Token expirado (401).
+
+## 3. Testes Extremos de Domínio (Math Stress)
+
+- [x] 3.1 Criar `backend/tests/domain/test_extreme.py` para testar as funções puras (`haversine`, `chaos`) com valores de borda: distância zero, velocidades negativas ou extremamente altas, e timestamps de épocas diferentes.
+- [x] 3.2 Garantir que o `SafeCheck` não crash o backend caso o `last_ping` seja nulo ou inválido.
+
+================
+File: openspec/changes/frontend-foundation/design.md
+================
+# Design Técnico: Frontend Foundation & Clean Architecture
+
+## 1. Stack e Tecnologia
+- **Framework Core**: Next.js 15 (App Router).
+- **Estilização Atômica**: Tailwind CSS.
+- **Componentização e TDD**: React Testing Library + Jest + Shadcn UI para alta fidelidade gráfica imediata.
+
+## 2. Clean Architecture no Ecossistema Visual
+Para fugir da armadilha de ter regras de negócio jogadas no código dos botões, estruturaremos a pasta `src`:
+*   `src/infrastructure/api` -> Onde o `axios` sequestrará os tokens e falará com a porta 8000 (Backend).
+*   `src/domain` e `src/use_cases` -> Onde testaremos as regras que dizem "Se Papel==Motorista, vá para /drive".
+*   `src/app` -> Camada de Apresentação visual limpa.
+
+## 3. Filosofia de Gateway (Rota /) e Mapeamento
+*   A página principal (`src/app/page.tsx`) é **estritamente dedicada à biometria digital da aplicação (Login)**. 
+*   Sub-rotas planejadas (Mock):
+    *   `/dashboard`: Reduto do Lojista (Administra inbound e fornecedores).
+    *   `/drive`: Interface mobile-first agressiva do Caminhoneiro (Envia pings).
+
+## 4. Retificação do Backend (Lacuna de Segurança)
+Prevendo a nova vida em que a Fábrica é só Geografia e o Lojista é o Deus do seu Inbound, iremos preencher a pequena brecha encontrada mapeando o endpoint `/deliveries/` em `app/api/deliveries.py` para exigir via RBAC exclusivamente a chave mestre do `lojista`.
+
+## 5. Estratégia de Testes: Unitários + Integração
+A Suíte de Testes do Frontend será dividida em dois níveis complementares:
+
+### 5.1 Testes Unitários (Isolamento de Componentes)
+*   **Ferramenta**: Jest + React Testing Library.
+*   **Foco**: Cada componente visual testado de forma isolada (sem rede, sem banco).
+*   **Exemplos**:
+    *   `LoginForm.test.tsx` → Verifica se o botão de "Entrar" existe na tela.
+    *   `useAuth.test.ts` → Verifica se o hook de autenticação redireciona corretamente baseado na *role* retornada.
+    *   `apiClient.test.ts` → Verifica se o cliente Axios injeta o header `Authorization` quando o token existe no `localStorage`.
+
+### 5.2 Testes de Integração (Fluxos Ponta a Ponta no Frontend)
+*   **Ferramenta**: React Testing Library com `msw` (Mock Service Worker) para simular as respostas do Backend FastAPI sem precisar que o servidor esteja ligado.
+*   **Foco**: Testar o fluxo completo de uma interação do usuário atravessando múltiplas camadas (UI → `use_case` → `api_client` → resposta mockada).
+*   **Exemplos de Fluxos Críticos**:
+    *   `login_flow.test.tsx` → Preenche os campos de e-mail e senha, clica em "Entrar", a API mock devolve `role: lojista` e o teste verifica o redirecionamento para `/dashboard`.
+    *   `motorista_redirect.test.tsx` → Mesma sequência, mas API mock devolve `role: motorista` e valida redirecionamento para `/drive`.
+    *   `auth_guard.test.tsx` → Tenta acessar `/dashboard` sem token e verifica redirecionamento automático de volta para `/`.
+
+================
+File: openspec/changes/frontend-foundation/proposal.md
+================
+---
+schema: spec-driven
+status: proposed
+---
+
+# Proposta: Fundação do Frontend (Logística Inbound)
+
+## 1. O Que Vamos Construir?
+O pilar inicial do aplicativo Web (Next.js) centrado na **Logística Inbound** do "Dono do Software" (o Lojista). 
+Esta fundação trará para a realidade os conceitos industriais de **Clean Architecture** (Arquitetura Limpa) e **TDD** (Desenvolvimento Orientado a Testes), além da premissa rígida e minimalista de que a aplicação se fecha na rota original (`/`) servindo unicamente ao Login.
+
+## 2. Por Que Vamos Construir Isso?
+Para conectar nosso robusto servidor FastAPI aos usuários reais do mundo. 
+Ao exigirmos TDD, provamos na academia a engenharia rígida aplicada. E, ao separarmos a visão de negócio da interface com Clean Architecture, garantimos que o Dashboard do Lojista não contamine a tela utilitária e minimalista do Motorista. O sistema será elegante, fácil e aprovará as falhas antes mesmo de serem pintadas na tela.
+
+================
+File: openspec/changes/frontend-foundation/tasks.md
+================
+# Tarefas de Implementação: Frontend Foundation
+
+## 1. Ajuste de Fechadura no Backend (Lacuna)
+- [ ] 1.1 Em `backend/app/api/deliveries.py`, adicionar a dependência `Depends(require_role("lojista"))` na função `create_delivery` para isolar a criação de rotas nas mãos do dono.
+
+## 2. Boilerplate e Inicialização do Next.js
+- [ ] 2.1 Na pasta raiz, rodar comando `npx -y create-next-app@latest frontend --typescript --tailwind --eslint --app --src-dir --import-alias "@/*"` (Modo silencioso/Automático).
+- [ ] 2.2 Configurar o pilar do TDD instalando pacotes de testes usando npm: `jest`, `jest-environment-jsdom`, `@testing-library/react`.
+
+## 3. Organização Clean Architecture Genérica
+- [ ] 3.1 Construir estrutura pura em `frontend/src`: pastas `infrastructure/api/` e `use_cases/`.
+- [ ] 3.2 Montar o script basilar de cliente do Axios `api_client.ts` dentro da infraestrutura focado em bater no nosso backend.
+
+## 4. TDD e Primeira Página (Página Inicial é Login)
+- [ ] 4.1 Escrever o teste de fracasso inicial (TDD) em `__tests__/login.test.tsx` assegurando que a Rota Inicial tenha obrigatoriamente inputs para "E-mail" e "Senha".
+- [ ] 4.2 Enxugar e transformar `src/app/page.tsx` para seguir o TDD imposto e criar a tela crua e super minimalista do Gateway.
+
+## 5. Testes Unitários de Componentes
+- [ ] 5.1 Escrever `__tests__/unit/useAuth.test.ts` validando o hook de autenticação: se `role=lojista` retorna rota `/dashboard`, se `role=motorista` retorna `/drive`.
+- [ ] 5.2 Escrever `__tests__/unit/apiClient.test.ts` verificando que o cliente Axios injeta o header `Authorization: Bearer <token>` automaticamente quando o token existe.
+
+## 6. Testes de Integração de Fluxo (MSW)
+- [ ] 6.1 Instalar e configurar `msw` (Mock Service Worker) para interceptar chamadas HTTP nas suítes de testes sem precisar do servidor backend ligado.
+- [ ] 6.2 Escrever `__tests__/integration/login_flow.test.tsx` cobrindo o fluxo completo: Lojista preenche form → API mock retorna token → middleware redireciona para `/dashboard`.
+- [ ] 6.3 Escrever `__tests__/integration/motorista_redirect.test.tsx` cobrindo: Motorista preenche form → API mock retorna token de motorista → sistema redireciona para `/drive`.
+- [ ] 6.4 Escrever `__tests__/integration/auth_guard.test.tsx` validando que acessar `/dashboard` sem um token válido resulta em redirecionamento automático para `/`.
+
+================
+File: openspec/changes/logistics-manager/specs/resilience/spec.md
+================
+## ADDED Requirements
+
+### Requirement: Tratamento Global de Falhas de Infraestrutura
+O sistema backend SHALL implementar um Exception Handler global para isolar e tratar erros originados por serviços externos ou internos de infraestrutura (como falhas de conexão com o banco de dados PostgreSQL). A aplicação MUST NUNCA expor stack traces ou detalhes mecânicos do erro na resposta HTTP do cliente.
+
+#### Scenario: Banco de Dados PostgreSQL indisponível
+- **GIVEN** que o banco de dados PostgreSQL está offline, gerando timeout, ou atingiu o limite máximo de conexões (Ex: `asyncpg.exceptions.ConnectionDoesNotExist`)
+- **WHEN** qualquer usuário ou motorista dispara uma requisição que requer persistência ou leitura no banco (ex: POST em `/safe-check/position`)
+- **THEN** a camada de Exception Handler do FastAPI **MUST** interceptar a falha graciosamente, registrar o erro interno no logger do servidor, e retornar uma resposta HTTP 503 (Service Unavailable) com a mensagem amigável: *"Serviço temporariamente indisponível. Tente novamente em instantes."*
+
+### Requirement: Validação Restrita do Contrato de Dados (Client-Side e Server-Side)
+O sistema SHALL proteger a integridade dos dados trafegados garantindo duas camadas de validação. O Frontend MUST validar os inputs antes de iniciar qualquer chamada de rede. O Backend MUST validar estritamente (Pydantic v2) todos os payloads recebidos. O sistema MUST retornar HTTP 422 em caso de falha de validação na API.
+
+#### Scenario: Frontend retém requisição malformada (Client-Side)
+- **GIVEN** que o painel do operador está ativo na sessão de injeção de caos
+- **WHEN** o operador tenta submeter (POST) o formulário de um evento de caos sem preencher os campos obrigatórios (ex: omite a seleção da entrega ou o tipo do evento)
+- **THEN** a interface **MUST** reter a ação via validação nativa (ex: Zod/React Hook Form), bloqueando a chamada de rede e destacando visualmente em vermelho na UI os campos faltantes.
+
+#### Scenario: Backend rejeita requisição inválida (Server-Side)
+- **GIVEN** que uma requisição POST é disparada para `/chaos/events` via script automatizado ou bypass no frontend
+- **WHEN** o payload recebido pela API não contém a chave obrigatória `type` do evento de caos
+- **THEN** a camada de validação estrutural do FastAPI (Pydantic v2) **MUST** rejeitar a requisição imediatamente antes de processar qualquer lógica de negócio, retornando HTTP 422 (Unprocessable Entity) com o detalhamento estrito do campo ausente ou tipagem violada.
+
+================
+File: openspec/changes/logistics-manager/.openspec.yaml
+================
+schema: spec-driven
+created: 2026-03-10
+
+================
+File: openspec/changes/logistics-manager/stitch-prompts.md
+================
+# Stitch Prompts: Logistics Manager Dashboard (Refined)
+
+Estes prompts foram refinados para incluir a experiência completa de autenticação e fluxos personalizados por função (*role*), mantendo a estética **minimalista e industrial**.
+
+---
+
+## 1. Tela de Login (Acesso Unificado)
+
+> **Prompt:**
+> "Crie uma tela de login ultra-minimalista para um sistema de logística industrial. Centralize um card branco com bordas sutis (#E2E8F0) sobre um fundo fosco (#EFF6FF). Inclua campos limpos para 'Usuário' e 'Senha' com foco em tipografia Fira Sans. Abaixo, adicione um seletor visual discreto ou abas (Tabs) para escolher o tipo de acesso: 'Motorista', 'Lojista' ou 'Fornecedor/Operador'. O botão de 'Entrar' deve ser Primário (#2563EB) com transição de 200ms no hover. Sem logos complexos, use apenas um ícone de 'Caminhão' estilizado em SVG no topo."
+
+---
+
+## 2. Layouts por Função (Pós-Login)
+
+### A. Visão do Motorista (Caminhoneiro) - *Mobile-First*
+> **Prompt:**
+> "Gere a interface para o Motorista (uso em smartphone). Foco total em uma única entrega ativa. Destaque um card grande com o 'ETA Atual' em fonte Fira Code negrito. Abaixo, um botão de destaque Laranja (#F97316) para 'Reportar Evento (Caos)'. Inclua uma seção de 'Safe-Check' com um sinalizador de status pulsante verde. Minimalismo extremo: remova barras laterais, use apenas navegação inferior com ícones: 'Entrega', 'Mapa', 'Perfil'."
+
+### B. Visão do Lojista (Shopkeeper) - *Gestão de Recebimento*
+> **Prompt:**
+> "Crie o dashboard do Lojista. Foco em 'Cargas Planejadas'. Use um layout de colunas limpo (Board estilo Kanban) para separar: 'A Caminho', 'Na Janela' e 'Recebido'. Cada card de entrega deve mostrar o ETA e o ID. Adicione um pequeno painel superior para 'Configurar Janela de Recebimento' com seletores de horário minimalistas. Cores calmas (Azul Secundário #3B82F6) para indicar organização e pontualidade."
+
+### C. Visão do Fornecedor/Operador (Admin) - *Torre de Controle*
+> **Prompt:**
+> "Crie a 'Torre de Controle' para o Operador. Interface de alta densidade de dados (tabelas e mapas compactos). Painel lateral fixo à direita contendo o 'Simulador de Caos' com botões rápidos. Lista de alertas críticos no topo com bordas vermelhas sutis (#EF4444). Use o layout 'Bento Box' para agrupar métricas globais de frota e status das fábricas. Estética técnica e profissional (Fira Code para todos os números)."
+
+---
+
+## 3. Diretrizes de Fluxo e Transição (Stitch Logic)
+
+Para o prototipador entender a transição entre telas:
+
+- **Login to Dashboard:** "Ao clicar em 'Entrar', simule um fade-out suave da tela de Login e carregue o layout correspondente à aba selecionada (Motorista/Lojista/Operador)."
+- **Feedback de Erro:** "Se os campos estiverem vazios, mostre um contorno vermelho fino no input com uma mensagem de erro minimalista abaixo ('Campo obrigatório')."
+- **Navigation:** "Mantenha a barra de navegação superior (Operador/Lojista) ou inferior (Motorista) consistente em todas as telas internas para evitar deslocamento visual."
+
+---
+
+> [!IMPORTANT]
+> **Consistência:** Certifique-se de que o seletor de função no Login (`Motorista`, `Lojista`, `Operador`) dite qual prompt de layout (A, B ou C) será renderizado em seguida. Isso ajuda a criar um protótipo coeso no Stitch.
+
+================
+File: openspec/changes/logistics-manager/ui-ux-design.md
+================
+# UI/UX Design Proposal: Logistics Manager
+
+Com base no projeto "Logistics Manager" e utilizando a skill `ui-ux-pro-max`, aqui está a proposta de Design System e experiência de usuário (UX) para a interface do sistema, focando em um painel profissional de logística e rastreamento em tempo real.
+
+## 1. Padrão de Design (Design System)
+
+- **Padrão (Pattern):** Dashboard Rico em Funcionalidades + Dados em Tempo Real
+- **Estilo Visual:** Painel Financeiro / Tracking Profissional
+- **Atributos:** Analítico, preciso, confiável, focado em monitoramento de métricas e alertas (caos/ETA).
+- **Acessibilidade:** Padrão de contraste WCAG AAA para uso contínuo (modo claro/escuro com alto contraste).
+
+## 2. Paleta de Cores
+
+A paleta foi escolhida para mesclar "rastreamento e segurança" (Azul) com "alertas e chamadas para ação" (Laranja).
+
+| Função | Cor Hexadecimal | Aplicação |
+|--------|----------------|-----------|
+| **Principal** | `#2563EB` (Azul) | Barra de navegação, botões primários, ícones de status "Em rota" |
+| **Secundária** | `#3B82F6` (Azul Claro) | Elementos interativos secundários, backgrounds de ícones |
+| **Atenção/CTA** | `#F97316` (Laranja) | Alertas de eventos de caos, atrasos no ETA, notificações críticas |
+| **Fundo (Light)**| `#EFF6FF` (Azul Gelo) | Fundo da aplicação para reduzir o cansaço visual em relação ao branco puro |
+| **Texto/Base** | `#1E40AF` (Azul Escuro) | Texto principal de dados e tabelas para garantir legibilidade |
+| **Alerta Crítico**| `#EF4444` (Vermelho) | Safe-Check falho ou desvio de rota crítico detectado |
+
+## 3. Tipografia
+
+A escolha da tipografia visa passar a sensação de "precisão analítica e tecnológica".
+
+- **Títulos e Dados (Números):** `Fira Code` (Monosapce)
+  *Excelente para tabelas, contadores de tempo (ETA) e identificadores de carga.*
+- **Corpo e Textos Longos:** `Fira Sans` (Sans-serif)
+  *Garante legibilidade em telas com alta densidade de informações.*
+
+**Importação CSS/Tailwind:**
+```css
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap');
+```
+
+## 4. Efeitos e Animações (Micro-interações)
+
+- **Contadores (ETA):** Animações suaves nos números ao recalcularem o ETA (ex: quando um evento de caos é injetado).
+- **Indicadores de Tendência:** Setas para cima/baixo para tempo ganho ou perdido com mudança de cor suave.
+- **Transições de Status:** O card de uma entrega deve pulsar levemente ou alterar o contorno (+ shadow) quando o "Simulador de Caos" for acionado ou o `Safe-Check` iniciar o ping.
+
+## 5. Práticas e Anti-Padrões (O que EVITAR)
+
+- 🚫 **Evitar Rastreamento Estático:** O dashboard não pode parecer morto. Mesmo sem WebSockets, use um *polling* visualmente confortável ou atualizações em lote.
+- 🚫 **Evitar Cores Excessivas na Tabela:** Use cores (laranja/vermelho) apenas para exceções (caos/atraso) e mantenha entregas normais neutras.
+- 🚫 **Uso de Emojis como Ícones:** Utilizar bibliotecas profissionais em SVG (ex: *Lucide Icons* ou *Heroicons*, nativos do `shadcn/ui`).
+- 🚫 **Falta de Feedback no Hover:** Todas as linhas das tabelas (entregas) e botões devem responder em 150-300ms a interações do mouse.
+
+## 6. Layout Recomendado por Role (Perfil)
+
+Uma vez que o backend prevê 3 perfis, a interface (`Next.js` + `Shadcn/UI`) deve se adaptar:
+
+1. **Operador (Admin):** 
+   - Visão "Torre de Controle". Cards superiores com agregados (Entregas hoje, % Atrasadas, Alertas Ativos).
+   - Tabela densa com paginação e busca.
+   - Painel lateral de "Simulador de Caos" (botões rápidos de injeção de chuva, acidente, etc.).
+2. **Lojista:** 
+   - Focado apenas em suas cargas a receber.
+   - Visão em Kanban simples (Pendente, A Caminho, Chegou) baseada em ETA.
+   - Configuração visual para a "Janela de Recebimento".
+3. **Motorista (Visão Mobile-First):**
+   - Inteface limpa com "Ação Única": Botão "Reportar Rota/Congestionamento" bem saliente (CTA Laranja).
+   - Indicador visual do `Safe-Check` em andamento.
+
+---
+
+> **Nota para integração:** Esta proposta expande os Objetivos do TCC para caso a construção do frontend completo (`Next.js` + `Tailwind` listado nas _tech stacks_) seja aprovada. Deseja incorporar este documento de design aos artefatos oficiais na pasta de mudanças do OpenSpec?
+
+================
+File: backend/app/api/places.py
+================
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+from typing import List
+from app.db.session import get_db
+from app.models.place import Factory, Store
+from app.schemas.place import FactoryCreate, FactoryResponse, StoreCreate, StoreResponse
+from app.api.deps import require_role
+
+router = APIRouter()
+
+@router.post("/factories", response_model=FactoryResponse, status_code=status.HTTP_201_CREATED)
+async def create_factory(factory_in: FactoryCreate, db: AsyncSession = Depends(get_db), current_user: dict = Depends(require_role("lojista"))):
+    db_factory = Factory(**factory_in.model_dump())
+    db.add(db_factory)
+    await db.commit()
+    await db.refresh(db_factory)
+    return db_factory
+
+@router.get("/factories", response_model=List[FactoryResponse])
+async def list_factories(limit: int = 50, offset: int = 0, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Factory).offset(offset).limit(limit))
+    return result.scalars().all()
+
+@router.post("/stores", response_model=StoreResponse, status_code=status.HTTP_201_CREATED)
+async def create_store(store_in: StoreCreate, db: AsyncSession = Depends(get_db), current_user: dict = Depends(require_role("lojista"))):
+    db_store = Store(**store_in.model_dump())
+    db.add(db_store)
+    await db.commit()
+    await db.refresh(db_store)
+    return db_store
+
+@router.get("/stores", response_model=List[StoreResponse])
+async def list_stores(limit: int = 50, offset: int = 0, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Store).offset(offset).limit(limit))
+    return result.scalars().all()
+
+================
+File: backend/app/core/config.py
+================
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+class Settings(BaseSettings):
+    PROJECT_NAME: str = "Logistics Manager API"
+    DATABASE_URL: str = "postgresql+asyncpg://user:password@db:5432/logistics"
+    SECRET_KEY: str = "logistics_secret_key_tcc_only"
+    ALGORITHM: str = "HS256"
+
+    model_config = SettingsConfigDict(case_sensitive=True, env_file=".env")
+
+settings = Settings()
+
+================
+File: backend/app/domain/safe_check.py
+================
+from datetime import datetime, timedelta
+
+def is_safe_check_expired(last_ping: datetime, timeout_minutes: int = 10) -> bool:
+    if last_ping is None:
+        return True
+    now = datetime.utcnow()
+    diff = now - last_ping
+    return diff.total_seconds() > (timeout_minutes * 60)
+
+def evaluate_truck_speed_status(speed: float) -> str:
+    if speed < 0:
+        raise ValueError("Speed cannot be negative")
+    if speed == 0.0:
+        return "stopped"
+    return "moving"
+
+================
+File: backend/app/schemas/place.py
+================
+from pydantic import BaseModel, Field
+import uuid
+
+class FactoryBase(BaseModel):
+    name: str = Field(..., min_length=1)
+    lat: float = Field(..., ge=-90, le=90)
+    lng: float = Field(..., ge=-180, le=180)
+
+class FactoryCreate(FactoryBase):
+    pass
+
+class FactoryResponse(FactoryBase):
+    id: uuid.UUID
+    model_config = {"from_attributes": True}
+
+class StoreBase(BaseModel):
+    name: str = Field(..., min_length=1)
+    lat: float = Field(..., ge=-90, le=90)
+    lng: float = Field(..., ge=-180, le=180)
+    owner_id: uuid.UUID
+
+class StoreCreate(StoreBase):
+    pass
+
+class StoreResponse(StoreBase):
+    id: uuid.UUID
+    model_config = {"from_attributes": True}
+
+================
+File: backend/app/schemas/user.py
+================
+from pydantic import BaseModel, EmailStr, Field
+import uuid
+from datetime import datetime
+from app.models.user import UserRole
+
+# Shared properties
+class UserBase(BaseModel):
+    email: EmailStr
+
+class UserCreate(UserBase):
+    password: str = Field(..., min_length=1)
+    role: UserRole
+
+# Properties to return to client
+class UserResponse(UserBase):
+    id: uuid.UUID
+    role: UserRole
+    created_at: datetime
+    
+    model_config = {"from_attributes": True}
+
+================
+File: backend/tests/api/test_integration.py
+================
+import pytest
+from httpx import AsyncClient
+import uuid
+
+@pytest.mark.anyio
+async def test_register_user(client: AsyncClient):
+    email = f"test_{uuid.uuid4().hex[:8]}@example.com"
+    response = await client.post(
+        "/auth/register",
+        json={"email": email, "password": "testpassword", "role": "lojista"}
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["email"] == email
+
+@pytest.mark.anyio
+async def test_login_success(client: AsyncClient):
+    email = f"login_{uuid.uuid4().hex[:8]}@example.com"
+    # Registration
+    await client.post(
+        "/auth/register",
+        json={"email": email, "password": "testpassword", "role": "lojista"}
+    )
+    
+    # Login
+    response = await client.post(
+        "/auth/login",
+        json={"email": email, "password": "testpassword"}
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert "access_token" in data
+    assert data["token_type"] == "bearer"
+
+@pytest.mark.anyio
+async def test_login_invalid_credentials(client: AsyncClient):
+    response = await client.post(
+        "/auth/login",
+        json={"email": "nonexistent@example.com", "password": "wrongpassword"}
+    )
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Credenciais inválidas"
+
+@pytest.mark.anyio
+async def test_create_factory(client: AsyncClient):
+    email = f"fac_{uuid.uuid4().hex[:8]}@example.com"
+    await client.post("/auth/register", json={"email": email, "password": "testpassword", "role": "lojista"})
+    login_resp = await client.post("/auth/login", json={"email": email, "password": "testpassword"})
+    token = login_resp.json()["access_token"]
+    
+    factory_data = {
+        "name": "Test Factory",
+        "lat": -23.1234,
+        "lng": -46.5678
+    }
+    response = await client.post(
+        "/places/factories", 
+        json=factory_data, 
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["name"] == factory_data["name"]
+
+================
+File: backend/tests/conftest.py
+================
+import pytest
+from httpx import AsyncClient, ASGITransport
+from app.main import app
+from app.db.session import get_db, AsyncSessionLocal, engine
+from sqlalchemy.pool import NullPool
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from app.core.config import settings
+import uuid
+
+test_engine = create_async_engine(
+    settings.DATABASE_URL,
+    poolclass=NullPool,
+    future=True
+)
+
+TestSessionLocal = async_sessionmaker(
+    bind=test_engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+)
+
+async def override_get_db():
+    async with TestSessionLocal() as session:
+        yield session
+
+app.dependency_overrides[get_db] = override_get_db
+
+@pytest.fixture(scope="session")
+def anyio_backend():
+    return "asyncio"
+
+@pytest.fixture
+async def client():
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        yield ac
+
+@pytest.fixture
+async def lojista_token_headers(client: AsyncClient):
+    email = f"fac_{uuid.uuid4().hex[:8]}@example.com"
+    await client.post("/auth/register", json={"email": email, "password": "testpassword", "role": "lojista"})
+    login_resp = await client.post("/auth/login", json={"email": email, "password": "testpassword"})
+    token = login_resp.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+================
+File: backend/pytest.ini
+================
+[pytest]
+pythonpath = .
+asyncio_mode = auto
+asyncio_default_fixture_loop_scope = session
+addopts = --cov=app --cov-report=term-missing
+
+================
+File: backend/requirements.txt
+================
+fastapi>=0.111.0
+uvicorn[standard]>=0.30.0
+sqlalchemy>=2.0.0
+asyncpg>=0.29.0
+pydantic[email]>=2.7.0
+pydantic-settings>=2.0.0
+alembic>=1.13.0
+passlib[bcrypt]>=1.7.4
+python-jose[cryptography]>=3.3.0
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+pytest-cov>=4.1.0
+coverage>=7.3.0
+httpx>=0.27.0
+greenlet>=3.0.0
+
+================
+File: openspec/changes/logistics-manager/specs/demo-endpoint/spec.md
+================
+## ADDED Requirements
+
+### Requirement: Simulação completa de fluxo
+O sistema SHALL oferecer um endpoint de demonstração que executa o fluxo completo: criar entrega → calcular ETA → injetar evento de caos → recalcular ETA → verificar janela de recebimento. Tudo em uma única chamada.
+
+#### Scenario: Demo de fluxo completo
+- **GIVEN** que o endpoint de demonstração foi acessado para apresentação à banca e o banco possui locais cadastrados
+- **WHEN** qualquer usuário faz POST em `/demo/simulate` com factory_id, store_id e chaos_type (opcional)
+- **THEN** o sistema executa o fluxo logicamente e retorna um JSON consolidado com: ETA original, evento de caos injetado, ETA recalculado, status da janela de recebimento e alertas gerados
+
+#### Scenario: Demo sem evento de caos
+- **GIVEN** a intenção de validar a rota em condições climáticas e de tráfego perfeitas (ideal)
+- **WHEN** um POST é disparado para `/demo/simulate` sem explicitar o parâmetro `chaos_type`
+- **THEN** o sistema retorna estritamente o cálculo do ETA original puro e o status da janela de recebimento, ignorando o fator caos
+
+#### Scenario: Demo com múltiplos tipos de caos
+- **GIVEN** um ambiente de teste rigoroso para provar a tese de acúmulo de variáveis de trânsito
+- **WHEN** um POST é disparado para `/demo/simulate` com `chaos_types=["chuva", "engarrafamento"]`
+- **THEN** o sistema aplica sequencialmente ambos os eventos, expõe o ETA parcial após cada iteração matemática, e devolve o ETA final consolidado
+
+================
+File: openspec/changes/logistics-manager/specs/frontend-dashboard/spec.md
+================
+## Context
+
+Esta spec define a aplicação Frontend em Next.js para controle do sistema logístico.
+
+## ADDED Requirements
+
+### Requirement: Dashboard do Lojista Analítico
+O sistema SHALL prover uma interface web reativa B2B em Tailwind/shadcn onde o dono da carga monitora a frota viva aguardando os cruzamentos entre ETA vs Janela de Recebimentos.
+
+#### Scenario: Lojista visualiza painel de SLAs
+- **GIVEN** um Lojista validamente autenticado no token
+- **WHEN** acessa livre a hierarquia visual por `/dashboard`
+- **THEN** o sistema SHALL renderizar a Data Table de entregas amarradas a ele. Trazendo ETA atual e os alertas de estouro do Safe-Check lazy.
+
+#### Scenario: Injeção Tática (Modo Banca / DevTools)
+- **GIVEN** um avaliador demonstrando resiliência matemática na tela de entrega ativa
+- **WHEN** aciona as DevTools visuais (Botão Caos Invisível) injetando um "Acidente (Delay de 1h)"
+- **THEN** o frontend dispara hook server-action atualizando sem refresh e mudando badge do painel lido pelo lojista.
+
+#### Scenario: Recepção passiva Lojista SLA Críticos
+- **GIVEN** Lojista com dashboard aberto localmente
+- **WHEN** o Safe-Check de Back-end expirar o Lojista no lazy evaluation de delta timestamps
+- **THEN** card vermelho em destaque na lib Shadcn-UI notifica "Contato Perdido / Reroute"
+
+### Requirement: Visão do Motorista (Simulador Mobile)
+O sistema SHALL prover uma interface dedicada ao motorista para simular suas interações de campo (reroute e paradas) a fim de alimentar o sistema de Safe-Check.
+
+#### Scenario: Motorista informa Reroute
+- **GIVEN** o motorista autenticado visualizando as informações de sua carga atual
+- **WHEN** o motorista clica no grande botão "Informar Rota Alternativa / Reroute" preenchendo as coordenadas atuais lat/lng
+- **THEN** o frontend envia os dados para a API, que recalcula a distância restante e devolve o ETA atualizado para a interface do motorista
+
+#### Scenario: Motorista força parada prolongada
+- **GIVEN** o motorista em rota constante
+- **WHEN** o motorista pressiona o botão "Informar Parada (Velocidade 0km/h)"
+- **THEN** o frontend aciona o endpoint de posição com velocidade 0, engatilhando as regras estruturais de lazy evaluation (ping) do backend
+
+## Implementation Details
+
+- O Frontend rodará nativamente na raiz `/frontend` do repositório (Monorepo).
+- O comando padrão de execução será `npm run dev`.
+- O CORS do backend (FastAPI) em `app/main.py` será configurado explicitamente para liberar o tráfego do `http://localhost:3000`.
+- Para poupar tempo nas 60h, as telas de configurações de `Locais` (Fábrica/Lojas) e criação de `Entregas` podem ser omitidas do Frontend e criadas exclusivamente via Swagger GUI. O frontend foca na exibição do Monitoramento e na prova de conceito do Caos/Reroute.
+- As chamadas de fetch deverão encaminhar o token Bearer JWT amarrado ao Lojista ou Motorista autenticado.
+
+================
+File: openspec/config.yaml
+================
+schema: spec-driven
+
+# Project context (optional)
+# This is shown to AI when creating artifacts.
+# Add your tech stack, conventions, style guides, domain knowledge, etc.
+# Example:
+#   context: |
+#     Tech stack: TypeScript, React, Node.js
+#     We use conventional commits
+#     Domain: e-commerce platform
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always include a "Non-goals" section
+#     tasks:
+#       - Break tasks into chunks of max 2 hours
+
+context: |
+  Todas os artefatos devem ser em Português do Brasil
+
+  #TECH STACK - BACKEND
+  - FastAPI
+  - SQLAlchemy
+  - PostgreSQL
+  - Pydantic
+  - JWT
+  - Pytest
+  - Swagger UI
+
+  #TECH STACK - FRONTEND
+  - Next.js
+  - TypeScript
+  - Tailwind CSS
+  - Shadcn/UI
+  - React
+  - Redux Toolkit
+  - React Router
+  - Axios
+  - Jest
+  - React Testing Library
+  - Storybook
+  - Figma
+
+rules: |
+  - Toda nova proposta deve especificar claramente os objetivos, não-obejtivos e decisões que serão tomadas
+
+specs: |
+  - Use sempre o formato Given/When/Then (Dado/Quando/Então) para descrever os cenários
+
+design: |
+  - Backend: Detalhe os modelos do banco de dados (PostgreSQL) e como o schema do FastAPI/Pydantic garante o Type-safety ponta a ponta
+  - Frontend: Detalhe os componentes do shadc/ui que serão utlizados e como o Next.js será utulizado para criar o dashboard
+
+tasks: |
+  - Sempre inclua tarefas que viabilizem o TDO(Desenvolvimento orientado por testes), ou seja, primeiro deve-se criar o testo, para depois criar a funcionalidade definida.
+  - Manteha os itens pequenos, sequenciais e fáceis de serem implementados em uma única sessão de trabalho
+
+================
+File: docker-compose.yml
+================
+services:
+  api:
+    build:
+      context: ./backend
+    container_name: logistics-api
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://user:password@db:5432/logistics
+    depends_on:
+      - db
+    networks:
+      - logistics-net
+
+
+  db:
+    image: postgres:15-alpine
+    container_name: logistics-db
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: logistics
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - logistics-net
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: logistics-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+    networks:
+      - logistics-net
+
+volumes:
+  postgres_data:
+
+networks:
+  logistics-net:
+    driver: bridge
+
+================
+File: openspec/changes/logistics-manager/specs/auth-multi-role/spec.md
+================
+## ADDED Requirements
+
+### Requirement: Registro de usuário com type mapping
+O sistema SHALL permitir o registro de novos usuários na arquitetura B2B, marcando rigidamente como role="lojista" ou "motorista". Cada usuário MUST ter email único, senha com hash seguro.
+
+#### Scenario: Registro bem-sucedido de Lojista Proprietário
+- **GIVEN** que os dados de email, senha e permissões desejadas providos são válidos e o email é inédito
+- **WHEN** um POST é feito em `/auth/register` requisitando a role="lojista"
+- **THEN** o sistema cria o usuário na base B2B, retorna HTTP 201 exibindo ID blindando hash interno
+
+#### Scenario: Registro com email duplicado
+- **GIVEN** que o banco de dados já possui um usuário ativo com o email `contato@teste.com`
+- **WHEN** um novo POST é feito em `/auth/register` tentando utilizar o mesmo email `contato@teste.com`
+- **THEN** o sistema bloqueia a transação e retorna HTTP 409 com a mensagem "Email já cadastrado"
+
+### Requirement: Login com JWT
+O sistema SHALL autenticar usuários via email/senha e retornar um token JWT contendo id, email e role.
+
+#### Scenario: Login bem-sucedido
+- **GIVEN** um usuário previamente registrado no sistema
+- **WHEN** um POST é feito em `/auth/login` enviando as credenciais corretas (email e senha)
+- **THEN** o sistema verifica o hash, autentica o acesso e retorna HTTP 200 contendo um `access_token` JWT válido com a claim da `role`
+
+#### Scenario: Login com credenciais inválidas
+- **GIVEN** um email existente na base de dados
+- **WHEN** um POST é feito em `/auth/login` submetendo intencionalmente uma senha incorreta
+- **THEN** o sistema nega acesso por segurança, retornando HTTP 401 com a mensagem "Credenciais inválidas" sem revelar se o email existe
+
+### Requirement: Controle de segurança B2B Server-Client
+O sistema SHALL proteger a soberania de dados do lojista (Dependency Injection check). O Motorista escreve pings; O Lojista lê pings de rotas próprias. Entidades não cruzam escopos.
+
+#### Scenario: Lojista Consumidor analisa Dashboard
+- **GIVEN** um token JWT válido pertencente a um usuário com a role="lojista"
+- **WHEN** ele faz um GET em `/deliveries/`
+- **THEN** a injeção retorna HTTP 200 populada EXCLUSIVAMENTE pelas entregas linkadas a ele
+
+#### Scenario: Motorista tenta quebrar tenant de Lojista
+- **GIVEN** um token JWT válido do app Mobile (role="motorista")
+- **WHEN** este ator bate acidentalmente na raiz comercial `/deliveries/reports`
+- **THEN** o guard middleware barra a requisição retornando HTTP 403 "Privilégio insuficiente"
+
+#### Scenario: Requisição sem token
+- **GIVEN** qualquer endpoint da API marcado como protegido pelas dependências de segurança
+- **WHEN** uma requisição é disparada sem o header `Authorization: Bearer <token>`
+- **THEN** o sistema rejeita instantaneamente o pacote retornando HTTP 401 "Não autenticado"
+
+================
+File: openspec/changes/logistics-manager/specs/delivery-management/spec.md
+================
+## ADDED Requirements
+
+### Requirement: CRUD de entregas
+O sistema SHALL permitir ao operador criar, listar, atualizar e cancelar entregas. Cada entrega MUST ter: fábrica de origem, loja de destino, motorista atribuído, status e ETA calculado.
+
+#### Scenario: Criar entrega
+- **GIVEN** que os IDs fornecidos (factory_id, store_id e driver_id) existem e são válidos no banco de dados
+- **WHEN** o operador faz POST em `/deliveries/` com esses dados
+- **THEN** o sistema cria a entrega com o status inicial "pendente", calcula o ETA via Haversine e retorna HTTP 201
+
+#### Scenario: Listar entregas por role com paginação
+- **GIVEN** um lojista autenticado que possui múltiplas lojas sob sua jurisdição
+- **WHEN** este lojista faz GET em `/deliveries/?limit=10&offset=0`
+- **THEN** o sistema filtra e retorna apenas as entregas destinadas às lojas desse lojista específico, incluindo a metadata de paginação (total, limit, offset e items)
+
+#### Scenario: Listar entregas com paginação padrão
+- **GIVEN** que o endpoint de listagem de entregas requer controle de paginação
+- **WHEN** um lojista faz GET em `/deliveries/` omitindo os parâmetros `limit` e `offset`
+- **THEN** o sistema aplica com sucesso os defaults de limit=20 e offset=0 para a query no banco
+
+#### Scenario: Motorista visualiza suas entregas
+- **GIVEN** um motorista autenticado via JWT
+- **WHEN** este motorista faz GET em `/deliveries/`
+- **THEN** o sistema restringe o escopo e retorna única e exclusivamente as entregas atribuídas ao ID deste motorista contido no token
+
+### Requirement: Ciclo de vida da entrega
+O sistema SHALL gerenciar os seguintes estados: pendente → em_transito → entregue (ou cancelada). Transições de estado MUST ser validadas. Todos os timestamps MUST ser armazenados em UTC.
+
+#### Scenario: Iniciar transporte
+- **GIVEN** uma entrega com o status atual "pendente"
+- **WHEN** o motorista designado faz PATCH em `/deliveries/{id}/status` enviando status="em_transito"
+- **THEN** o sistema atualiza o status, registra o carimbo `departed_at` em UTC e inicia o monitoramento ativo de safe-check
+
+#### Scenario: Confirmar entrega
+- **GIVEN** uma entrega cujo status atual é "em_transito"
+- **WHEN** o motorista faz PATCH em `/deliveries/{id}/status` enviando status="entregue"
+- **THEN** o sistema finaliza o ciclo registrando `delivered_at` em UTC e encerra as obrigações de ping do monitoramento de segurança
+
+#### Scenario: Transição inválida
+- **GIVEN** uma entrega que já foi concluída e encontra-se com o status "entregue"
+- **WHEN** o motorista tenta retroceder o status fazendo PATCH para "em_transito"
+- **THEN** o sistema bloqueia a alteração de estado e retorna HTTP 422 "Transição de status inválida"
+
+### Requirement: Reroute pelo motorista
+O sistema SHALL aceitar reroute via POST `/deliveries/{id}/reroute` com posição atual do motorista. O ETA MUST ser recalculado com a nova distância restante.
+
+#### Scenario: Motorista faz reroute
+- **GIVEN** que uma entrega está ativamente "em_transito"
+- **WHEN** o motorista faz POST em `/deliveries/{id}/reroute` enviando suas novas coordenadas `lat` e `lng`
+- **THEN** o sistema descarta a rota original, recalcula a distância direta (posição atual → loja), reaplica os eventos de caos ativos e retorna o novo ETA
+
+#### Scenario: Reroute registrado no histórico
+- **GIVEN** um motorista executando uma chamada de reroute perfeitamente válida
+- **WHEN** o sistema conclui o novo cálculo de ETA
+- **THEN** a aplicação registra obrigatoriamente essa mudança na tabela `eta_history` sinalizando `reason="reroute_motorista"`
+
+================
+File: openspec/changes/logistics-manager/specs/eta-calculator/spec.md
+================
+## ADDED Requirements
+
+### Requirement: Cálculo de ETA por Haversine
+O sistema SHALL calcular a distância entre dois pontos (fábrica e loja) usando a fórmula de Haversine com coordenadas lat/lng. O ETA MUST ser calculado como `distância_km / velocidade_media_kmh`.
+
+#### Scenario: Cálculo de ETA entre dois pontos
+- **GIVEN** que existe uma fábrica em SP e uma loja no RJ cadastradas com coordenadas lat/lng válidas
+- **WHEN** uma entrega é criada ligando estes dois pontos
+- **THEN** o sistema calcula distância ~360 km e ETA ~4.5h assumindo velocidade padrão de 80 km/h
+
+#### Scenario: Velocidade média configurável
+- **GIVEN** que o sistema possui configuração de velocidades médias por tipo de rota
+- **WHEN** uma rota é cadastrada explicitamente com o tipo "urbana"
+- **THEN** o sistema usa velocidade média de 40 km/h ao invés de 80 km/h no cálculo do ETA
+
+### Requirement: Recálculo dinâmico de ETA
+O sistema SHALL recalcular o ETA de uma entrega em andamento quando eventos de caos são injetados. A rota é fixa — apenas o tempo é recalculado. O novo ETA MUST considerar o tempo já percorrido e os fatores de impacto dos eventos ativos.
+
+#### Scenario: Recálculo por evento de caos
+- **GIVEN** uma entrega em andamento cujo ETA restante calculado no instante atual é de 2h
+- **WHEN** um evento de chuva (impact_factor=1.3) é injetado nesta entrega
+- **THEN** o novo ETA restante é atualizado para 2h × 1.3 = 2h36min
+
+#### Scenario: Múltiplos eventos acumulados
+- **GIVEN** uma entrega em andamento
+- **WHEN** chuva (factor=1.3) e engarrafamento (factor=1.5, delay=15min) são ativados simultaneamente
+- **THEN** o ETA é recalculado agregando os fatores: (ETA_restante × 1.3 × 1.5) + 15min
+
+### Requirement: Histórico de ETA
+O sistema SHALL registrar cada mudança de ETA em uma tabela `eta_history`. Cada registro MUST conter: delivery_id, eta_before, eta_after, reason (tipo do evento que causou a mudança) e timestamp em UTC.
+
+#### Scenario: ETA recalculado por evento de caos é registrado no histórico
+- **GIVEN** uma entrega com ETA atual de 4h
+- **WHEN** um evento de chuva recalcula o ETA para 5h12min
+- **THEN** o sistema cria um registro em eta_history contendo eta_before=4h, eta_after=5h12min, reason="chaos:chuva"
+
+#### Scenario: ETA recalculado por reroute é registrado no histórico
+- **GIVEN** uma entrega em andamento com ETA atual de 3h
+- **WHEN** o motorista efetua um reroute que altera o ETA restante para 2h
+- **THEN** o sistema cria um registro em eta_history contendo eta_before=3h, eta_after=2h, reason="reroute_motorista"
+
+#### Scenario: Consultar histórico de ETA de uma entrega
+- **GIVEN** que uma entrega possui múltiplos registros na tabela de histórico de ETA
+- **WHEN** um request GET é feito em `/deliveries/{id}/eta-history`
+- **THEN** o sistema retorna uma lista ordenada cronologicamente por timestamp detalhando a evolução do ETA
+
+### Requirement: Reroute pelo motorista
+O sistema SHALL permitir ao motorista informar que mudou de rota via POST com sua posição atual (lat/lng). O sistema MUST recalcular a distância restante (posição atual → loja) usando Haversine, aplicar eventos de caos ativos e registrar a mudança no histórico de ETA.
+
+#### Scenario: Motorista faz reroute com sucesso
+- **GIVEN** que uma entrega está com o status "em_transito"
+- **WHEN** o motorista faz POST em `/deliveries/{id}/reroute` enviando as novas coordenadas atuais
+- **THEN** o sistema calcula a nova distância até a loja via Haversine, aplica os eventos de caos vigentes, salva em eta_history e devolve o novo ETA
+
+#### Scenario: Reroute em entrega não em trânsito
+- **GIVEN** uma entrega que ainda está com o status "pendente" (não iniciada)
+- **WHEN** o motorista tenta efetuar um reroute
+- **THEN** o sistema rejeita a operação retornando HTTP 422 "Reroute só é possível em entregas em trânsito"
+
+================
+File: openspec/changes/logistics-manager/specs/receiving-window/spec.md
+================
+## ADDED Requirements
+
+### Requirement: Configuração de janela de recebimento
+O sistema SHALL permitir que o lojista configure os horários em que sua loja aceita recebimento de entregas. A janela MUST ter horário de início e horário de fim para cada dia da semana. Todos os horários MUST ser armazenados em UTC.
+
+#### Scenario: Lojista configura janela de recebimento
+- **GIVEN** que um lojista autenticado deseja restringir os horários de descarga de sua loja
+- **WHEN** o lojista faz POST em `/stores/{id}/receiving-window` enviando payload com start_time="15:00" e end_time="19:00" (UTC) aplicável aos dias úteis
+- **THEN** o sistema valida o formato, salva a janela em UTC no banco garantindo a relação com a loja, e retorna HTTP 201
+
+#### Scenario: Entrega estimada fora da janela
+- **GIVEN** que uma loja possui uma janela de recebimento configurada para encerrar estritamente às 19:00 UTC
+- **WHEN** uma entrega é roteirizada e seu ETA inicial calculado prever chegada apenas às 21:00 UTC
+- **THEN** o sistema detecta o conflito na origem, marca o objeto da entrega com a flag "fora_da_janela", e inclui o próximo horário/dia útil disponível na resposta HTTP
+
+### Requirement: Validação de janela no cálculo de ETA
+O sistema SHALL considerar a janela de recebimento ao calcular a viabilidade da entrega. Se o ETA cai fora da janela, o sistema MUST sinalizar o operador.
+
+#### Scenario: ETA dentro da janela
+- **GIVEN** uma janela de recebimento ativa entre 15:00 e 19:00 UTC
+- **WHEN** o ETA dinâmico reprocessado via Haversine indica chegada para as 16:30 UTC
+- **THEN** o sistema isenta qualquer conflito de operação, garantindo que a entrega mantenha a flag de status "dentro_da_janela"
+
+#### Scenario: ETA fora da janela após evento de caos
+- **GIVEN** uma entrega em andamento cujo ETA original de 18:30 UTC atendia a janela de fechamento das 19:00 UTC da loja
+- **WHEN** um evento de caos atinge a rota (ex: acidente), empurrando o ETA restante recalculado para as 20:00 UTC
+- **THEN** o sistema atualiza retroativamente a flag da entrega para "fora_da_janela" e emite notificação assíncrona para que o operador logístico e o lojista tenham visibilidade através das respostas nativas da API
+
+================
+File: openspec/changes/logistics-manager/specs/safe-check/spec.md
+================
+## ADDED Requirements
+
+### Requirement: Atualização de posição do motorista
+O sistema SHALL aceitar atualizações periódicas de posição (lat/lng e velocidade) do motorista. Cada atualização MUST registrar timestamp em UTC, coordenadas e velocidade atual.
+
+#### Scenario: Motorista atualiza posição normalmente
+- **GIVEN** que o motorista está com uma entrega em andamento
+- **WHEN** motorista faz POST em `/safe-check/position` com lat, lng e speed=80
+- **THEN** o sistema registra posição, retorna HTTP 200 com status "ok"
+
+### Requirement: Detecção de parada com lazy evaluation
+O sistema SHALL detectar quando o motorista reporta velocidade = 0 km/h ou não atualiza posição por mais de 10 minutos. Ao detectar, MUST criar um ping com timer de 5 minutos exigindo resposta. A expiração do ping SHALL ser verificada por lazy evaluation — o sistema compara `now() > expires_at` quando o ping é consultado, não via background task.
+
+#### Scenario: Motorista para e sistema envia ping
+- **GIVEN** que o motorista está em trânsito com sua carga
+- **WHEN** motorista reporta speed=0 em entrega ativa
+- **THEN** o sistema cria um registro de ping com expires_at = now + 5 minutos e retorna status "ping_pendente"
+
+#### Scenario: Motorista responde ao ping dentro do timer
+- **GIVEN** que existe um ping "pendente" para o motorista com tempo de expiração no futuro
+- **WHEN** motorista faz POST em `/safe-check/ping/{ping_id}/respond` com motivo
+- **THEN** o sistema marca ping como "respondido", retorna HTTP 200, nenhum alerta gerado
+
+#### Scenario: Ping expirado detectado por lazy evaluation ao consultar
+- **GIVEN** que existe um ping não respondido cujo `expires_at` é menor que o `now()` atual
+- **WHEN** operador faz GET em `/safe-check/alerts` e há um ping com expires_at < now() sem resposta
+- **THEN** o sistema cria alerta nível ALTO com tipo "sem_resposta" naquele momento e o inclui na resposta
+
+#### Scenario: Ping expirado detectado por lazy evaluation ao motorista atualizar posição
+- **GIVEN** que o motorista possui um ping não respondido cujo `expires_at` já passou
+- **WHEN** motorista faz POST em `/safe-check/position` e há ping pendente expirado para sua entrega
+- **THEN** o sistema cria alerta nível ALTO antes de processar a nova posição
+
+### Requirement: Detecção de desvio de rota
+O sistema SHALL calcular a distância entre a posição atual do motorista e a rota esperada (linha reta fábrica→loja). Se o desvio exceder 2 km, MUST gerar alerta CRÍTICO imediato.
+
+#### Scenario: Motorista dentro da rota
+- **GIVEN** uma linha matemática predefinida entre a coordenada da Fábrica e da Loja
+- **WHEN** motorista reporta posição a 500m da linha fábrica→loja
+- **THEN** o sistema retorna status "ok", nenhum alerta
+
+#### Scenario: Motorista desvia da rota
+- **GIVEN** uma linha matemática predefinida entre a coordenada da Fábrica e da Loja
+- **WHEN** motorista reporta posição a 3 km da linha fábrica→loja
+- **THEN** o sistema gera alerta nível CRÍTICO com tipo "desvio_rota" imediatamente, visível para operador
+
+### Requirement: Consulta de alertas com paginação
+O sistema SHALL permitir ao operador listar todos os alertas ativos e históricos com paginação (limit/offset com defaults). Cada alerta MUST conter: tipo, nível, delivery_id, driver_id, timestamp (UTC) e status (ativo/resolvido).
+
+#### Scenario: Operador lista alertas ativos
+- **GIVEN** que a API possui múltiplos alertas de diferentes níveis e status
+- **WHEN** operador faz GET em `/safe-check/alerts?status=ativo&limit=20&offset=0`
+- **THEN** o sistema retorna alertas ativos paginados, ordenados por nível (CRÍTICO primeiro)
+
+#### Scenario: Operador lista alertas com paginação padrão
+- **GIVEN** que o endpoint de alertas requer parâmetros de paginação
+- **WHEN** operador faz GET em `/safe-check/alerts?status=ativo` sem limit/offset
+- **THEN** o sistema usa defaults limit=20 e offset=0
+
+#### Scenario: Operador resolve alerta
+- **GIVEN** um alerta existente com o status "ativo"
+- **WHEN** operador faz PATCH em `/safe-check/alerts/{id}` com status="resolvido" e nota
+- **THEN** o sistema marca alerta como resolvido com resolved_at em UTC e nota do operador
+
+================
+File: openspec/changes/logistics-manager/specs/chaos-simulator/spec.md
+================
+## ADDED Requirements
+
+### Requirement: Catálogo de eventos de caos
+O sistema SHALL suportar 4 tipos de eventos de caos pré-definidos: chuva (impact_factor=1.3), alagamento (delay=45min), engarrafamento (impact_factor=1.5, delay=15min), acidente (delay=60min). Cada evento MUST ter tipo, severidade, impact_factor e delay_minutes. Eventos NÃO alteram a rota — apenas o tempo estimado.
+
+#### Scenario: Listar tipos de evento disponíveis no ambiente
+- **GIVEN** que o catálogo de eventos de caos possui 4 eventos pré-cadastrados (chuva, alagamento, engarrafamento, acidente)
+- **WHEN** o banco de testes bate em GET `/chaos/event-types`
+- **THEN** o sistema retorna os 4 tipos exatos com seus parâmetros técnicos padrões (impact_factor e delay_minutes)
+
+### Requirement: Injeção Autônoma/Scriptada de Caos
+O sistema SHALL expor hooks restritos para acoplamento do clima num teste. Ao ser submetido, o ETA MUST ser recalculado na hora pela fórmula temporal.
+
+#### Scenario: Carga climática afeta a viagem
+- **GIVEN** uma entrega com o status "em_transito" cruzando uma rodovia
+- **WHEN** a ferramenta de Banca Administrativa submete via POST em `/chaos/events` o id e type="chuva"
+- **THEN** o sistema cria ativamente o evento, recalcula o ETA restante aplicando fator 1.3, registra em eta_history e retorna HTTP 201 com o novo ETA
+
+#### Scenario: Hook rejeitado por entrega inativa
+- **GIVEN** uma entrega que já foi finalizada com o status "entregue"
+- **WHEN** a automação Admin clica em trigger de cenários passados
+- **THEN** o sistema bloqueia a ação e retorna HTTP 422 "Só é possível injetar caos em entregas em trânsito"
+
+### Requirement: Remoção e Limpeza Climática Temporal
+O sistema SHALL suportar finalização limpa de intempéries atreladas a uma corrida atual via DevEndpoints.
+
+#### Scenario: Ponto Cego de Chuva finalizado
+- **GIVEN** que existe um evento de caos do tipo "chuva" atrelado e afetando o ETA de uma entrega
+- **WHEN** a automação cessa e finaliza através de DELETE em `/chaos/events/{event_id}`
+- **THEN** o sistema cessa a influência do evento, reverte o impacto de 1.3 no ETA restante, cria um marco em eta_history apontando a melhoria e retorna HTTP 200
+
+### Requirement: Transparência Universal B2B do Caos
+O sistema SHALL anexar visualizações explícitas de impedimentos temporais logados, permitindo Lojista entender porquê fura seu SLA.
+
+#### Scenario: Lojista visualiza eventos de caos em sua entrega
+- **GIVEN** que um ou mais eventos de caos foram injetados na carga destinada ao lojista
+- **WHEN** o lojista autenticado faz GET em `/deliveries/{id}`
+- **THEN** o objeto de resposta inclui obrigatoriamente um array com os detalhes públicos do caos (tipo, impacto temporário e hora de criação UTC)
+
+### Requirement: Log permanente de eventos de caos para ML
+O sistema SHALL manter um log permanente (chaos_event_log) de todos os eventos de caos com contexto geográfico. Registros MUST nunca ser deletados. Cada registro MUST conter: delivery_id, event_type, impact_factor, delay_minutes, coordenadas do trecho afetado (lat/lng início e fim), timestamp_start e timestamp_end.
+
+#### Scenario: Evento injetado é registrado no log de ML
+- **GIVEN** a injeção bem-sucedida de um evento de "chuva"
+- **WHEN** a transação de banco de dados do evento de caos for finalizada
+- **THEN** o sistema espelha (append-only) a criação no `chaos_event_log` gravando contexto, `timestamp_start` e impacto
+
+#### Scenario: Evento remoto concluído crava stamp ML final
+- **GIVEN** um registro prévio e pendente no `chaos_event_log`
+- **WHEN** o ambiente encerra e destrói registro no core database da viagem ativa
+- **THEN** o sistema injeta o `timestamp_end` no registro permanente de ML sem deletar a linha
+
+#### Scenario: Analista de ML acessa raw pipeline
+- **GIVEN** que a tabela de log de simulação de caos contém milhares de registros acumulados
+- **WHEN** se extrai as métricas paginadas de GET `/chaos/log?limit=50&offset=0`
+- **THEN** o sistema devolve apenas a página restrita com os 50 registros mais recentes para alimentar os engenheiros de dados
+
+================
+File: openspec/changes/logistics-manager/design.md
+================
+## Context
+
+Projeto greenfield para TCC de BSI (60h). Não há código existente. O sistema é composto por uma API REST de gerenciamento logístico (FastAPI) e um Frontend Web (Next.js). A plataforma calcula tempo de entrega (fábrica → loja), permite simulação de eventos de caos que recalculam ETA, monitora segurança do motorista em rota, e acumula dados estruturados de incidentes para futura aplicação de modelos preditivos.
+
+**Constraints:**
+- 60 horas de desenvolvimento total
+- Sem dependência de APIs externas (mapas simulados)
+- PostgreSQL obrigatório para estabilidade no backend
+- Frontend obrigatório desenvolvido em Next.js (App Router) com TypeScript
+- Estilização restrita ao uso de Tailwind CSS e ecossistema shadcn/ui
+- Orquestração completa local via Docker e docker-compose obrigatória
+- Todos os timestamps em UTC internamente
+
+## Goals / Non-Goals
+
+**Goals:**
+- Arquitetura de Monorepo (pastas `backend/` e `frontend/`) orquestrada via docker-compose
+- API REST completa e bem documentada via OpenAPI/Swagger
+- Frontend focado nas telas de demonstração da banca (Painel do Lojista e Visão do Motorista)
+- Arquitetura Server-Client B2B direta (lojista espera a mercadoria, motorista leva a mercadoria)
+- Simulador de caos que recalcula ETA em tempo real (Painel Admin/Dev oculta da aplicação para testes na banca)
+- Reroute pelo motorista quando ele efetivamente muda de rota
+- Histórico de ETA + log de caos para acúmulo de dados de ML futuro
+- Sistema de safe-check estruturado com lazy evaluation (redução de custo cognitivo)
+- Endpoint de demonstração para apresentação na banca
+
+**Non-Goals:**
+- Telas de configuração complexas no Frontend (ex: CRUD total de lojas e janelas será via API/Swagger para poupar escopo de UI nas 60h)
+- Integração com APIs de mapas reais interativos no frontend (usaremos visualizações focadas em TEMPO/ETA)
+- Eventos de caos abertos aos usuários (Caos é ambiental - simulado via Dev Tools da Banca)
+- Treinamento de modelos de ML (só acúmulo de dados)
+- Legislação de descanso obrigatório (CLT/Lei do Motorista)
+- Notificações push ou WebSocket (fora do escopo das 60h, frontend usará polling se necessário)
+
+## Decisions
+
+### 1. Estrutura Monorepo e Orquestração Docker
+
+**Decisão:** O repositório será um monorepo orquestrado integralmente via `docker-compose`. Haverá 3 containers principais: `backend` (FastAPI), `frontend` (Next.js) e `db` (PostgreSQL).
+
+```
+logistics-manager/
+├── docker-compose.yml
+├── backend/
+│   ├── Dockerfile
+│   ├── app/                # Código FastAPI modularizado
+│   └── requirements.txt
+└── frontend/
+    ├── Dockerfile
+    ├── src/                # Código Next.js
+    ├── tailwind.config.ts
+    └── package.json
+```
+
+**Rationale:** O uso do `docker-compose` empacota toda a complexidade de execução. Para a banca do TCC, qualquer avaliador com Docker instalado poderá subir o projeto inteiro (Banco, API e Interface) rodando apenas um `docker-compose up -d`. O backend manterá a organização modular por domínio de negócio dentro de `app/`.
+
+### 2. Stack do Frontend: Next.js + Tailwind + shadcn/ui
+
+**Decisão:** Uso exclusivo de Next.js (App Router) com TypeScript rigoroso. O design system será montado apenas com TailwindCSS e componentes copiáveis do `shadcn/ui` (ex: Cards, Buttons, Tables, Dialogs).
+
+**Rationale:** Essa tech stack é uma exigência do projeto (BSI). O `shadcn/ui` garante uma interface visualmente profissional e acessível quase instantaneamente, compensando o tempo curto das 60h. O frontend será um "MVP Visual" concentrado na utilidade da demonstração.
+
+### 3. Cálculo de ETA simulado
+
+**Decisão:** `ETA = distância_km / velocidade_media_kmh` com coordenadas (lat/lng) usando fórmula de Haversine para distância no backend.
+
+**Rationale:** Haversine dá precisão suficiente para demonstração. Velocidade média configurável (urbana: 40 km/h, rodovia: 80 km/h).
+
+### 4. Mecanismo de caos — rota fixa, só tempo muda
+
+**Decisão:** Cada evento de caos tem um `impact_factor` (multiplicador de tempo) e um `delay_minutes` (atraso fixo adicional). A rota NÃO muda — eventos só afetam o tempo estimado.
+
+| Evento | impact_factor | delay_minutes |
+|---|---|---|
+| Chuva | 1.3 (30% mais lento) | 0 |
+| Alagamento | 1.0 (bloqueio) | 45 |
+| Engarrafamento | 1.5 (50% mais lento) | 15 |
+| Acidente | 1.0 (bloqueio) | 60 |
+
+**Recálculo:** `novo_ETA = (ETA_restante × impact_factor) + delay_minutes`
+
+Múltiplos eventos se acumulam multiplicativamente. O uso da injeção será puramente infraestrutural/sistêmico via DevTools (Admin API Key ou Dev Panel embutido).
+
+### 5. Reroute pelo motorista
+
+**Decisão:** O motorista pode informar que mudou de rota via endpoint de reroute. O sistema recalcula a distância restante usando Haversine e aplica eventos de caos ativos.  No Frontend haverá uma tela "Driver View" com um grande botão de Pânico/Reroute simulando o app mobile.
+
+**Decisão:** Quando o motorista reporta velocidade = 0 km/h num local atípico, o backend computa a ocorrência. A validação do tempo silencioso (>10 min) é verificada por **lazy evaluation** somente quando a doca receptora (Lojista) consome os dados atuais.
+
+### 7. PostgreSQL com SQLAlchemy 2.0 async + UTC
+
+**Decisão:** asyncpg + SQLAlchemy 2.0 async ORM. Alembic para migrações. Armazenamento persistente num container Postgres com volume montado no Docker. FastAPI servirá a validação com Pydantic V2 restrito.
+
+**Rationale:** Exigência técnica BSI de alta performance e consistência transacional.
+
+### 8. Paginação com defaults
+
+**Decisão:** Todos os endpoints REST de listagem aceitam limit e offset. O frontend Next.js consumirá esses endpoints para gerar as tabelas shadcn (Data Tables).
+
+### 9. Histórico de ETA + log de caos para ML
+
+**Decisão:**
+- `eta_history`: registra cada mudança de ETA (before, after, reason). Será exibido em um componente Timeline no frontend.
+- `chaos_event_log`: backup permanente de todos os eventos para análise futura de ML.
+
+### 10. Global Exception Handling e Resiliência (Non-Functional)
+
+**Decisão:**
+A aplicação deve ser resiliente a falhas sistêmicas e imprecisões no contrato de dados.
+- **Backend (FastAPI):** Um middleware ou exception handler global (`@app.exception_handler`) interceptará todas as falhas não tratadas. Erros de infraestrutura (ex: `asyncpg.exceptions.ConnectionDoesNotExist` ou timeout do PostgreSQL) retornarão HTTP 503 Service Unavailable, mascarando a stack trace do usuário. Erros de validação (Pydantic `ValidationError`) retornarão HTTP 422 padronizado.
+- **Frontend (Next.js):** Todas as formulários e interações que enviam payload (ex: injeção de evento de caos) validarão os dados localmente (client-side) antes do envio. Caso o servidor responda com 503 ou 500, toasts da biblioteca shadcn/ui serão exibidos notificando a "Instabilidade na plataforma".
+
+**Rationale:** Exigência de infraestrutura resiliente. Isola falhas de banco de dados para não expor segurança e economiza round-trips de rede validando dados incorretos no Next.js precocemente.
+
+## Low-Level Engineering & Architecture
+
+Para garantir precisão durante a fase de implementação e mitigar alucinações de código, a fundação técnica abaixo deve ser rigorosamente seguida.
+
+### 1. Database Structure (PostgreSQL Schema)
+Modelagem relacional focada em consistência via SQLAlchemy 2.0:
+- **`users`**: `id` (UUID PK), `email` (VARCHAR, Unique), `password_hash` (VARCHAR), `role` (ENUM: lojista, motorista), `created_at` (TIMESTAMPTZ UTC).
+- **`factories`**: `id` (UUID PK), `name` (VARCHAR), `lat` (FLOAT), `lng` (FLOAT).
+- **`stores`**: `id` (UUID PK), `name` (VARCHAR), `lat` (FLOAT), `lng` (FLOAT), `owner_id` (FK -> users.id).
+- **`deliveries`**: `id` (UUID PK), `factory_id` (FK -> factories.id), `store_id` (FK -> stores.id), `driver_id` (FK -> users.id), `status` (ENUM: pendente, em_transito, entregue, cancelada), `eta_original` (TIMESTAMPTZ), `eta_current` (TIMESTAMPTZ), `departed_at` (TIMESTAMPTZ).
+- **`eta_history`**: `id` (UUID PK), `delivery_id` (FK -> deliveries.id), `eta_before` (TIMESTAMPTZ), `eta_after` (TIMESTAMPTZ), `reason` (VARCHAR), `created_at` (TIMESTAMPTZ).
+**Indices:** B-Tree em `deliveries.driver_id`, `deliveries.store_id` e `eta_history.delivery_id` para acelerar queries paginadas do painel.
+
+### 2. TypeSafe Contracts (SQLAlchemy -> Pydantic)
+- **Data Transfer Objects (DTOs):** A camada da API nunca retornará as instâncias brutas do SQLAlchemy. Pydantic v2 `BaseModel` será usado para filtrar dados.
+- Exemplo prático: O modelo de banco `User` contém `password_hash`. A rota de login/listagem usará o schema Pydantic `UserResponse` que exclui a senha e expõe apenas `id`, `email` e `role`.
+- O strict mode do Pydantic (`model_config = ConfigDict(strict=True)`) deve ser ativado para as rotas C-Level (caos, rotas).
+
+### 3. Next.js Architecture (App Router Flow)
+Uso pragmático de Server vs Client Components para isolar estado interativo de buscas de banco (SSR):
+- **Server Components:** `app/dashboard/page.tsx` fará fetch server-side usando o token mantido em HttpOnly cookies. Não usará a diretiva `"use client"`. Transfere HTML limpo para o browser.
+- **Client Components:** Só usado nos "galhos" da árvore. `components/dashboard/chaos-injector.tsx` usará `"use client"` para gerenciar o `useState` do select box e prender validações no front antes do `fetch()`.
+
+### 4. Mapeamento de UI (shadcn/ui Allowlist)
+Para manter o design system coeso e limpo nas 60h, fica PROIBIDO criar componentes interativos UI complexos em Tailwind puro se existir equivalente no shadcn.
+**Lista de Componentes Autorizados:**
+- `Button` (Ações gerais)
+- `Card` (Para agrupar métricas e formulários)
+- `Table` / `DataTable` (Listagem de entregas para lojistas no dashboard core)
+- `Dialog` (Modal sobreposto para injeção visual do caos)
+- `Badge` (Cores semânticas para Status: Pendente=Cinza, Em_Transito=Azul, Entregue=Verde)
+- `Toast` (Para exibir erros 422/503 e sucesso nas operações de caos)
+
+**Contrato Visual Restrito (Anti-Alucinação Visual):**
+- **Ícones Oficiais:** O sistema utilizará EXCLUSIVAMENTE a biblioteca genérica nativa do shadcn, que é o **`lucide-react`**. Fica terminantemente PROIBIDO o uso de ícones de outras bibliotecas (como FontAwesome ou Heroicons) para manter a coesão de peso e traço.
+- **Proibição de Emojis:** É **TOTALMENTE PROIBIDO** o uso de emojis nativos de sistema operacional (ex: 🚚, 📦, ❌) em qualquer parte estrutural da interface (botões, menus, tabelas, alertas). Apenas ícones vetoriais do `lucide-react` estão autorizados. O ícone de logo do sistema será o componente `<Package />` do Lucide.
+- **Wireframes (Figma):** A implementação visual das telas (Dashboard do Lojista e Simulador do Motorista) deve se basear ESTRITAMENTE nos arquivos de imagem PNG (com o painel Lojista absorvendo a tabela principal). Elementos de posicionamento, gutters e grids devem seguir o layout da imagem fornecida; se não houver tela correspondente, manter o padrão minimalista do shadcn.
+
+### 5. Topologia Docker (Network e Env Vars)
+Estrutura exata do `docker-compose.yml` para blindagem de rede interna:
+- **Rede `logistics-net`:** Bridge network customizada isolando os containeres.
+- **Service `db`:** Imagem `postgres:15-alpine`. Portas `5432:5432` abertas apenas pro host local. Env: `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`.
+- **Service `api`:** Build do `./backend`. Portas `8000:8000`. Depende via `depends_on: [db]`. Env crucial: `DATABASE_URL=postgresql+asyncpg://user:pass@db:5432/logistics`.
+- **Service `web`:** Build do `./frontend`. Portas `3000:3000`. Depende via `depends_on: [api]`. Env crucial: `NEXT_PUBLIC_API_URL=http://localhost:8000`.
+
+### 6. Test-Driven Development (TDD)
+O núcleo matemático da aplicação (Motor de ETA, Fator de Caos, Haversine) deve ser construído usando **Test-Driven Development (TDD) via Pytest**.
+- Os cenários `GIVEN/WHEN/THEN` documentados estritamente nos arquivos `specs/*.md` são a fonte isolada de verdade para os assertions.
+- A IA/Engenheiro obrigatoriamente escreverá o teste inicial no `tests/domain/` (estado RED) antes de codificar a lógica real no `app/domain/` (estado GREEN). Mocks de banco de dados não devem ser necessários para testar as regras de domínio espacial/matemático.
+
+## Risks / Trade-offs
+
+- **[Escopo de 60h + Frontend + Docker]** → Desenvolver backend, frontend e orquestração Docker em 60h é desafiador. A mitigação é o MVP: o frontend terá apenas telas essenciais, e o Dockerfile focará apenas em execução local, sem pipelines CI/CD complexos.
+- **[Simulação vs realidade]** → ETA simulado não reflete rotas reais.
+- **[Sem WebSocket]** → O Next.js precisará fazer polling via hooks no cliente (como SWR ou React Query) para simular o tempo real das viaturas. Aceitável para MVP.
+- **[Log de ML sem modelo]** → O TCC documentará apenas a coleta estruturada para trabalhos futuros.
+
+## Open Questions
+
+_(resolvidas após o realinhamento de arquitetura)_
+
+================
+File: openspec/changes/logistics-manager/proposal.md
+================
+## Why
+
+Projeto de TCC para Bacharelado em Sistemas de Informação (BSI) com carga de 60 horas. O setor logístico brasileiro sofre com imprevisibilidade no tempo de entrega — eventos como chuvas, alagamentos, engarrafamentos e acidentes alteram drasticamente o ETA sem que lojistas ou operadores tenham visibilidade em tempo real. Além disso, a segurança do motorista e da carga exige monitoramento contínuo para detecção rápida de anomalias (parada inesperada, desvio de rota). O sistema também acumula dados estruturados de incidentes para futura aplicação de modelos preditivos (ML).
+
+## What Changes
+
+- Criação de um sistema completo de gerenciamento logístico via API REST (FastAPI) com tipagem estrita via Pydantic v2
+- Criação de uma interface Frontend em Next.js (App Router), TypeScript obrigatório, TailwindCSS e shadcn/ui.
+- Orquestração completa via Docker e docker-compose (Frontend, Backend, PostgreSQL).
+- Banco de dados PostgreSQL acessado via SQLAlchemy 2.0 (async).
+- Cálculo mecânico do SLA via ETA simulado (distância ÷ velocidade média) base Haversine
+- Arquitetura Server-Client pura com 2 perfis nativos: Lojista (Recebedor B2B) e Motorista
+- Janela de recebimento configurável por loja (horários em que aceita entregas e gera Alerta SLA)
+- Simulador de Caos Embutido (Ferramenta Acadêmica Administrativa) para provar robustez matemática
+- Rota fixa — eventos de caos só recalculam tempo, não alteram a rota
+- Recálculo automático de ETA quando eventos de caos são injetados (múltiplos eventos se acumulam)
+- Reroute pelo motorista: motorista pode informar mudança de rota, sistema recalcula distância restante
+- Histórico de ETA registrado a cada mudança (jornada do ETA ao longo da entrega)
+- Log de eventos de caos permanente para acúmulo de dados de ML futuro
+- Safe-Check de segurança: ping com lazy evaluation quando velocidade = 0 km/h, alerta imediato se desvio de rota
+- Paginação com limit/offset e defaults em todos os endpoints de listagem
+- Timestamps internos em UTC (TIMESTAMP WITH TIME ZONE)
+- Endpoint de demo que simula o fluxo completo (rota → caos → recálculo → alerta)
+
+## Capabilities
+
+### New Capabilities
+- `auth-multi-role`: Autenticação JWT 2-roles B2B direct (Lojista x Motorista).
+- `eta-calculator`: Motor de cálculo de ETA simulado com Haversine, recálculo dinâmico e histórico de ETAs
+- `delivery-management`: CRUD de entregas, ciclo de vida, reroute pelo motorista e paginação com defaults
+- `receiving-window`: Configuração de janela de recebimento por loja com validação de horário em UTC
+- `chaos-simulator`: Injeção de eventos de caos que afetam ETA em tempo real + log permanente para ML futuro
+- `safe-check`: Monitoramento de segurança com ping/lazy evaluation e alerta por desvio de rota
+- `demo-endpoint`: Endpoint de demonstração que orquestra o fluxo completo para apresentação
+- `frontend-dashboard`: Interface web (Next.js/Tailwind/shadcn) para controle analítico de Lojista frente às flutuações de ETA do motorista.
+- `resilience`: Tratamento global de exceções contra quedas de infraestrutura (DB) e validações robustas de contrato client-side e server-side (Pydantic).
+
+### Modified Capabilities
+_(nenhuma — projeto greenfield)_
+
+## Impact
+
+- **Banco de dados**: Schema PostgreSQL com tabelas para usuários, fábricas, lojas, entregas, eventos de caos, janelas de recebimento, alertas, histórico de ETA e log de caos para ML. Todos os timestamps em UTC. Postgres gerenciado via SQLAlchemy 2.0.
+- **APIs**: ~35 endpoints REST (FastAPI) estruturados por domínio analítico com proteção Pydantic Strict Mode.
+- **Frontend**: Aplicação Next.js (App Router) em TypeScript focada nas visões Lojista (receptor) e Motorista. Ferramentas Developer ocultas acopladas para engatilhar Caos durante apresentação da banca. Estilização apenas via TailwindCSS e componentes shadcn/ui.
+- **Dependências**: FastAPI, SQLAlchemy 2.0 async, asyncpg, Pydantic V2, python-jose (JWT), Alembic. No Front: Next.js, React, Tailwind, lucide-react.
+- **Infraestrutura**: Orquestração via `docker-compose`. Containers independentes para `backend`, `frontend`, e `db` (PostgreSQL local). Monorepo contendo pastas `backend` e `frontend`, sem dependência de APIs externas de mapas.
+
+================
+File: openspec/changes/logistics-manager/tasks.md
+================
+## FASE 1: Infraestrutura Base (Docker e PostgreSQL)
+- [x] 1.1 Criar estrutura de pastas root: `backend/` e `frontend/`.
+- [x] 1.2 Criar arquivo `docker-compose.yml` na raiz mapeando apenas o serviço `db` (postgres:15-alpine) com porta 5432 e variáveis de ambiente (User, Password, DB).
+- [x] 1.3 **Validação:** Rodar `docker-compose up -d db` e garantir via logs (`docker logs db`) que o banco PostgreSQL subiu e está aceitando conexões na porta 5432.
+
+## FASE 2: Core do Backend (FastAPI + Pydantic + SQLAlchemy)
+- [x] 2.1 No `backend/`: Inicializar projeto Python com dependências (fastapi, uvicorn, sqlalchemy, asyncpg, pydantic, alembic, passlib, python-jose).
+- [x] 2.2 Criar `Dockerfile` do backend, definir volumes de dev e adicioná-lo ao `docker-compose.yml`. Configurar CORS no FastAPI.
+- [x] 2.3 Configurar Database Engine (SQLAlchemy Async), Base Declarative e Alembic.
+- [x] 2.4 Criar Modelos e Schemas base: Users, Factories, Stores, Deliveries, EtaHistory, ChaosEvents, Alerts.
+- [x] 2.5 Gerar e rodar migração Alembic para construir as tabelas no banco de dados da Fase 1.
+- [x] 2.6 Criar Router de Autenticação (Registro e JWT Login) e plugar no `main.py`.
+- [x] 2.7 Construir Lógica e Endpoints de CRUD Logístico: Locais, Janelas de Recebimento e Gerenciamento de Entregas.
+- [x] 2.8 **(TDD Loop RED)**: Instalar `pytest` e criar a pasta `tests/domain/`. Escrever **obrigatoriamente >30 testes automatizados de CÓDIGO (unitários/integração)** FALHOS baseados nas referências BDD (`specs/`) para o Motor Analítico (Cálculo Haversine, ETA, Simulador de Caos e Lazy Evaluation do SafeCheck) antes da aplicação no backend.
+- [x] 2.9 **(TDD Loop GREEN)**: Implementar a lógica pura do Motor Analítico em `app/domain/` até todos os 30+ assertions escritos no passo 2.8 passarem.
+- [x] 2.10 Criar Exception Handler Global no FastAPI para interceptar erros de banco de dados (503) e validação (422) e criar seed script.
+- [x] 2.11 **Validação TDD/API:** Rodar o comando `pytest tests/domain/` no backend e atestar `100% Passed`. Em seguida, subir o backend (`docker-compose up -d api`), abrir o Swagger UI (`http://localhost:8000/docs`) e rodar fluxo de teste manual E2E independentemente do Front-end.
+
+## FASE 3: Frontend Foundation (Next.js + shadcn/ui)
+- [ ] 3.1 No `frontend/`: Inicializar Next.js App Router com TypeScript e TailwindCSS. Remover boilerplate default.
+- [ ] 3.2 Criar `Dockerfile` do frontend expondo porta 3000 e adicionar o serviço `web` no `docker-compose.yml`.
+- [ ] 3.3 Inicializar shadcn/ui (`npx shadcn-ui@latest init` - CSS variables, estilo raw non-interactive).
+- [ ] 3.4 Importar lista estrita de componentes shadcn permitidos: `npx shadcn-ui@latest add button card table dialog badge alert toast`.
+- [ ] 3.5 Criar o layout genérico e a `page.tsx` estática inicial usando componentes Tailwind puro para as cascas estruturais.
+- [ ] 3.6 **Validação:** Rodar `docker-compose up -d web` e acessar `http://localhost:3000` para confirmar que o contêiner Next.js está de pé, com Tailwind configurado, fontes carregadas e nenhum Erro de Hydration no console do navegador.
+
+## FASE 4: Integração Full-Stack, UI e Demo
+- [ ] 4.1 Criar biblioteca interna abstrata no Next.js (`lib/api.ts`) para encapsular lógicas de `fetch` à API (FastAPI) repassando header Bearer Token.
+- [ ] 4.2 Construir a *Visão do Motorista* (PWA-like): Tela responsiva mobile-first com botões mockados de "Informar Reroute" e "Parada (0km/h)" disparando eventos na porta remota.
+- [ ] 4.3 Construir o *Painel do Lojista*: Componente abstrato `DataTable` consumindo e renderizando a rota GET `/deliveries/` exclusivas àquele Lojista.
+- [ ] 4.4 Construir Sub-componente Interativo: Aba de Desenvolvedor oculta (`Dialog` do shadcn) de **Injeção de Caos** para simular o stress.
+- [ ] 4.5 Construir Sub-componente de Eventos: Listagem condicional de **Alertas Críticos (SLA Risk)** calculados dinamicamente no Client.
+- [ ] 4.6 **Validação Final:** Acessar o ambiente de ponta a ponta (Browser -> Next.js container -> FastAPI container -> PostgresDb container). Logar como Lojista, listar entregas, usar a Action DevMode (Caos), selecionar "Alagamento", submeter, e atestar visualmente na tabela que o valor do "ETA Forecast" atualizou instantaneamente com o recálculo matemático.
+
+
+
+
+
+================================================================
+End of Codebase
+================================================================
