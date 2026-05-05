@@ -5,11 +5,16 @@ from app.db.session import get_db
 from app.schemas.delivery import DeliveryCreate, DeliveryResponse
 from app.infrastructure.repositories.delivery_repo import DeliveryRepository
 from app.use_cases.deliveries_use_cases import CreateDeliveryUseCase, ListDeliveriesUseCase
+from app.api.deps import require_role
 
 router = APIRouter()
 
 @router.post("/", response_model=DeliveryResponse, status_code=status.HTTP_201_CREATED)
-async def create_delivery(delivery_in: DeliveryCreate, db: AsyncSession = Depends(get_db)):
+async def create_delivery(
+    delivery_in: DeliveryCreate, 
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_role("lojista"))
+):
     repo = DeliveryRepository(db)
     use_case = CreateDeliveryUseCase(repo)
     return await use_case.execute(

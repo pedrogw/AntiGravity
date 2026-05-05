@@ -1,0 +1,61 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.0.3, pluggy-1.6.0 -- /home/pedro/Documentos/Antigravity/backend/venv/bin/python3
+cachedir: .pytest_cache
+rootdir: /home/pedro/Documentos/Antigravity/backend
+configfile: pytest.ini
+plugins: asyncio-1.3.0, cov-7.1.0, anyio-4.13.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=session, asyncio_default_test_loop_scope=function
+collecting ... collected 1 item
+
+tests/api/test_integration.py::test_login_success FAILED                 [100%]
+
+=================================== FAILURES ===================================
+______________________________ test_login_success ______________________________
+tests/api/test_integration.py:30: in test_login_success
+    assert response.status_code == 200
+E   assert 503 == 200
+E    +  where 503 = <Response [503 Service Unavailable]>.status_code
+=============================== warnings summary ===============================
+venv/lib/python3.12/site-packages/_pytest/cacheprovider.py:475
+  /home/pedro/Documentos/Antigravity/backend/venv/lib/python3.12/site-packages/_pytest/cacheprovider.py:475: PytestCacheWarning: cache could not write path /home/pedro/Documentos/Antigravity/backend/.pytest_cache/v/cache/nodeids: [Errno 13] Permission denied: '/home/pedro/Documentos/Antigravity/backend/.pytest_cache/v/cache/nodeids'
+    config.cache.set("cache/nodeids", sorted(self.cached_nodeids))
+
+venv/lib/python3.12/site-packages/_pytest/cacheprovider.py:429
+  /home/pedro/Documentos/Antigravity/backend/venv/lib/python3.12/site-packages/_pytest/cacheprovider.py:429: PytestCacheWarning: cache could not write path /home/pedro/Documentos/Antigravity/backend/.pytest_cache/v/cache/lastfailed: [Errno 13] Permission denied: '/home/pedro/Documentos/Antigravity/backend/.pytest_cache/v/cache/lastfailed'
+    config.cache.set("cache/lastfailed", self.lastfailed)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.12.3-final-0 ________________
+
+Name                                               Stmts   Miss  Cover   Missing
+--------------------------------------------------------------------------------
+app/api/auth.py                                       24      0   100%
+app/api/deliveries.py                                 19      6    68%   18-20, 28-30
+app/api/deps.py                                       23     14    39%   9-23, 27-32
+app/api/places.py                                     29     12    59%   21-23, 27-29, 37-39, 43-45
+app/core/config.py                                     8      0   100%
+app/core/security.py                                  16      8    50%   8, 11, 14-20
+app/db/base_class.py                                   9      0   100%
+app/db/session.py                                      7      2    71%   15-16
+app/domain/entities/delivery.py                       21      0   100%
+app/domain/entities/place.py                          15      0   100%
+app/domain/entities/user.py                           14      0   100%
+app/infrastructure/orm/delivery.py                    25      0   100%
+app/infrastructure/orm/place.py                       18      0   100%
+app/infrastructure/orm/user.py                        16      0   100%
+app/infrastructure/repositories/delivery_repo.py      20     10    50%   9, 12-25, 28-30, 33
+app/infrastructure/repositories/place_repo.py         32     19    41%   9, 12-21, 24-26, 29-39, 42-44, 47, 55
+app/infrastructure/repositories/user_repo.py          21     10    52%   12-15, 18-28, 31
+app/main.py                                           19      1    95%   41
+app/schemas/delivery.py                               17      0   100%
+app/schemas/place.py                                  21      0   100%
+app/schemas/user.py                                   14      0   100%
+app/use_cases/auth_use_cases.py                       23      9    61%   12-21, 29-36
+app/use_cases/deliveries_use_cases.py                 14      5    64%   7, 10-15, 19, 22
+app/use_cases/places_use_cases.py                     25     10    60%   7, 10-11, 15, 18, 22, 25-26, 30, 33
+--------------------------------------------------------------------------------
+TOTAL                                                450    106    76%
+=========================== short test summary info ============================
+FAILED tests/api/test_integration.py::test_login_success - assert 503 == 200
+======================== 1 failed, 2 warnings in 1.35s =========================
