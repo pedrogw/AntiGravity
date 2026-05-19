@@ -126,7 +126,7 @@ async def test_create_and_list_deliveries(client: AsyncClient):
     }
 
     # POST — create_delivery body (lines 13-17)
-    create_resp = await client.post("/deliveries/", json=delivery_data)
+    create_resp = await client.post("/deliveries/", json=delivery_data, headers=lojista["headers"])
     assert create_resp.status_code == 201
     assert create_resp.json()["status"] == "pendente"
 

@@ -1,10 +1,10 @@
 from app.domain.entities.user import User as UserEntity
-from app.infrastructure.repositories.user_repo import UserRepository
+from app.domain.repositories.user_repo import UserRepositoryProtocol
 from app.core.security import get_password_hash, verify_password, create_access_token
 from fastapi import HTTPException, status
 
 class RegisterUserUseCase:
-    def __init__(self, repo: UserRepository):
+    def __init__(self, repo: UserRepositoryProtocol):
         self.repo = repo
 
     async def execute(self, email: str, password: str, role: str) -> UserEntity:
@@ -21,7 +21,7 @@ class RegisterUserUseCase:
         return await self.repo.create(new_user)
 
 class LoginUserUseCase:
-    def __init__(self, repo: UserRepository):
+    def __init__(self, repo: UserRepositoryProtocol):
         self.repo = repo
 
     async def execute(self, email: str, password: str) -> dict:

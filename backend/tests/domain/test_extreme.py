@@ -3,15 +3,16 @@ from app.domain.haversine import calculate_haversine_distance
 from app.domain.chaos import apply_chaos_to_eta
 from datetime import datetime
 from app.domain.safe_check import is_safe_check_expired, evaluate_truck_speed_status
+from app.domain.value_objects.coordinates import Coordinates
 
 def test_haversine_zero_distance():
     # Same point distance should be exactly zero, shouldn't crash
-    dist = calculate_haversine_distance(0.0, 0.0, 0.0, 0.0)
+    dist = calculate_haversine_distance(Coordinates(0.0, 0.0), Coordinates(0.0, 0.0))
     assert dist == 0.0
 
 def test_haversine_polar_extremes():
     # North pole to South pole
-    dist = calculate_haversine_distance(90.0, 0.0, -90.0, 0.0)
+    dist = calculate_haversine_distance(Coordinates(90.0, 0.0), Coordinates(-90.0, 0.0))
     assert dist > 19000  # Should be roughly ~20000 km
 
 def test_safe_check_none_ping():

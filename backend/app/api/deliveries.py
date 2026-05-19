@@ -18,9 +18,9 @@ async def create_delivery(
     repo = DeliveryRepository(db)
     use_case = CreateDeliveryUseCase(repo)
     return await use_case.execute(
-        str(delivery_in.factory_id), 
-        str(delivery_in.store_id), 
-        str(delivery_in.driver_id)
+        factory_id=delivery_in.factory_id, 
+        store_id=delivery_in.store_id, 
+        driver_id=delivery_in.driver_id
     )
 
 @router.get("/", response_model=List[DeliveryResponse])

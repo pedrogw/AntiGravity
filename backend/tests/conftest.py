@@ -1,15 +1,21 @@
+import os
+os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
+
 import pytest
 from httpx import AsyncClient, ASGITransport
 from app.main import app
-from app.db.session import get_db, AsyncSessionLocal, engine
-from sqlalchemy.pool import NullPool
+from app.db.session import get_db, AsyncSessionLocal
+from sqlalchemy.pool import StaticPool
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from app.db.base_class import Base
 from app.core.config import settings
 import uuid
 
+# Engine para SQLite in-memory
 test_engine = create_async_engine(
-    settings.DATABASE_URL,
-    poolclass=NullPool,
+    "sqlite+aiosqlite:///:memory:",
+    poolclass=StaticPool, # SQLite memory requires StaticPool
+    connect_args={"check_same_thread": False},
     future=True
 )
 
@@ -19,22 +25,37 @@ TestSessionLocal = async_sessionmaker(
     expire_on_commit=False,
 )
 
-async def override_get_db():
-    async with TestSessionLocal() as session:
-        yield session
+@pytest.fixture(scope="session", autouse=True)
+async def setup_db_schema():
+    async with test_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield
+    async with test_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
 
-app.dependency_overrides[get_db] = override_get_db
+@pytest.fixture
+async def db_session():
+    async with test_engine.connect() as conn:
+        async with conn.begin() as trans:
+            async with AsyncSession(bind=conn, expire_on_commit=False) as session:
+                yield session
+                await trans.rollback()
 
 @pytest.fixture(scope="session")
 def anyio_backend():
     return "asyncio"
 
 @pytest.fixture
-async def client():
+async def client(db_session: AsyncSession):
+    async def override_get_db():
+        yield db_session
+
+    app.dependency_overrides[get_db] = override_get_db
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as ac:
         yield ac
+    app.dependency_overrides.clear()
 
 @pytest.fixture
 async def lojista_token_headers(client: AsyncClient):

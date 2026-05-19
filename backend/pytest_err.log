@@ -1,0 +1,200 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.0.3, pluggy-1.6.0 -- /home/pedro/Documentos/Antigravity/backend/venv/bin/python3
+cachedir: .pytest_cache
+rootdir: /home/pedro/Documentos/Antigravity/backend
+configfile: pytest.ini
+plugins: asyncio-1.3.0, cov-7.1.0, anyio-4.13.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=session, asyncio_default_test_loop_scope=function
+collecting ... collected 1 item
+
+tests/api/test_coverage_boost.py::test_create_store_as_lojista FAILED    [100%]
+
+=================================== FAILURES ===================================
+_________________________ test_create_store_as_lojista _________________________
+venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1815: in _execute_context
+    context = constructor(
+venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py:1496: in _init_compiled
+    flattened_processors[key](compiled_params[key])
+venv/lib/python3.12/site-packages/sqlalchemy/sql/sqltypes.py:3734: in process
+    value = value.hex
+            ^^^^^^^^^
+E   AttributeError: 'str' object has no attribute 'hex'
+
+The above exception was the direct cause of the following exception:
+tests/api/test_coverage_boost.py:82: in test_create_store_as_lojista
+    response = await client.post(
+venv/lib/python3.12/site-packages/httpx/_client.py:1859: in post
+    return await self.request(
+venv/lib/python3.12/site-packages/httpx/_client.py:1540: in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv/lib/python3.12/site-packages/httpx/_client.py:1629: in send
+    response = await self._send_handling_auth(
+venv/lib/python3.12/site-packages/httpx/_client.py:1657: in _send_handling_auth
+    response = await self._send_handling_redirects(
+venv/lib/python3.12/site-packages/httpx/_client.py:1694: in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv/lib/python3.12/site-packages/httpx/_client.py:1730: in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv/lib/python3.12/site-packages/httpx/_transports/asgi.py:170: in handle_async_request
+    await self.app(scope, receive, send)
+venv/lib/python3.12/site-packages/fastapi/applications.py:1159: in __call__
+    await super().__call__(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/applications.py:90: in __call__
+    await self.middleware_stack(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/middleware/errors.py:186: in __call__
+    raise exc
+venv/lib/python3.12/site-packages/starlette/middleware/errors.py:164: in __call__
+    await self.app(scope, receive, _send)
+venv/lib/python3.12/site-packages/starlette/middleware/cors.py:88: in __call__
+    await self.app(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py:63: in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/_exception_handler.py:53: in wrapped_app
+    raise exc
+venv/lib/python3.12/site-packages/starlette/_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py:18: in __call__
+    await self.app(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/routing.py:660: in __call__
+    await self.middleware_stack(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/routing.py:680: in app
+    await route.handle(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/routing.py:276: in handle
+    await self.app(scope, receive, send)
+venv/lib/python3.12/site-packages/fastapi/routing.py:134: in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/_exception_handler.py:53: in wrapped_app
+    raise exc
+venv/lib/python3.12/site-packages/starlette/_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+venv/lib/python3.12/site-packages/fastapi/routing.py:120: in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+venv/lib/python3.12/site-packages/fastapi/routing.py:674: in app
+    raw_response = await run_endpoint_function(
+venv/lib/python3.12/site-packages/fastapi/routing.py:328: in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app/api/places.py:47: in create_store
+    result = await use_case.execute(store_in.name, store_in.lat, store_in.lng, str(store_in.owner_id))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app/use_cases/places_use_cases.py:27: in execute
+    return await self.repo.create_store(store)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app/infrastructure/repositories/place_repo.py:38: in create_store
+    await self.db.commit()
+venv/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/session.py:1000: in commit
+    await greenlet_spawn(self.sync_session.commit)
+venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:203: in greenlet_spawn
+    result = context.switch(value)
+             ^^^^^^^^^^^^^^^^^^^^^
+venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:2030: in commit
+    trans.commit(_to_root=True)
+<string>:2: in commit
+    ???
+venv/lib/python3.12/site-packages/sqlalchemy/orm/state_changes.py:137: in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:1311: in commit
+    self._prepare_impl()
+<string>:2: in _prepare_impl
+    ???
+venv/lib/python3.12/site-packages/sqlalchemy/orm/state_changes.py:137: in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:1286: in _prepare_impl
+    self.session.flush()
+venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:4331: in flush
+    self._flush(objects)
+venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:4466: in _flush
+    with util.safe_reraise():
+venv/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py:121: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:4427: in _flush
+    flush_context.execute()
+venv/lib/python3.12/site-packages/sqlalchemy/orm/unitofwork.py:466: in execute
+    rec.execute(self)
+venv/lib/python3.12/site-packages/sqlalchemy/orm/unitofwork.py:642: in execute
+    util.preloaded.orm_persistence.save_obj(
+venv/lib/python3.12/site-packages/sqlalchemy/orm/persistence.py:93: in save_obj
+    _emit_insert_statements(
+venv/lib/python3.12/site-packages/sqlalchemy/orm/persistence.py:1048: in _emit_insert_statements
+    result = connection.execute(
+venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1419: in execute
+    return meth(
+venv/lib/python3.12/site-packages/sqlalchemy/sql/elements.py:527: in _execute_on_connection
+    return connection._execute_clauseelement(
+venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1641: in _execute_clauseelement
+    ret = self._execute_context(
+venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1821: in _execute_context
+    self._handle_dbapi_exception(
+venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:2363: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1815: in _execute_context
+    context = constructor(
+venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py:1496: in _init_compiled
+    flattened_processors[key](compiled_params[key])
+venv/lib/python3.12/site-packages/sqlalchemy/sql/sqltypes.py:3734: in process
+    value = value.hex
+            ^^^^^^^^^
+E   sqlalchemy.exc.StatementError: (builtins.AttributeError) 'str' object has no attribute 'hex'
+E   [SQL: INSERT INTO store (id, name, lat, lng, owner_id) VALUES (?, ?, ?, ?, ?)]
+E   [parameters: [{'lat': -23.5505, 'name': 'Minha Loja Centro', 'lng': -46.6333, 'id': UUID('a5cbe177-96e0-4bb5-aabb-5c18fcffdbc8'), 'owner_id': 'cbcd1605-465a-4c0e-8a01-50fbb281211f'}]]
+=============================== warnings summary ===============================
+tests/api/test_coverage_boost.py::test_create_store_as_lojista
+  /home/pedro/Documentos/Antigravity/backend/app/core/security.py:17: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    expire = datetime.utcnow() + timedelta(minutes=60*24*8) # 8 days
+
+tests/api/test_coverage_boost.py::test_create_store_as_lojista
+  sys:1: SAWarning: transaction already deassociated from connection
+
+venv/lib/python3.12/site-packages/_pytest/cacheprovider.py:475
+  /home/pedro/Documentos/Antigravity/backend/venv/lib/python3.12/site-packages/_pytest/cacheprovider.py:475: PytestCacheWarning: cache could not write path /home/pedro/Documentos/Antigravity/backend/.pytest_cache/v/cache/nodeids: [Errno 13] Permission denied: '/home/pedro/Documentos/Antigravity/backend/.pytest_cache/v/cache/nodeids'
+    config.cache.set("cache/nodeids", sorted(self.cached_nodeids))
+
+venv/lib/python3.12/site-packages/_pytest/cacheprovider.py:429
+  /home/pedro/Documentos/Antigravity/backend/venv/lib/python3.12/site-packages/_pytest/cacheprovider.py:429: PytestCacheWarning: cache could not write path /home/pedro/Documentos/Antigravity/backend/.pytest_cache/v/cache/lastfailed: [Errno 13] Permission denied: '/home/pedro/Documentos/Antigravity/backend/.pytest_cache/v/cache/lastfailed'
+    config.cache.set("cache/lastfailed", self.lastfailed)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.12.3-final-0 ________________
+
+Name                                               Stmts   Miss  Cover   Missing
+--------------------------------------------------------------------------------
+app/api/auth.py                                       24      0   100%
+app/api/deliveries.py                                 19      6    68%   18-20, 28-30
+app/api/deps.py                                       23      4    83%   20, 22-23, 28
+app/api/places.py                                     37     15    59%   16, 19, 27-30, 34-37, 48, 52-55
+app/core/config.py                                     8      0   100%
+app/core/security.py                                  16      1    94%   15
+app/db/base_class.py                                   9      0   100%
+app/db/session.py                                      7      2    71%   15-16
+app/domain/entities/delivery.py                       21      0   100%
+app/domain/entities/place.py                          14      0   100%
+app/domain/entities/user.py                           14      0   100%
+app/domain/repositories/delivery_repo.py               3      0   100%
+app/domain/repositories/place_repo.py                  3      0   100%
+app/domain/repositories/user_repo.py                   3      0   100%
+app/domain/value_objects/coordinates.py                5      0   100%
+app/infrastructure/orm/delivery.py                    25      0   100%
+app/infrastructure/orm/place.py                       18      0   100%
+app/infrastructure/orm/user.py                        16      0   100%
+app/infrastructure/repositories/delivery_repo.py      20     10    50%   9, 12-25, 28-30, 33
+app/infrastructure/repositories/place_repo.py         33     15    55%   13-22, 25-27, 39-40, 43-45, 48, 55
+app/infrastructure/repositories/user_repo.py          21      0   100%
+app/main.py                                           19      2    89%   34, 41
+app/schemas/delivery.py                               17      0   100%
+app/schemas/place.py                                  21      0   100%
+app/schemas/user.py                                   14      0   100%
+app/use_cases/auth_use_cases.py                       23      2    91%   13, 30
+app/use_cases/deliveries_use_cases.py                 14      5    64%   7, 10-15, 19, 22
+app/use_cases/places_use_cases.py                     26      7    73%   8, 11-12, 16, 19, 31, 34
+--------------------------------------------------------------------------------
+TOTAL                                                473     69    85%
+=========================== short test summary info ============================
+FAILED tests/api/test_coverage_boost.py::test_create_store_as_lojista - sqlal...
+======================== 1 failed, 4 warnings in 13.81s ========================

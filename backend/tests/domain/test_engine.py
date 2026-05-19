@@ -1,47 +1,48 @@
 import pytest
 from datetime import datetime, timedelta
 from app.domain.haversine import calculate_haversine_distance, calculate_eta, add_hours_to_now
+from app.domain.value_objects.coordinates import Coordinates
 
 # ==== HAVERSINE / DISTANCE TESTS (10 tests) ====
 def test_distance_zero_same_point():
-    assert calculate_haversine_distance(-23.5505, -46.6333, -23.5505, -46.6333) == 0.0
+    assert calculate_haversine_distance(Coordinates(-23.5505, -46.6333), Coordinates(-23.5505, -46.6333)) == 0.0
 
 def test_distance_sp_to_rj():
-    dist = calculate_haversine_distance(-23.5505, -46.6333, -22.9068, -43.1729)
+    dist = calculate_haversine_distance(Coordinates(-23.5505, -46.6333), Coordinates(-22.9068, -43.1729))
     assert 350 < dist < 370  # ~357 km
 
 def test_distance_short_range():
-    dist = calculate_haversine_distance(-23.5505, -46.6333, -23.5605, -46.6433)
+    dist = calculate_haversine_distance(Coordinates(-23.5505, -46.6333), Coordinates(-23.5605, -46.6433))
     assert 1.0 < dist < 2.0
 
 def test_distance_across_equator():
-    dist = calculate_haversine_distance(1.0, -45.0, -1.0, -45.0)
+    dist = calculate_haversine_distance(Coordinates(1.0, -45.0), Coordinates(-1.0, -45.0))
     assert 220 < dist < 225
 
 def test_distance_negative_coords():
-    assert calculate_haversine_distance(-10.0, -10.0, -10.0, -10.0) == 0.0
+    assert calculate_haversine_distance(Coordinates(-10.0, -10.0), Coordinates(-10.0, -10.0)) == 0.0
 
 def test_distance_long_range():
     # Brazil to Portugal roughly
-    dist = calculate_haversine_distance(-23.5, -46.6, 38.7, -9.1)
+    dist = calculate_haversine_distance(Coordinates(-23.5, -46.6), Coordinates(38.7, -9.1))
     assert 7000 < dist < 8500
 
 def test_distance_equator_meridian():
     # exactly at 0,0
-    assert calculate_haversine_distance(0.0, 0.0, 0.0, 1.0) > 110.0
+    assert calculate_haversine_distance(Coordinates(0.0, 0.0), Coordinates(0.0, 1.0)) > 110.0
 
 def test_distance_poles():
     # N pole to close
-    dist = calculate_haversine_distance(90.0, 0.0, 89.0, 0.0)
+    dist = calculate_haversine_distance(Coordinates(90.0, 0.0), Coordinates(89.0, 0.0))
     assert 110.0 < dist < 112.0
 
 def test_distance_invalid_large_lat():
     with pytest.raises(ValueError):
-        calculate_haversine_distance(100.0, 0, 0, 0)
+        calculate_haversine_distance(Coordinates(100.0, 0), Coordinates(0, 0))
 
 def test_distance_invalid_large_lng():
     with pytest.raises(ValueError):
-        calculate_haversine_distance(0, 200.0, 0, 0)
+        calculate_haversine_distance(Coordinates(0, 200.0), Coordinates(0, 0))
 
 # ==== ETA TESTS (10 tests) ====
 def test_eta_100km_100kmh():

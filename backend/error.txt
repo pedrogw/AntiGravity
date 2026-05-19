@@ -1,0 +1,127 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.0.3, pluggy-1.6.0 -- /home/pedro/Documentos/Antigravity/backend/venv/bin/python3
+cachedir: .pytest_cache
+rootdir: /home/pedro/Documentos/Antigravity/backend
+configfile: pytest.ini
+plugins: asyncio-1.3.0, cov-7.1.0, anyio-4.13.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=session, asyncio_default_test_loop_scope=function
+collecting ... collected 1 item
+
+tests/api/test_integration.py::test_create_factory FAILED                [100%]
+
+=================================== FAILURES ===================================
+_____________________________ test_create_factory ______________________________
+tests/api/test_integration.py:56: in test_create_factory
+    response = await client.post(
+venv/lib/python3.12/site-packages/httpx/_client.py:1859: in post
+    return await self.request(
+venv/lib/python3.12/site-packages/httpx/_client.py:1540: in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv/lib/python3.12/site-packages/httpx/_client.py:1629: in send
+    response = await self._send_handling_auth(
+venv/lib/python3.12/site-packages/httpx/_client.py:1657: in _send_handling_auth
+    response = await self._send_handling_redirects(
+venv/lib/python3.12/site-packages/httpx/_client.py:1694: in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv/lib/python3.12/site-packages/httpx/_client.py:1730: in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv/lib/python3.12/site-packages/httpx/_transports/asgi.py:170: in handle_async_request
+    await self.app(scope, receive, send)
+venv/lib/python3.12/site-packages/fastapi/applications.py:1159: in __call__
+    await super().__call__(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/applications.py:90: in __call__
+    await self.middleware_stack(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/middleware/errors.py:186: in __call__
+    raise exc
+venv/lib/python3.12/site-packages/starlette/middleware/errors.py:164: in __call__
+    await self.app(scope, receive, _send)
+venv/lib/python3.12/site-packages/starlette/middleware/cors.py:88: in __call__
+    await self.app(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py:63: in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/_exception_handler.py:53: in wrapped_app
+    raise exc
+venv/lib/python3.12/site-packages/starlette/_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py:18: in __call__
+    await self.app(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/routing.py:660: in __call__
+    await self.middleware_stack(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/routing.py:680: in app
+    await route.handle(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/routing.py:276: in handle
+    await self.app(scope, receive, send)
+venv/lib/python3.12/site-packages/fastapi/routing.py:134: in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/_exception_handler.py:53: in wrapped_app
+    raise exc
+venv/lib/python3.12/site-packages/starlette/_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+venv/lib/python3.12/site-packages/fastapi/routing.py:120: in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+venv/lib/python3.12/site-packages/fastapi/routing.py:695: in app
+    content = await serialize_response(
+venv/lib/python3.12/site-packages/fastapi/routing.py:300: in serialize_response
+    raise ResponseValidationError(
+E   fastapi.exceptions.ResponseValidationError: 2 validation errors:
+E     {'type': 'missing', 'loc': ('response', 'lat'), 'msg': 'Field required', 'input': Factory(name='Test Factory', location=Coordinates(lat=-23.1234, lng=-46.5678), id=UUID('cdd2cc8c-43e7-46e1-8989-c436a19ca22f'))}
+E     {'type': 'missing', 'loc': ('response', 'lng'), 'msg': 'Field required', 'input': Factory(name='Test Factory', location=Coordinates(lat=-23.1234, lng=-46.5678), id=UUID('cdd2cc8c-43e7-46e1-8989-c436a19ca22f'))}
+E   
+E     File "/home/pedro/Documentos/Antigravity/backend/app/api/places.py", line 15, in create_factory
+E       POST /places/factories
+=============================== warnings summary ===============================
+tests/api/test_integration.py::test_create_factory
+  /home/pedro/Documentos/Antigravity/backend/app/core/security.py:17: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    expire = datetime.utcnow() + timedelta(minutes=60*24*8) # 8 days
+
+venv/lib/python3.12/site-packages/_pytest/cacheprovider.py:475
+  /home/pedro/Documentos/Antigravity/backend/venv/lib/python3.12/site-packages/_pytest/cacheprovider.py:475: PytestCacheWarning: cache could not write path /home/pedro/Documentos/Antigravity/backend/.pytest_cache/v/cache/nodeids: [Errno 13] Permission denied: '/home/pedro/Documentos/Antigravity/backend/.pytest_cache/v/cache/nodeids'
+    config.cache.set("cache/nodeids", sorted(self.cached_nodeids))
+
+venv/lib/python3.12/site-packages/_pytest/cacheprovider.py:429
+  /home/pedro/Documentos/Antigravity/backend/venv/lib/python3.12/site-packages/_pytest/cacheprovider.py:429: PytestCacheWarning: cache could not write path /home/pedro/Documentos/Antigravity/backend/.pytest_cache/v/cache/lastfailed: [Errno 13] Permission denied: '/home/pedro/Documentos/Antigravity/backend/.pytest_cache/v/cache/lastfailed'
+    config.cache.set("cache/lastfailed", self.lastfailed)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.12.3-final-0 ________________
+
+Name                                               Stmts   Miss  Cover   Missing
+--------------------------------------------------------------------------------
+app/api/auth.py                                       24      0   100%
+app/api/deliveries.py                                 19      6    68%   18-20, 28-30
+app/api/deps.py                                       23      4    83%   20, 22-23, 28
+app/api/places.py                                     29      9    69%   27-29, 37-39, 43-45
+app/core/config.py                                     8      0   100%
+app/core/security.py                                  16      1    94%   15
+app/db/base_class.py                                   9      0   100%
+app/db/session.py                                      7      2    71%   15-16
+app/domain/entities/delivery.py                       21      0   100%
+app/domain/entities/place.py                          14      0   100%
+app/domain/entities/user.py                           14      0   100%
+app/domain/repositories/delivery_repo.py               3      0   100%
+app/domain/repositories/place_repo.py                  3      0   100%
+app/domain/repositories/user_repo.py                   3      0   100%
+app/domain/value_objects/coordinates.py                5      0   100%
+app/infrastructure/orm/delivery.py                    25      0   100%
+app/infrastructure/orm/place.py                       18      0   100%
+app/infrastructure/orm/user.py                        16      0   100%
+app/infrastructure/repositories/delivery_repo.py      20     10    50%   9, 12-25, 28-30, 33
+app/infrastructure/repositories/place_repo.py         33     12    64%   25-27, 30-40, 43-45, 55
+app/infrastructure/repositories/user_repo.py          21      0   100%
+app/main.py                                           19      2    89%   34, 41
+app/schemas/delivery.py                               17      0   100%
+app/schemas/place.py                                  21      0   100%
+app/schemas/user.py                                   14      0   100%
+app/use_cases/auth_use_cases.py                       23      2    91%   13, 30
+app/use_cases/deliveries_use_cases.py                 14      5    64%   7, 10-15, 19, 22
+app/use_cases/places_use_cases.py                     26      7    73%   16, 19, 23, 26-27, 31, 34
+--------------------------------------------------------------------------------
+TOTAL                                                465     60    87%
+=========================== short test summary info ============================
+FAILED tests/api/test_integration.py::test_create_factory - fastapi.exception...
+======================== 1 failed, 3 warnings in 5.13s =========================

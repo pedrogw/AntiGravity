@@ -1,18 +1,19 @@
 import math
 from datetime import datetime, timedelta
+from app.domain.value_objects.coordinates import Coordinates
 
-def calculate_haversine_distance(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
-    if not (-90 <= lat1 <= 90 and -90 <= lat2 <= 90):
+def calculate_haversine_distance(point1: Coordinates, point2: Coordinates) -> float:
+    if not (-90 <= point1.lat <= 90 and -90 <= point2.lat <= 90):
         raise ValueError("Latitude out of bounds")
-    if not (-180 <= lng1 <= 180 and -180 <= lng2 <= 180):
+    if not (-180 <= point1.lng <= 180 and -180 <= point2.lng <= 180):
         raise ValueError("Longitude out of bounds")
         
     R = 6371.0 # Radius of earth in km
     
-    phi1 = math.radians(lat1)
-    phi2 = math.radians(lat2)
-    delta_phi = math.radians(lat2 - lat1)
-    delta_lambda = math.radians(lng2 - lng1)
+    phi1 = math.radians(point1.lat)
+    phi2 = math.radians(point2.lat)
+    delta_phi = math.radians(point2.lat - point1.lat)
+    delta_lambda = math.radians(point2.lng - point1.lng)
     
     a = math.sin(delta_phi / 2.0) ** 2 + \
         math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2.0) ** 2

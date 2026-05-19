@@ -3,6 +3,7 @@ from sqlalchemy.future import select
 from typing import List
 from app.infrastructure.orm.place import Factory as FactoryModel, Store as StoreModel
 from app.domain.entities.place import Factory as FactoryEntity, Store as StoreEntity
+from app.domain.value_objects.coordinates import Coordinates
 
 class PlaceRepository:
     def __init__(self, db: AsyncSession):
@@ -12,8 +13,8 @@ class PlaceRepository:
         db_factory = FactoryModel(
             id=factory_entity.id,
             name=factory_entity.name,
-            lat=factory_entity.lat,
-            lng=factory_entity.lng
+            lat=factory_entity.location.lat,
+            lng=factory_entity.location.lng
         )
         self.db.add(db_factory)
         await self.db.commit()
@@ -29,8 +30,8 @@ class PlaceRepository:
         db_store = StoreModel(
             id=store_entity.id,
             name=store_entity.name,
-            lat=store_entity.lat,
-            lng=store_entity.lng,
+            lat=store_entity.location.lat,
+            lng=store_entity.location.lng,
             owner_id=store_entity.owner_id
         )
         self.db.add(db_store)
@@ -47,15 +48,13 @@ class PlaceRepository:
         return FactoryEntity(
             id=model.id,
             name=model.name,
-            lat=model.lat,
-            lng=model.lng
+            location=Coordinates(lat=model.lat, lng=model.lng)
         )
 
     def _store_to_entity(self, model: StoreModel) -> StoreEntity:
         return StoreEntity(
             id=model.id,
             name=model.name,
-            lat=model.lat,
-            lng=model.lng,
+            location=Coordinates(lat=model.lat, lng=model.lng),
             owner_id=model.owner_id
         )

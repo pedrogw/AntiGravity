@@ -3,7 +3,7 @@ import datetime
 import enum
 from sqlalchemy import String, DateTime, func
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.types import UUID
 from app.db.base_class import Base
 
 class UserRole(str, enum.Enum):
