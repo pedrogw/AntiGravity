@@ -2,9 +2,9 @@ import { render, screen } from '@testing-library/react';
 import Page from '../src/app/page';
 
 // Mock next/navigation
-jest.mock('next/navigation', () => ({
+vi.mock('next/navigation', () => ({
   useRouter: () => ({
-    push: jest.fn(),
+    push: vi.fn(),
   }),
 }));
 

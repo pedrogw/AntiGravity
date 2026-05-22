@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { apiClient } from '../infrastructure/api/api_client';
+import { makeLoginUseCase } from '../infrastructure/di/factories';
 import { getRouteByRole } from '../use_cases/getRouteByRole';
+import { AppError } from '../domain/errors/AppError';
 
 export function useAuth() {
   const [isLoading, setIsLoading] = useState(false);
@@ -13,19 +14,18 @@ export function useAuth() {
     setError('');
 
     try {
-      const response = await apiClient.post('/auth/login', { email, password });
+      const loginUseCase = makeLoginUseCase();
+      const user = await loginUseCase.execute({ email, password });
       
-      const { access_token, role } = response.data;
-      
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('token', access_token);
-      }
-
-      const destination = getRouteByRole(role);
+      const destination = getRouteByRole(user.role);
       router.push(destination);
 
     } catch (err) {
-      setError('Credenciais inválidas');
+      if (err instanceof AppError) {
+        setError(err.message);
+      } else {
+        setError('Ocorreu um erro inesperado.');
+      }
     } finally {
       setIsLoading(false);
     }

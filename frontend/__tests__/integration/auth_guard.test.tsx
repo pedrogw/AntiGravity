@@ -2,13 +2,13 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { AuthGuard } from '../../src/components/AuthGuard';
 import { isTokenExpired } from '../../src/utils/jwt';
 
-jest.mock('../../src/utils/jwt', () => ({
-  isTokenExpired: jest.fn(),
+vi.mock('../../src/utils/jwt', () => ({
+  isTokenExpired: vi.fn(),
 }));
 
 // Mock next/navigation
-const pushMock = jest.fn();
-jest.mock('next/navigation', () => ({
+const pushMock = vi.fn();
+vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: pushMock,
   }),
@@ -16,11 +16,11 @@ jest.mock('next/navigation', () => ({
 
 describe('Auth Guard Integration', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('deve redirecionar para a raiz (/) se não houver token no localStorage', async () => {
-    Storage.prototype.getItem = jest.fn().mockReturnValue(null);
+    Storage.prototype.getItem = vi.fn().mockReturnValue(null);
 
     render(
       <AuthGuard>
@@ -38,8 +38,8 @@ describe('Auth Guard Integration', () => {
   });
 
   it('deve renderizar o conteúdo se houver token no localStorage e não estiver expirado', async () => {
-    Storage.prototype.getItem = jest.fn().mockReturnValue('valid_token');
-    (isTokenExpired as jest.Mock).mockReturnValue(false);
+    Storage.prototype.getItem = vi.fn().mockReturnValue('valid_token');
+    (isTokenExpired as vi.Mock).mockReturnValue(false);
 
     render(
       <AuthGuard>

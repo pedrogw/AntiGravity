@@ -2,8 +2,8 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import Page from '../../src/app/page';
 
 // Mock next/navigation
-const pushMock = jest.fn();
-jest.mock('next/navigation', () => ({
+const pushMock = vi.fn();
+vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: pushMock,
   }),
@@ -11,8 +11,8 @@ jest.mock('next/navigation', () => ({
 
 describe('Login Flow Integration (Lojista)', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    Storage.prototype.setItem = jest.fn();
+    vi.clearAllMocks();
+    Storage.prototype.setItem = vi.fn();
   });
 
   it('deve logar como lojista, salvar token e redirecionar para /dashboard', async () => {
@@ -43,7 +43,7 @@ describe('Login Flow Integration (Lojista)', () => {
     fireEvent.click(screen.getByRole('button', { name: /entrar/i }));
 
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent(/credenciais inválidas/i);
+      expect(screen.getByRole('alert')).toHaveTextContent(/E-mail ou senha incorretos/i);
       expect(pushMock).not.toHaveBeenCalled();
     });
   });

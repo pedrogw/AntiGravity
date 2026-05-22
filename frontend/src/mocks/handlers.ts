@@ -10,8 +10,8 @@ export const handlers = [
       return res(
         ctx.status(200),
         ctx.json({
-          access_token: 'fake_lojista_token',
-          role: 'lojista'
+          token: 'fake_lojista_token',
+          user: { id: 'user-lojista', email, role: 'lojista', created_at: new Date().toISOString() }
         })
       );
     }
@@ -21,8 +21,8 @@ export const handlers = [
       return res(
         ctx.status(200),
         ctx.json({
-          access_token: 'fake_motorista_token',
-          role: 'motorista'
+          token: 'fake_motorista_token',
+          user: { id: 'user-motorista', email, role: 'motorista', created_at: new Date().toISOString() }
         })
       );
     }
