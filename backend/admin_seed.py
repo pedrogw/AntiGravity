@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 from sqlalchemy.future import select
 from sqlalchemy import delete
 from app.core.config import settings
-from app.models.user import User, UserRole
+from app.infrastructure.orm.user import User, UserRole
 from app.core.security import get_password_hash
 
 async def admin_seed():

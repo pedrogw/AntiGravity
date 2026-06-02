@@ -1,8 +1,8 @@
 import asyncio
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from app.core.config import settings
-from app.models.user import User, UserRole
-from app.models.place import Factory, Store
+from app.infrastructure.orm.user import User, UserRole
+from app.infrastructure.orm.place import Factory, Store
 from app.core.security import get_password_hash
 
 async def seed():
