@@ -1,8 +1,9 @@
 import math
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app.domain.value_objects.coordinates import Coordinates
 
 def calculate_haversine_distance(point1: Coordinates, point2: Coordinates) -> float:
+    """Distância em km entre duas coordenadas usando a fórmula de Haversine."""
     if not (-90 <= point1.lat <= 90 and -90 <= point2.lat <= 90):
         raise ValueError("Latitude out of bounds")
     if not (-180 <= point1.lng <= 180 and -180 <= point2.lng <= 180):
@@ -24,6 +25,7 @@ def calculate_haversine_distance(point1: Coordinates, point2: Coordinates) -> fl
     return distance
 
 def calculate_eta(distance_km: float, speed_kmh: float) -> float:
+    """Horas estimadas para percorrer distance_km a speed_kmh."""
     if speed_kmh <= 0:
         raise ValueError("Speed must be positive")
     if distance_km < 0:
@@ -34,4 +36,5 @@ def calculate_eta(distance_km: float, speed_kmh: float) -> float:
     return distance_km / speed_kmh
 
 def add_hours_to_now(hours: float) -> datetime:
-    return datetime.utcnow() + timedelta(hours=hours)
+    """Retorna datetime atual acrescido de hours horas."""
+    return datetime.now(timezone.utc) + timedelta(hours=hours)

@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from typing import List
+from typing import List, Optional
+import uuid
 from app.infrastructure.orm.place import Factory as FactoryModel, Store as StoreModel
 from app.domain.entities.place import Factory as FactoryEntity, Store as StoreEntity
 from app.domain.value_objects.coordinates import Coordinates
@@ -43,6 +44,12 @@ class PlaceRepository:
         result = await self.db.execute(select(StoreModel).offset(offset).limit(limit))
         models = result.scalars().all()
         return [self._store_to_entity(m) for m in models]
+
+    async def get_store_by_id(self, store_id: uuid.UUID) -> Optional[StoreEntity]:
+        model = await self.db.get(StoreModel, store_id)
+        if not model:
+            return None
+        return self._store_to_entity(model)
 
     def _factory_to_entity(self, model: FactoryModel) -> FactoryEntity:
         return FactoryEntity(

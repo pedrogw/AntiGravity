@@ -2,37 +2,65 @@ import pytest
 from httpx import AsyncClient
 import uuid
 from datetime import timedelta
-from jose import jwt
-from app.core.config import settings
 from app.core.security import create_access_token
 
-@pytest.mark.anyio
-async def test_access_denied_for_motorista(client: AsyncClient):
-    # Generating motorista token
-    token = create_access_token(subject=uuid.uuid4(), role="motorista")
-    headers = {"Authorization": f"Bearer {token}"}
-    
-    # Try to create factory (requires lojista)
-    factory_data = {"name": "Test", "lat": 10.0, "lng": 10.0}
-    response = await client.post(
-        "/places/factories",
-        json=factory_data,
-        headers=headers
-    )
-    assert response.status_code == 403
-    assert response.json()["detail"] == "Acesso negado: role insuficiente"
+pytestmark = pytest.mark.anyio
 
-@pytest.mark.anyio
-async def test_access_denied_for_expired_token(client: AsyncClient):
-    # Expired token
-    token = create_access_token(subject=uuid.uuid4(), role="lojista", expires_delta=timedelta(seconds=-1))
-    headers = {"Authorization": f"Bearer {token}"}
-    
-    # Try to create factory
-    factory_data = {"name": "Test2", "lat": 10.0, "lng": 10.0}
-    response = await client.post(
-        "/places/factories",
-        json=factory_data,
-        headers=headers
-    )
-    assert response.status_code == 401
+
+class TestRoleBasedAccess:
+    async def test_motorista_cannot_create_factory(self, client: AsyncClient):
+        token = create_access_token(subject=uuid.uuid4(), role="motorista")
+        response = await client.post(
+            "/places/factories",
+            json={"name": "Test", "lat": 10.0, "lng": 10.0},
+            headers={"Authorization": f"Bearer {token}"}
+        )
+        assert response.status_code == 403
+        assert response.json()["detail"] == "Acesso negado: role insuficiente"
+
+    async def test_motorista_cannot_create_store(self, client: AsyncClient):
+        token = create_access_token(subject=uuid.uuid4(), role="motorista")
+        response = await client.post(
+            "/places/stores",
+            json={"name": "S", "lat": 10.0, "lng": 10.0, "owner_id": str(uuid.uuid4())},
+            headers={"Authorization": f"Bearer {token}"}
+        )
+        assert response.status_code == 403
+
+    async def test_motorista_cannot_create_delivery(self, client: AsyncClient):
+        token = create_access_token(subject=uuid.uuid4(), role="motorista")
+        response = await client.post(
+            "/deliveries/",
+            json={"factory_id": str(uuid.uuid4()), "store_id": str(uuid.uuid4()), "driver_id": str(uuid.uuid4())},
+            headers={"Authorization": f"Bearer {token}"}
+        )
+        assert response.status_code == 403
+
+
+class TestTokenValidation:
+    async def test_expired_token_returns_401(self, client: AsyncClient):
+        token = create_access_token(
+            subject=uuid.uuid4(), role="lojista",
+            expires_delta=timedelta(seconds=-1)
+        )
+        response = await client.post(
+            "/places/factories",
+            json={"name": "Test", "lat": 10.0, "lng": 10.0},
+            headers={"Authorization": f"Bearer {token}"}
+        )
+        assert response.status_code == 401
+
+    async def test_missing_token_returns_403(self, client: AsyncClient):
+        response = await client.post(
+            "/places/factories",
+            json={"name": "Test", "lat": 10.0, "lng": 10.0}
+        )
+        assert response.status_code in (401, 403)
+
+    async def test_malformed_token_returns_401(self, client: AsyncClient):
+        response = await client.post(
+            "/places/factories",
+            json={"name": "Test", "lat": 10.0, "lng": 10.0},
+            headers={"Authorization": "Bearer invalid-token"}
+        )
+        assert response.status_code == 401

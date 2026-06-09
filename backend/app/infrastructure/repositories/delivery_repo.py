@@ -1,6 +1,9 @@
+from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from typing import List
+from sqlalchemy import func
+from typing import List, Optional
+import uuid
 from app.infrastructure.orm.delivery import Delivery as DeliveryModel
 from app.domain.entities.delivery import Delivery as DeliveryEntity
 
@@ -17,7 +20,9 @@ class DeliveryRepository:
             status=entity.status,
             eta_original=entity.eta_original,
             eta_current=entity.eta_current,
-            departed_at=entity.departed_at
+            departed_at=entity.departed_at,
+            current_lat=entity.current_lat,
+            current_lng=entity.current_lng,
         )
         self.db.add(db_delivery)
         await self.db.commit()
@@ -29,6 +34,40 @@ class DeliveryRepository:
         models = result.scalars().all()
         return [self._to_entity(m) for m in models]
 
+    async def get_by_id(self, delivery_id: uuid.UUID) -> Optional[DeliveryEntity]:
+        model = await self.db.get(DeliveryModel, delivery_id)
+        if not model:
+            return None
+        return self._to_entity(model)
+
+    async def update(self, entity: DeliveryEntity) -> DeliveryEntity:
+        model = await self.db.get(DeliveryModel, entity.id)
+        model.status = entity.status
+        model.eta_original = entity.eta_original
+        model.eta_current = entity.eta_current
+        model.departed_at = entity.departed_at
+        model.current_lat = entity.current_lat
+        model.current_lng = entity.current_lng
+        await self.db.commit()
+        await self.db.refresh(model)
+        return self._to_entity(model)
+
+    async def count_by_status(self) -> dict[str, int]:
+        result = await self.db.execute(
+            select(DeliveryModel.status, func.count(DeliveryModel.id))
+            .group_by(DeliveryModel.status)
+        )
+        return dict(result.all())
+
+    async def count_delayed(self) -> int:
+        now = datetime.now(timezone.utc)
+        result = await self.db.execute(
+            select(func.count(DeliveryModel.id))
+            .where(DeliveryModel.status.in_(["em_transito", "pendente"]))
+            .where(DeliveryModel.eta_current < now)
+        )
+        return result.scalar() or 0
+
     def _to_entity(self, model: DeliveryModel) -> DeliveryEntity:
         return DeliveryEntity(
             id=model.id,
@@ -38,5 +77,7 @@ class DeliveryRepository:
             status=model.status,
             eta_original=model.eta_original,
             eta_current=model.eta_current,
-            departed_at=model.departed_at
+            departed_at=model.departed_at,
+            current_lat=model.current_lat,
+            current_lng=model.current_lng,
         )

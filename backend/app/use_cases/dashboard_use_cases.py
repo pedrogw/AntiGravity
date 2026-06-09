@@ -1,0 +1,44 @@
+from asyncio import gather
+from app.domain.repositories.delivery_repo import DeliveryRepositoryProtocol
+from app.domain.repositories.alert_repo import AlertRepositoryProtocol
+from app.domain.repositories.chaos_repo import ChaosRepositoryProtocol
+from app.schemas.dashboard import DashboardResponse, DeliveryStatusCount, ChaosTypeCount
+
+
+class GetDashboardUseCase:
+    """Agrega dados de entregas, alertas e caos para exibição no dashboard."""
+    def __init__(
+        self,
+        delivery_repo: DeliveryRepositoryProtocol,
+        alert_repo: AlertRepositoryProtocol,
+        chaos_repo: ChaosRepositoryProtocol,
+    ):
+        self.delivery_repo = delivery_repo
+        self.alert_repo = alert_repo
+        self.chaos_repo = chaos_repo
+
+    async def execute(self) -> DashboardResponse:
+        by_status, delayed, total_alerts, critical_alerts, active_chaos, chaos_by_type = await gather(
+            self.delivery_repo.count_by_status(),
+            self.delivery_repo.count_delayed(),
+            self.alert_repo.count_all(),
+            self.alert_repo.count_all(is_critical=True),
+            self.chaos_repo.count_active(),
+            self.chaos_repo.count_by_type(),
+        )
+
+        total_deliveries = sum(by_status.values())
+
+        return DashboardResponse(
+            total_deliveries=total_deliveries,
+            deliveries_by_status=[
+                DeliveryStatusCount(status=s, count=c) for s, c in sorted(by_status.items())
+            ],
+            delayed_deliveries=delayed,
+            total_alerts=total_alerts,
+            critical_alerts=critical_alerts,
+            active_chaos_events=active_chaos,
+            chaos_by_type=[
+                ChaosTypeCount(event_type=t, count=c) for t, c in sorted(chaos_by_type.items())
+            ],
+        )

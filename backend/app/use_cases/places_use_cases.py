@@ -5,6 +5,7 @@ from app.domain.value_objects.coordinates import Coordinates
 from app.domain.repositories.place_repo import PlaceRepositoryProtocol
 
 class CreateFactoryUseCase:
+    """Cria nova fábrica com nome e coordenadas."""
     def __init__(self, repo: PlaceRepositoryProtocol):
         self.repo = repo
 
@@ -13,6 +14,7 @@ class CreateFactoryUseCase:
         return await self.repo.create_factory(factory)
 
 class ListFactoriesUseCase:
+    """Retorna lista paginada de fábricas."""
     def __init__(self, repo: PlaceRepositoryProtocol):
         self.repo = repo
 
@@ -20,6 +22,7 @@ class ListFactoriesUseCase:
         return await self.repo.list_factories(limit=limit, offset=offset)
 
 class CreateStoreUseCase:
+    """Cria nova loja vinculada a um lojista (owner_id)."""
     def __init__(self, repo: PlaceRepositoryProtocol):
         self.repo = repo
 
@@ -28,6 +31,7 @@ class CreateStoreUseCase:
         return await self.repo.create_store(store)
 
 class ListStoresUseCase:
+    """Retorna lista paginada de lojas."""
     def __init__(self, repo: PlaceRepositoryProtocol):
         self.repo = repo
 

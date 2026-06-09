@@ -2,8 +2,16 @@ import uuid
 import datetime
 from dataclasses import dataclass, field
 
+VALID_TRANSITIONS = {
+    "pendente": ["em_transito"],
+    "em_transito": ["entregue", "cancelada"],
+    "entregue": [],
+    "cancelada": [],
+}
+
 @dataclass
 class Delivery:
+    """Entrega com rastreamento de status, posição do motorista e ETA."""
     factory_id: uuid.UUID
     store_id: uuid.UUID
     driver_id: uuid.UUID
@@ -12,9 +20,12 @@ class Delivery:
     eta_original: datetime.datetime | None = None
     eta_current: datetime.datetime | None = None
     departed_at: datetime.datetime | None = None
+    current_lat: float | None = None
+    current_lng: float | None = None
 
 @dataclass
 class EtaHistory:
+    """Registro de alteração do ETA com motivo (posicao_atualizada, caos_injetado)."""
     delivery_id: uuid.UUID
     eta_before: datetime.datetime
     eta_after: datetime.datetime

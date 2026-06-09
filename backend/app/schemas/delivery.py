@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 import uuid
 from datetime import datetime
@@ -11,10 +11,17 @@ class DeliveryBase(BaseModel):
 class DeliveryCreate(DeliveryBase):
     pass
 
+class DeliveryUpdate(BaseModel):
+    status: Optional[str] = None
+    lat: Optional[float] = Field(None, ge=-90, le=90)
+    lng: Optional[float] = Field(None, ge=-180, le=180)
+
 class DeliveryResponse(DeliveryBase):
     id: uuid.UUID
     status: str
     eta_original: Optional[datetime]
     eta_current: Optional[datetime]
     departed_at: Optional[datetime]
+    current_lat: Optional[float] = None
+    current_lng: Optional[float] = None
     model_config = {"from_attributes": True}

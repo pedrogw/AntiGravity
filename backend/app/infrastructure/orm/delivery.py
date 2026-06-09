@@ -1,6 +1,6 @@
 import uuid
 import datetime
-from sqlalchemy import String, ForeignKey, DateTime, func
+from sqlalchemy import String, Float, ForeignKey, DateTime, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import UUID
 from app.db.base_class import Base
@@ -10,11 +10,13 @@ class Delivery(Base):
     factory_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("factory.id"))
     store_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("store.id"), index=True)
     driver_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("user.id"), index=True)
-    
+
     status: Mapped[str] = mapped_column(String, nullable=False, default="pendente")
     eta_original: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True))
     eta_current: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True))
     departed_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True))
+    current_lat: Mapped[float | None] = mapped_column(Float, nullable=True)
+    current_lng: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     store = relationship("Store")
     driver = relationship("User")

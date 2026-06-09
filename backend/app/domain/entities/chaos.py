@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 
 @dataclass
 class ChaosEventLog:
+    """Evento de caos ativo ou finalizado que impacta o ETA de uma entrega."""
     delivery_id: uuid.UUID
     event_type: str
     impact_factor: float = 1.0

@@ -5,6 +5,9 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql+asyncpg://user:password@db:5432/logistics"
     SECRET_KEY: str = "logistics_secret_key_tcc_only"
     ALGORITHM: str = "HS256"
+    DEFAULT_SPEED_KMH: float = 60.0
+    CHAOS_CRITICAL_FACTOR_THRESHOLD: float = 2.0
+    CHAOS_CRITICAL_DELAY_THRESHOLD: int = 60
 
     model_config = SettingsConfigDict(case_sensitive=True, env_file=".env")
 

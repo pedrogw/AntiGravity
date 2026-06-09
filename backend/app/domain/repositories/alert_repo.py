@@ -1,0 +1,11 @@
+from typing import Protocol, List, Optional
+import uuid
+from app.domain.entities.alert import Alert as AlertEntity
+
+class AlertRepositoryProtocol(Protocol):
+    """Repositório para operações de persistência de alertas."""
+    async def create(self, entity: AlertEntity) -> AlertEntity: ...
+
+    async def list_all(self, delivery_id: Optional[uuid.UUID] = None, limit: int = 50, offset: int = 0) -> List[AlertEntity]: ...
+
+    async def count_all(self, is_critical: Optional[bool] = None) -> int: ...

@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 
 @dataclass
 class Alert:
+    """Alerta gerado por condição crítica (ex: caos com fator > 2.0 ou atraso > 60min)."""
     delivery_id: uuid.UUID
     message: str
     is_critical: bool = False

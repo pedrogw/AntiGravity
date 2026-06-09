@@ -1,0 +1,6 @@
+from typing import Protocol
+from app.domain.entities.delivery import EtaHistory as EtaHistoryEntity
+
+class EtaHistoryRepositoryProtocol(Protocol):
+    """Repositório para registro de histórico de alterações de ETA."""
+    async def create(self, entity: EtaHistoryEntity) -> EtaHistoryEntity: ...

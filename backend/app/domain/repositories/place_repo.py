@@ -1,7 +1,9 @@
-from typing import Protocol, List
+from typing import Protocol, List, Optional
+import uuid
 from app.domain.entities.place import Factory as FactoryEntity, Store as StoreEntity
 
 class PlaceRepositoryProtocol(Protocol):
+    """Repositório para operações de persistência de fábricas e lojas."""
     async def create_factory(self, factory_entity: FactoryEntity) -> FactoryEntity: ...
 
     async def list_factories(self, limit: int = 50, offset: int = 0) -> List[FactoryEntity]: ...
@@ -9,3 +11,5 @@ class PlaceRepositoryProtocol(Protocol):
     async def create_store(self, store_entity: StoreEntity) -> StoreEntity: ...
 
     async def list_stores(self, limit: int = 50, offset: int = 0) -> List[StoreEntity]: ...
+
+    async def get_store_by_id(self, store_id: uuid.UUID) -> Optional[StoreEntity]: ...

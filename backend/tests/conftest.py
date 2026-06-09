@@ -57,10 +57,31 @@ async def client(db_session: AsyncSession):
         yield ac
     app.dependency_overrides.clear()
 
+async def _create_user(client: AsyncClient, role: str) -> dict:
+    email = f"{role[:4]}_{uuid.uuid4().hex[:8]}@example.com"
+    reg = await client.post(
+        "/auth/register",
+        json={"email": email, "password": "testpassword", "role": role},
+    )
+    user_id = reg.json()["id"]
+    login = await client.post(
+        "/auth/login",
+        json={"email": email, "password": "testpassword"},
+    )
+    token = login.json()["access_token"]
+    return {"headers": {"Authorization": f"Bearer {token}"}, "id": user_id}
+
+
 @pytest.fixture
-async def lojista_token_headers(client: AsyncClient):
-    email = f"fac_{uuid.uuid4().hex[:8]}@example.com"
-    await client.post("/auth/register", json={"email": email, "password": "testpassword", "role": "lojista"})
-    login_resp = await client.post("/auth/login", json={"email": email, "password": "testpassword"})
-    token = login_resp.json()["access_token"]
-    return {"Authorization": f"Bearer {token}"}
+async def lojista(client: AsyncClient) -> dict:
+    return await _create_user(client, "lojista")
+
+
+@pytest.fixture
+async def motorista(client: AsyncClient) -> dict:
+    return await _create_user(client, "motorista")
+
+
+@pytest.fixture
+async def lojista_token_headers(lojista: dict) -> dict:
+    return lojista["headers"]

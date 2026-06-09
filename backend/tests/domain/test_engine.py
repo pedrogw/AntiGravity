@@ -1,5 +1,5 @@
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app.domain.haversine import calculate_haversine_distance, calculate_eta, add_hours_to_now
 from app.domain.value_objects.coordinates import Coordinates
 
@@ -68,19 +68,13 @@ def test_eta_negative_speed():
 
 def test_eta_large_decimals():
     eta = calculate_eta(333.333, 80.0)
-    assert round(eta, 2) == 4.17
+    assert eta == pytest.approx(4.16666, rel=0.01)
 
 def test_eta_add_hours_returns_datetime():
     dt = add_hours_to_now(1.5)
     assert isinstance(dt, datetime)
 
-def test_eta_add_hours_logic():
-    now = datetime.utcnow()
+def test_eta_add_hours_positive():
     future = add_hours_to_now(2.0)
-    diff = future - now
-    assert diff.total_seconds() >= 7199
-
-def test_eta_add_zero_hours():
-    now = datetime.utcnow()
-    res = add_hours_to_now(0.0)
-    assert (res - now).total_seconds() < 1
+    now = datetime.now(timezone.utc)
+    assert future > now

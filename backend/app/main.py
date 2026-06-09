@@ -5,6 +5,9 @@ from sqlalchemy.exc import OperationalError
 from app.api.auth import router as auth_router
 from app.api.places import router as places_router
 from app.api.deliveries import router as deliveries_router
+from app.api.chaos import router as chaos_router
+from app.api.alerts import router as alerts_router
+from app.api.dashboard import router as dashboard_router
 
 app = FastAPI(
     title="Logistics Manager API",
@@ -28,6 +31,9 @@ app.add_middleware(
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
 app.include_router(places_router, prefix="/places", tags=["places"])
 app.include_router(deliveries_router, prefix="/deliveries", tags=["deliveries"])
+app.include_router(chaos_router, prefix="", tags=["chaos"])
+app.include_router(alerts_router, prefix="", tags=["alerts"])
+app.include_router(dashboard_router, prefix="", tags=["dashboard"])
 
 @app.exception_handler(OperationalError)
 async def db_connection_exception_handler(request: Request, exc: OperationalError):

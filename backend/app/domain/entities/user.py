@@ -4,11 +4,13 @@ import enum
 from dataclasses import dataclass, field
 
 class UserRole(str, enum.Enum):
+    """Roles do sistema: lojista (cria entregas) e motorista (executa entregas)."""
     lojista = "lojista"
     motorista = "motorista"
 
 @dataclass
 class User:
+    """Usuário autenticável com email, hash de senha e role."""
     email: str
     password_hash: str
     role: str

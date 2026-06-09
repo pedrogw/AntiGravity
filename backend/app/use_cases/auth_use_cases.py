@@ -4,6 +4,7 @@ from app.core.security import get_password_hash, verify_password, create_access_
 from fastapi import HTTPException, status
 
 class RegisterUserUseCase:
+    """Registra novo usuário com hash de senha; retorna 409 se email já existir."""
     def __init__(self, repo: UserRepositoryProtocol):
         self.repo = repo
 
@@ -21,6 +22,7 @@ class RegisterUserUseCase:
         return await self.repo.create(new_user)
 
 class LoginUserUseCase:
+    """Autentica usuário por email+senha e retorna token JWT; 401 se inválido."""
     def __init__(self, repo: UserRepositoryProtocol):
         self.repo = repo
 
