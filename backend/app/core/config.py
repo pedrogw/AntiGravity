@@ -3,11 +3,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Logistics Manager API"
     DATABASE_URL: str = "postgresql+asyncpg://user:password@db:5432/logistics"
+    REDIS_URL: str = "redis://redis:6379/0"
     SECRET_KEY: str = "logistics_secret_key_tcc_only"
     ALGORITHM: str = "HS256"
     DEFAULT_SPEED_KMH: float = 60.0
     CHAOS_CRITICAL_FACTOR_THRESHOLD: float = 2.0
     CHAOS_CRITICAL_DELAY_THRESHOLD: int = 60
+    CACHE_TTL_SECONDS: int = 300
 
     model_config = SettingsConfigDict(case_sensitive=True, env_file=".env")
 

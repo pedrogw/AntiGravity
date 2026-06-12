@@ -85,3 +85,17 @@ async def motorista(client: AsyncClient) -> dict:
 @pytest.fixture
 async def lojista_token_headers(lojista: dict) -> dict:
     return lojista["headers"]
+
+
+@pytest.fixture
+async def fakeredis():
+    from fakeredis import FakeAsyncRedis
+    r = FakeAsyncRedis(decode_responses=True)
+    yield r
+    await r.aclose()
+
+
+@pytest.fixture
+async def cache_service(fakeredis):
+    from app.infrastructure.cache.cache_service import CacheService
+    return CacheService(fakeredis, ttl=60)

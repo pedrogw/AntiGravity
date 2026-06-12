@@ -41,6 +41,7 @@ def mock_place_repo():
     repo.create_store = AsyncMock()
     repo.list_stores = AsyncMock()
     repo.get_store_by_id = AsyncMock()
+    repo.get_factory_by_id = AsyncMock()
     return repo
 
 
@@ -134,21 +135,78 @@ class TestLoginUserUseCase:
 
 
 class TestCreateDeliveryUseCase:
-    async def test_create_delivery(self, mock_delivery_repo):
+    async def test_create_delivery(self, mock_delivery_repo, mock_place_repo):
         factory_id = uuid.uuid4()
         store_id = uuid.uuid4()
         driver_id = uuid.uuid4()
+        from app.domain.entities.place import Factory, Store
+        from app.domain.value_objects.coordinates import Coordinates
+        mock_place_repo.get_factory_by_id = AsyncMock(return_value=Factory(
+            name="Fábrica SP", location=Coordinates(lat=-23.55, lng=-46.63),
+        ))
+        mock_place_repo.get_store_by_id = AsyncMock(return_value=Store(
+            name="Loja RJ", location=Coordinates(lat=-22.90, lng=-43.17),
+            owner_id=uuid.uuid4(),
+        ))
         expected = Delivery(factory_id=factory_id, store_id=store_id, driver_id=driver_id)
         mock_delivery_repo.create.return_value = expected
 
-        use_case = CreateDeliveryUseCase(mock_delivery_repo)
+        use_case = CreateDeliveryUseCase(mock_delivery_repo, mock_place_repo)
         result = await use_case.execute(factory_id, store_id, driver_id)
 
+        mock_place_repo.get_factory_by_id.assert_awaited_once_with(factory_id)
+        mock_place_repo.get_store_by_id.assert_awaited_once_with(store_id)
         mock_delivery_repo.create.assert_awaited_once()
         assert result.factory_id == factory_id
         assert result.store_id == store_id
         assert result.driver_id == driver_id
         assert result.status == "pendente"
+
+    async def test_create_delivery_nonexistent_factory_raises_404(self, mock_delivery_repo, mock_place_repo):
+        mock_place_repo.get_factory_by_id = AsyncMock(return_value=None)
+        use_case = CreateDeliveryUseCase(mock_delivery_repo, mock_place_repo)
+        with pytest.raises(Exception) as exc:
+            await use_case.execute(uuid.uuid4(), uuid.uuid4(), uuid.uuid4())
+        assert exc.value.status_code == 404
+        mock_delivery_repo.create.assert_not_awaited()
+
+    async def test_create_delivery_nonexistent_store_raises_404(self, mock_delivery_repo, mock_place_repo):
+        from app.domain.entities.place import Factory
+        from app.domain.value_objects.coordinates import Coordinates
+        mock_place_repo.get_factory_by_id = AsyncMock(return_value=Factory(
+            name="Fábrica", location=Coordinates(lat=-23.0, lng=-46.0),
+        ))
+        mock_place_repo.get_store_by_id = AsyncMock(return_value=None)
+        use_case = CreateDeliveryUseCase(mock_delivery_repo, mock_place_repo)
+        with pytest.raises(Exception) as exc:
+            await use_case.execute(uuid.uuid4(), uuid.uuid4(), uuid.uuid4())
+        assert exc.value.status_code == 404
+        mock_delivery_repo.create.assert_not_awaited()
+
+    async def test_create_delivery_calculates_eta(self, mock_delivery_repo, mock_place_repo):
+        factory_id = uuid.uuid4()
+        store_id = uuid.uuid4()
+        driver_id = uuid.uuid4()
+        from app.domain.entities.place import Factory, Store
+        from app.domain.value_objects.coordinates import Coordinates
+        mock_place_repo.get_factory_by_id = AsyncMock(return_value=Factory(
+            name="Fábrica SP", location=Coordinates(lat=-23.55, lng=-46.63),
+        ))
+        mock_place_repo.get_store_by_id = AsyncMock(return_value=Store(
+            name="Loja RJ", location=Coordinates(lat=-22.90, lng=-43.17),
+            owner_id=uuid.uuid4(),
+        ))
+
+        def create_side_effect(entity):
+            return entity
+        mock_delivery_repo.create.side_effect = create_side_effect
+
+        use_case = CreateDeliveryUseCase(mock_delivery_repo, mock_place_repo)
+        result = await use_case.execute(factory_id, store_id, driver_id)
+
+        assert result.eta_original is not None
+        assert result.eta_current is not None
+        assert result.eta_original == result.eta_current
 
 
 class TestListDeliveriesUseCase:

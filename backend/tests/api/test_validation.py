@@ -80,8 +80,8 @@ class TestDeliveryForeignKeyViolations:
             "driver_id": motorista["id"],
         }
         response = await client.post("/deliveries/", json=payload, headers=lojista["headers"])
-        # SQLite ignora FK sem PRAGMA; PostgreSQL retorna 500
-        assert response.status_code in (201, 500)
+        # CreateDeliveryUseCase now validates that factory exists
+        assert response.status_code == 404
 
     async def test_create_delivery_nonexistent_driver(self, client: AsyncClient, lojista: dict):
         factory_resp = await client.post(

@@ -1,0 +1,29 @@
+import logging
+import re
+
+
+SENSITIVE_FIELDS = {"password", "password_hash", "token", "access_token", "secret"}
+
+
+class DataMaskingFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        if hasattr(record, "msg") and isinstance(record.msg, str):
+            for field in SENSITIVE_FIELDS:
+                record.msg = re.sub(
+                    rf'({field}["\']?\s*[:=]\s*["\']?)[^"\'\s,}}]+',
+                    rf'\1****',
+                    record.msg,
+                    flags=re.IGNORECASE,
+                )
+        return True
+
+
+def setup_logging() -> None:
+    handler = logging.StreamHandler()
+    handler.setLevel(logging.INFO)
+    handler.addFilter(DataMaskingFilter())
+    logging.basicConfig(
+        level=logging.INFO,
+        handlers=[handler],
+        format="%(asctime)s | %(name)s | %(levelname)s | %(message)s",
+    )

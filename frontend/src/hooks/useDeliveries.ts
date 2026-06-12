@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { makeListDeliveriesUseCase, makeCreateDeliveryUseCase } from '../infrastructure/di/factories';
+import { makeListDeliveriesUseCase, makeCreateDeliveryUseCase, makeUpdateDeliveryUseCase } from '../infrastructure/di/factories';
 import { Delivery } from '../domain/entities/Delivery';
 import { AppError } from '../domain/errors/AppError';
 
@@ -46,5 +46,22 @@ export function useDeliveries() {
     }
   }, []);
 
-  return { deliveries, isLoading, error, fetchDeliveries, createDelivery };
+  const updateDeliveryStatus = useCallback(async (deliveryId: string, status: string) => {
+    setError('');
+    try {
+      const useCase = makeUpdateDeliveryUseCase();
+      const updated = await useCase.execute({ deliveryId, data: { status } });
+      setDeliveries((prev) => prev.map((d) => (d.id === deliveryId ? updated : d)));
+      return updated;
+    } catch (err) {
+      if (err instanceof AppError) {
+        setError(err.message);
+      } else {
+        setError('Erro ao atualizar entrega.');
+      }
+      throw err;
+    }
+  }, []);
+
+  return { deliveries, isLoading, error, fetchDeliveries, createDelivery, updateDeliveryStatus };
 }

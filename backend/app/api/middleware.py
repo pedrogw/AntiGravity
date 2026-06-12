@@ -1,0 +1,26 @@
+import uuid
+import time
+import logging
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+
+logger = logging.getLogger("antigravity")
+
+
+class ObservabilityMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        request_id = str(uuid.uuid4())
+        request.state.request_id = request_id
+        start = time.time()
+
+        response = await call_next(request)
+
+        elapsed = time.time() - start
+        logger.info(
+            "request_id=%s method=%s path=%s status=%d elapsed=%.3fs",
+            request_id, request.method, request.url.path,
+            response.status_code, elapsed,
+        )
+
+        response.headers["X-Request-ID"] = request_id
+        return response

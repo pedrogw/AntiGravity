@@ -1,4 +1,3 @@
-from fastapi import HTTPException, status as http_status
 from app.domain.entities.chaos import ChaosEventLog as ChaosEventLogEntity
 from app.domain.entities.alert import Alert as AlertEntity
 from app.domain.repositories.delivery_repo import DeliveryRepositoryProtocol
@@ -8,11 +7,11 @@ from app.domain.repositories.eta_history_repo import EtaHistoryRepositoryProtoco
 from app.domain.repositories.place_repo import PlaceRepositoryProtocol
 from app.use_cases._eta_recalculation import recalculate_delivery_eta
 from app.core.config import settings
+from app.core.exceptions import EntityNotFoundException
 import uuid
 
 
 class InjectChaosUseCase:
-    """Injeta evento de caos em uma entrega; recalcula ETA se houver posição e gera alerta se crítico."""
     def __init__(
         self,
         delivery_repo: DeliveryRepositoryProtocol,
@@ -40,10 +39,7 @@ class InjectChaosUseCase:
     ) -> ChaosEventLogEntity:
         delivery = await self.delivery_repo.get_by_id(delivery_id)
         if not delivery:
-            raise HTTPException(
-                status_code=http_status.HTTP_404_NOT_FOUND,
-                detail="Entrega não encontrada",
-            )
+            raise EntityNotFoundException("Entrega não encontrada")
 
         chaos_event = ChaosEventLogEntity(
             delivery_id=delivery_id,

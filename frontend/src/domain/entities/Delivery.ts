@@ -8,6 +8,8 @@ export interface DeliveryProps {
   etaOriginal?: Date;
   etaCurrent?: Date;
   departedAt?: Date;
+  currentLat?: number;
+  currentLng?: number;
 }
 
 export class Delivery extends Entity<DeliveryProps> {
@@ -18,4 +20,6 @@ export class Delivery extends Entity<DeliveryProps> {
   get etaOriginal() { return this.props.etaOriginal; }
   get etaCurrent() { return this.props.etaCurrent; }
   get departedAt() { return this.props.departedAt; }
+  get currentLat() { return this.props.currentLat; }
+  get currentLng() { return this.props.currentLng; }
 }

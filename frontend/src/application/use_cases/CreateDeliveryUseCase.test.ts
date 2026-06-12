@@ -11,6 +11,7 @@ describe('CreateDeliveryUseCase', () => {
     mockRepo = {
       createDelivery: vi.fn(),
       listDeliveries: vi.fn(),
+      updateDelivery: vi.fn(),
     };
     useCase = new CreateDeliveryUseCase(mockRepo);
   });

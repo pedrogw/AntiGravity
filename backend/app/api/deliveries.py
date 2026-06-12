@@ -12,6 +12,7 @@ from app.use_cases.deliveries_use_cases import (
     CreateDeliveryUseCase, ListDeliveriesUseCase, UpdateDeliveryUseCase
 )
 from app.api.deps import require_role, get_current_user
+from app.core.events.bus import event_bus
 
 router = APIRouter()
 
@@ -22,7 +23,8 @@ async def create_delivery(
     current_user: dict = Depends(require_role("lojista"))
 ):
     repo = DeliveryRepository(db)
-    use_case = CreateDeliveryUseCase(repo)
+    place_repo = PlaceRepository(db)
+    use_case = CreateDeliveryUseCase(repo, place_repo, event_bus=event_bus)
     return await use_case.execute(
         factory_id=delivery_in.factory_id,
         store_id=delivery_in.store_id,

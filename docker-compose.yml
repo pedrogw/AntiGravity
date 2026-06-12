@@ -10,8 +10,19 @@ services:
       - "8000:8000"
     environment:
       - DATABASE_URL=postgresql+asyncpg://user:password@db:5432/logistics
+      - REDIS_URL=redis://redis:6379/0
     depends_on:
       - db
+      - redis
+    networks:
+      - logistics-net
+
+
+  redis:
+    image: redis:7-alpine
+    container_name: logistics-redis
+    ports:
+      - "6379:6379"
     networks:
       - logistics-net
 

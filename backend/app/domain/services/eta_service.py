@@ -1,0 +1,11 @@
+from app.domain.value_objects.coordinates import Coordinates
+from app.domain.haversine import calculate_haversine_distance, calculate_eta
+
+
+def calculate_eta_between_coordinates(
+    origin: Coordinates,
+    destination: Coordinates,
+    speed_kmh: float,
+) -> float:
+    distance = calculate_haversine_distance(origin, destination)
+    return calculate_eta(distance, speed_kmh)

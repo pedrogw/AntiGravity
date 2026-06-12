@@ -51,6 +51,12 @@ class PlaceRepository:
             return None
         return self._store_to_entity(model)
 
+    async def get_factory_by_id(self, factory_id: uuid.UUID) -> Optional[FactoryEntity]:
+        model = await self.db.get(FactoryModel, factory_id)
+        if not model:
+            return None
+        return self._factory_to_entity(model)
+
     def _factory_to_entity(self, model: FactoryModel) -> FactoryEntity:
         return FactoryEntity(
             id=model.id,
