@@ -272,8 +272,10 @@ class TestUpdateDeliveryUseCase:
             departed_at=datetime.now(timezone.utc),
         )
 
+        driver_id = uuid.uuid4()
+        existing.driver_id = driver_id
         use_case = UpdateDeliveryUseCase(mock_delivery_repo, mock_place_repo, mock_eta_history_repo, mock_chaos_repo)
-        result = await use_case.execute(delivery_id, status="em_transito")
+        result = await use_case.execute(delivery_id, current_user_id=driver_id, status="em_transito")
 
         mock_delivery_repo.get_by_id.assert_awaited_once_with(delivery_id)
         mock_delivery_repo.update.assert_awaited_once()
@@ -284,28 +286,30 @@ class TestUpdateDeliveryUseCase:
 
         use_case = UpdateDeliveryUseCase(mock_delivery_repo, mock_place_repo, mock_eta_history_repo, mock_chaos_repo)
         with pytest.raises(Exception) as exc:
-            await use_case.execute(uuid.uuid4(), status="em_transito")
+            await use_case.execute(uuid.uuid4(), current_user_id=uuid.uuid4(), status="em_transito")
 
         assert exc.value.status_code == 404
 
     async def test_update_invalid_status_transition_raises_422(self, mock_delivery_repo, mock_place_repo, mock_eta_history_repo, mock_chaos_repo):
         delivery_id = uuid.uuid4()
+        driver_id = uuid.uuid4()
         existing = Delivery(
             id=delivery_id, factory_id=uuid.uuid4(), store_id=uuid.uuid4(),
-            driver_id=uuid.uuid4(), status="entregue",
+            driver_id=driver_id, status="entregue",
         )
         mock_delivery_repo.get_by_id.return_value = existing
 
         use_case = UpdateDeliveryUseCase(mock_delivery_repo, mock_place_repo, mock_eta_history_repo, mock_chaos_repo)
         with pytest.raises(Exception) as exc:
-            await use_case.execute(delivery_id, status="pendente")
+            await use_case.execute(delivery_id, current_user_id=driver_id, status="pendente")
 
         assert exc.value.status_code == 422
 
     async def test_update_location_recalculates_eta(self, mock_delivery_repo, mock_place_repo, mock_eta_history_repo, mock_chaos_repo):
         store_id = uuid.uuid4()
         delivery_id = uuid.uuid4()
-        existing = Delivery(id=delivery_id, factory_id=uuid.uuid4(), store_id=store_id, driver_id=uuid.uuid4())
+        driver_id = uuid.uuid4()
+        existing = Delivery(id=delivery_id, factory_id=uuid.uuid4(), store_id=store_id, driver_id=driver_id)
         mock_delivery_repo.get_by_id.return_value = existing
 
         mock_place_repo.get_store_by_id.return_value = Store(
@@ -317,7 +321,7 @@ class TestUpdateDeliveryUseCase:
         mock_delivery_repo.update.side_effect = update_side_effect
 
         use_case = UpdateDeliveryUseCase(mock_delivery_repo, mock_place_repo, mock_eta_history_repo, mock_chaos_repo)
-        result = await use_case.execute(delivery_id, lat=-23.55, lng=-46.63)
+        result = await use_case.execute(delivery_id, current_user_id=driver_id, lat=-23.55, lng=-46.63)
 
         mock_place_repo.get_store_by_id.assert_awaited_once_with(store_id)
         mock_chaos_repo.list_active_by_delivery.assert_awaited_once_with(delivery_id)

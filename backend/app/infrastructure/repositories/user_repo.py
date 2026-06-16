@@ -14,6 +14,14 @@ class UserRepository:
             return None
         return self._to_entity(user_model)
 
+    async def get_by_id(self, user_id: str) -> UserEntity | None:
+        import uuid
+        result = await self.db.execute(select(UserModel).where(UserModel.id == uuid.UUID(user_id)))
+        user_model = result.scalars().first()
+        if not user_model:
+            return None
+        return self._to_entity(user_model)
+
     async def create(self, user_entity: UserEntity) -> UserEntity:
         db_user = UserModel(
             id=user_entity.id,

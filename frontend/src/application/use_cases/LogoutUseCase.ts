@@ -12,7 +12,7 @@ export class LogoutUseCase implements UseCase<void, void> {
     // 1. Invalida no backend (se houver implementação)
     await this.authRepository.logout();
     
-    // 2. Remove token local
-    this.tokenStorage.removeToken();
+    // 2. Remove tokens locais
+    this.tokenStorage.clearTokens();
   }
 }

@@ -17,6 +17,9 @@ describe('LogoutUseCase', () => {
       saveToken: vi.fn(),
       getToken: vi.fn(),
       removeToken: vi.fn(),
+      getRefreshToken: vi.fn(),
+      saveRefreshToken: vi.fn(),
+      clearTokens: vi.fn(),
     };
     useCase = new LogoutUseCase(mockAuthRepo, mockTokenStorage);
   });
@@ -25,6 +28,6 @@ describe('LogoutUseCase', () => {
     await useCase.execute();
 
     expect(mockAuthRepo.logout).toHaveBeenCalled();
-    expect(mockTokenStorage.removeToken).toHaveBeenCalled();
+    expect(mockTokenStorage.clearTokens).toHaveBeenCalled();
   });
 });

@@ -33,7 +33,9 @@ class TestAuth:
         assert response.status_code == 200
         data = response.json()
         assert "access_token" in data
+        assert "refresh_token" in data
         assert len(data["access_token"]) > 20
+        assert len(data["refresh_token"]) > 20
         assert data["token_type"] == "bearer"
 
     async def test_login_invalid_credentials(self, client: AsyncClient):
@@ -51,6 +53,63 @@ class TestAuth:
         response = await client.post("/auth/register", json=payload)
         assert response.status_code == 409
         assert response.json()["detail"] == "Email já cadastrado"
+
+    async def test_refresh_token_returns_new_tokens(self, client: AsyncClient):
+        email = f"refresh_{uuid.uuid4().hex[:8]}@example.com"
+        await client.post(
+            "/auth/register",
+            json={"email": email, "password": "testpassword", "role": "motorista"}
+        )
+        login_resp = await client.post(
+            "/auth/login",
+            json={"email": email, "password": "testpassword"}
+        )
+        refresh_token = login_resp.json()["refresh_token"]
+
+        refresh_resp = await client.post(
+            "/auth/refresh",
+            json={"refresh_token": refresh_token}
+        )
+        assert refresh_resp.status_code == 200
+        data = refresh_resp.json()
+        assert "access_token" in data
+        assert "refresh_token" in data
+        assert len(data["access_token"]) > 20
+        assert len(data["refresh_token"]) > 20
+        assert data["token_type"] == "bearer"
+
+        new_access = data["access_token"]
+        resp = await client.get(
+            "/dashboard",
+            headers={"Authorization": f"Bearer {new_access}"}
+        )
+        assert resp.status_code == 200
+
+    async def test_refresh_with_invalid_token_returns_401(self, client: AsyncClient):
+        refresh_resp = await client.post(
+            "/auth/refresh",
+            json={"refresh_token": "invalid_token_123"}
+        )
+        assert refresh_resp.status_code == 401
+        assert refresh_resp.json()["detail"] == "Refresh token inválido ou expirado"
+
+    async def test_access_token_cannot_be_used_as_refresh(self, client: AsyncClient):
+        email = f"refresh_invalid_{uuid.uuid4().hex[:8]}@example.com"
+        await client.post(
+            "/auth/register",
+            json={"email": email, "password": "testpassword", "role": "lojista"}
+        )
+        login_resp = await client.post(
+            "/auth/login",
+            json={"email": email, "password": "testpassword"}
+        )
+        access_token = login_resp.json()["access_token"]
+
+        refresh_resp = await client.post(
+            "/auth/refresh",
+            json={"refresh_token": access_token}
+        )
+        assert refresh_resp.status_code == 401
 
 
 class TestPlaces:
@@ -169,7 +228,7 @@ class TestDeliveries:
         update_resp = await client.patch(
             f"/deliveries/{delivery_id}",
             json={"status": "em_transito"},
-            headers=lojista["headers"],
+            headers=motorista["headers"],
         )
         assert update_resp.status_code == 200
         updated = update_resp.json()
@@ -197,7 +256,7 @@ class TestDeliveries:
         update_resp = await client.patch(
             f"/deliveries/{delivery_id}",
             json={"status": "em_transito", "lat": -23.55, "lng": -46.63},
-            headers=lojista["headers"],
+            headers=motorista["headers"],
         )
         assert update_resp.status_code == 200
         updated = update_resp.json()
@@ -210,6 +269,69 @@ class TestDeliveries:
             headers=lojista["headers"],
         )
         assert update_resp.status_code == 404
+
+    async def test_lojista_cannot_update_delivery(self, client: AsyncClient, lojista: dict, motorista: dict):
+        factory_resp = await client.post(
+            "/places/factories",
+            json={"name": "F", "lat": -23.0, "lng": -46.0},
+            headers=lojista["headers"],
+        )
+        store_resp = await client.post(
+            "/places/stores",
+            json={"name": "S", "lat": -23.55, "lng": -46.63, "owner_id": lojista["id"]},
+            headers=lojista["headers"],
+        )
+        create_resp = await client.post(
+            "/deliveries/",
+            json={"factory_id": factory_resp.json()["id"], "store_id": store_resp.json()["id"], "driver_id": motorista["id"]},
+            headers=lojista["headers"],
+        )
+        delivery_id = create_resp.json()["id"]
+
+        update_resp = await client.patch(
+            f"/deliveries/{delivery_id}",
+            json={"status": "em_transito"},
+            headers=lojista["headers"],
+        )
+        assert update_resp.status_code == 403
+        assert update_resp.json()["detail"] == "Apenas o motorista responsável pode atualizar a entrega"
+
+    async def test_wrong_motorista_cannot_update_delivery(self, client: AsyncClient, lojista: dict, motorista: dict):
+        factory_resp = await client.post(
+            "/places/factories",
+            json={"name": "F2", "lat": -23.0, "lng": -46.0},
+            headers=lojista["headers"],
+        )
+        store_resp = await client.post(
+            "/places/stores",
+            json={"name": "S2", "lat": -23.55, "lng": -46.63, "owner_id": lojista["id"]},
+            headers=lojista["headers"],
+        )
+        create_resp = await client.post(
+            "/deliveries/",
+            json={"factory_id": factory_resp.json()["id"], "store_id": store_resp.json()["id"], "driver_id": motorista["id"]},
+            headers=lojista["headers"],
+        )
+        delivery_id = create_resp.json()["id"]
+
+        outro_motorista = await client.post(
+            "/auth/register",
+            json={"email": f"outro_motorista_{uuid.uuid4().hex[:8]}@example.com", "password": "testpassword", "role": "motorista"},
+        )
+        outro_id = outro_motorista.json()["id"]
+        outro_login = await client.post(
+            "/auth/login",
+            json={"email": outro_motorista.json()["email"], "password": "testpassword"},
+        )
+        outro_headers = {"Authorization": f"Bearer {outro_login.json()['access_token']}"}
+
+        update_resp = await client.patch(
+            f"/deliveries/{delivery_id}",
+            json={"status": "em_transito"},
+            headers=outro_headers,
+        )
+        assert update_resp.status_code == 403
+        assert update_resp.json()["detail"] == "Apenas o motorista responsável pode atualizar a entrega"
 
 
 class TestChaosInjection:

@@ -5,7 +5,7 @@ import { TokenStorageProtocol } from '../../infrastructure/storage/TokenStorageA
 
 export interface LoginUseCaseInput {
   email: string;
-  password?: string; // opcional para permitir fluxo de SSO no futuro, mas obrigatório aqui
+  password?: string;
 }
 
 export class LoginUseCase implements UseCase<LoginUseCaseInput, User> {
@@ -19,10 +19,13 @@ export class LoginUseCase implements UseCase<LoginUseCaseInput, User> {
       throw new Error('E-mail e senha são obrigatórios.');
     }
 
-    const { user, token } = await this.authRepository.login(input.email, input.password);
-    
+    const { user, token, refresh_token } = await this.authRepository.login(input.email, input.password);
+
     this.tokenStorage.saveToken(token);
-    
+    if (refresh_token) {
+      this.tokenStorage.saveRefreshToken(refresh_token);
+    }
+
     return user;
   }
 }

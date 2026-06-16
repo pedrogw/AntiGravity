@@ -26,3 +26,7 @@ class ConflictException(DomainException):
 class InvalidTransitionException(DomainException):
     def __init__(self, detail: str = "Transição inválida"):
         super().__init__(detail=detail, status_code=422)
+
+class ForbiddenException(DomainException):
+    def __init__(self, detail: str = "Acesso negado"):
+        super().__init__(detail=detail, status_code=403)

@@ -1,6 +1,9 @@
 import os
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
 
+from app.core.rate_limiter import limiter
+limiter.enabled = False
+
 import pytest
 from httpx import AsyncClient, ASGITransport
 from app.main import app

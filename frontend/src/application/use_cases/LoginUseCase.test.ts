@@ -14,11 +14,15 @@ describe('LoginUseCase', () => {
     mockAuthRepo = {
       login: vi.fn(),
       logout: vi.fn(),
+      refreshToken: vi.fn(),
     };
     mockTokenStorage = {
       saveToken: vi.fn(),
       getToken: vi.fn(),
       removeToken: vi.fn(),
+      getRefreshToken: vi.fn(),
+      saveRefreshToken: vi.fn(),
+      clearTokens: vi.fn(),
     };
     useCase = new LoginUseCase(mockAuthRepo, mockTokenStorage);
   });
@@ -27,7 +31,7 @@ describe('LoginUseCase', () => {
     const mockUser = new User({ email: 'test@test.com', role: 'lojista' }, 'user-id');
     const mockToken = 'mock-jwt-token';
     
-    vi.mocked(mockAuthRepo.login).mockResolvedValue({ user: mockUser, token: mockToken });
+    vi.mocked(mockAuthRepo.login).mockResolvedValue({ user: mockUser, token: mockToken, refresh_token: 'mock-refresh-token' });
 
     const result = await useCase.execute({ email: 'test@test.com', password: 'password123' });
 

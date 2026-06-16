@@ -1,7 +1,6 @@
 import axios from 'axios';
 import { isTokenExpired } from '../../utils/jwt';
 
-// Create a configured Axios instance
 export const apiClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
   headers: {
@@ -9,19 +8,29 @@ export const apiClient = axios.create({
   },
 });
 
-// Request interceptor to inject the JWT token if available
+let isRefreshing = false;
+let failedQueue: Array<{ resolve: (token: string) => void; reject: (err: unknown) => void }> = [];
+
+function processQueue(error: unknown, token: string | null = null) {
+  failedQueue.forEach(({ resolve, reject }) => {
+    if (error) {
+      reject(error);
+    } else if (token) {
+      resolve(token);
+    }
+  });
+  failedQueue = [];
+}
+
 apiClient.interceptors.request.use(
   (config) => {
-    // In a real application, you might want to get this from a secure cookie
-    // or a context/store, but localStorage is common for initial setups.
     if (typeof window !== 'undefined') {
       const token = localStorage.getItem('token');
-      
+
       if (token) {
         if (!isTokenExpired(token)) {
           config.headers.Authorization = `Bearer ${token}`;
         } else {
-          // Token expirado, limpa do storage
           localStorage.removeItem('token');
         }
       }
@@ -33,22 +42,67 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Response interceptor for global error handling
 apiClient.interceptors.response.use(
-  (response) => {
-    return response;
-  },
-  (error) => {
-    if (error.response?.status === 401) {
-      // Handle unauthorized access globally (e.g., redirect to login)
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('token');
-        // Avoid redirect loop if already on login page
-        if (window.location.pathname !== '/') {
-          window.location.href = '/';
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        }).then((token) => {
+          originalRequest.headers.Authorization = `Bearer ${token}`;
+          return apiClient(originalRequest);
+        });
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      const refreshToken = localStorage.getItem('refresh_token');
+      if (!refreshToken) {
+        isRefreshing = false;
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('token');
+          localStorage.removeItem('refresh_token');
+          if (window.location.pathname !== '/') {
+            window.location.href = '/';
+          }
         }
+        return Promise.reject(error);
+      }
+
+      try {
+        const response = await axios.post(
+          `${apiClient.defaults.baseURL}/api/v1/auth/refresh`,
+          { refresh_token: refreshToken }
+        );
+
+        const { access_token, refresh_token: newRefreshToken } = response.data;
+
+        localStorage.setItem('token', access_token);
+        localStorage.setItem('refresh_token', newRefreshToken);
+
+        processQueue(null, access_token);
+
+        originalRequest.headers.Authorization = `Bearer ${access_token}`;
+        return apiClient(originalRequest);
+      } catch (refreshError) {
+        processQueue(refreshError, null);
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('token');
+          localStorage.removeItem('refresh_token');
+          if (window.location.pathname !== '/') {
+            window.location.href = '/';
+          }
+        }
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
       }
     }
+
     return Promise.reject(error);
   }
 );

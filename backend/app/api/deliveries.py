@@ -51,6 +51,7 @@ async def update_delivery(
     use_case = UpdateDeliveryUseCase(delivery_repo, place_repo, eta_history_repo, chaos_repo)
     return await use_case.execute(
         delivery_id=delivery_id,
+        current_user_id=uuid.UUID(current_user["id"]),
         status=delivery_in.status,
         lat=delivery_in.lat,
         lng=delivery_in.lng,

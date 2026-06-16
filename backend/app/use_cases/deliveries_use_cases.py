@@ -11,7 +11,7 @@ from app.domain.repositories.chaos_repo import ChaosRepositoryProtocol
 from app.domain.services.eta_service import calculate_eta_between_coordinates
 from app.domain.haversine import add_hours_to_now
 from app.core.config import settings
-from app.core.exceptions import EntityNotFoundException, InvalidTransitionException
+from app.core.exceptions import EntityNotFoundException, InvalidTransitionException, ForbiddenException
 from app.domain.events import DeliveryCreatedEvent
 from app.use_cases._eta_recalculation import recalculate_delivery_eta
 from app.infrastructure.cache.cache_service import CACHE_PREFIX
@@ -116,6 +116,7 @@ class UpdateDeliveryUseCase:
     async def execute(
         self,
         delivery_id: uuid.UUID,
+        current_user_id: uuid.UUID,
         status: Optional[str] = None,
         lat: Optional[float] = None,
         lng: Optional[float] = None,
@@ -123,6 +124,9 @@ class UpdateDeliveryUseCase:
         delivery = await self.delivery_repo.get_by_id(delivery_id)
         if not delivery:
             raise EntityNotFoundException("Entrega não encontrada")
+
+        if str(delivery.driver_id) != str(current_user_id):
+            raise ForbiddenException("Apenas o motorista responsável pode atualizar a entrega")
 
         now = datetime.now(timezone.utc)
 

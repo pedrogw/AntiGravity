@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 import uuid
 from app.db.session import get_db
@@ -10,11 +10,14 @@ from app.infrastructure.repositories.eta_history_repo import EtaHistoryRepositor
 from app.infrastructure.repositories.place_repo import PlaceRepository
 from app.use_cases.chaos_use_cases import InjectChaosUseCase
 from app.api.deps import get_current_user
+from app.core.rate_limiter import limiter
 
 router = APIRouter()
 
 @router.post("/deliveries/{delivery_id}/chaos", response_model=ChaosResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("10/minute")
 async def inject_chaos(
+    request: Request,
     delivery_id: uuid.UUID,
     chaos_in: ChaosInject,
     db: AsyncSession = Depends(get_db),

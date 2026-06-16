@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     CHAOS_CRITICAL_FACTOR_THRESHOLD: float = 2.0
     CHAOS_CRITICAL_DELAY_THRESHOLD: int = 60
     CACHE_TTL_SECONDS: int = 300
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 30
 
     model_config = SettingsConfigDict(case_sensitive=True, env_file=".env")
 

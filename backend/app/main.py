@@ -19,6 +19,9 @@ from app.infrastructure.events.cache_invalidation_listener import CacheInvalidat
 from app.infrastructure.cache.cache_service import CacheService
 from app.infrastructure.cache.redis_client import get_redis, close_redis
 from app.api.middleware import ObservabilityMiddleware
+from app.core.rate_limiter import limiter
+from slowapi.errors import RateLimitExceeded
+from slowapi import _rate_limit_exceeded_handler
 
 from app.core.logging import setup_logging
 
@@ -61,6 +64,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.add_middleware(ObservabilityMiddleware)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
 app.include_router(places_router, prefix="/places", tags=["places"])
