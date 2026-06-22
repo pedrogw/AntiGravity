@@ -1,6 +1,6 @@
 import pytest
 from dataclasses import dataclass
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 from app.core.events.base import DomainEvent
 from app.core.events.bus import EventBus
 from app.domain.events import DeliveryCreatedEvent, DeliveryStatusChangedEvent
@@ -17,7 +17,9 @@ def event_bus():
     return EventBus()
 
 
-class TestEventBus:
+class TestEventBusSync:
+    """Tests for synchronous dispatch (no worker_pool set)."""
+
     async def test_publish_dispatches_to_subscribed_handler(self, event_bus):
         handler = AsyncMock()
         event_bus.subscribe(FakeEvent, handler)
@@ -57,6 +59,38 @@ class TestEventBus:
 
     async def test_publish_no_handlers_does_nothing(self, event_bus):
         await event_bus.publish(FakeEvent(value="orphan"))
+
+
+class TestEventBusAsync:
+    """Tests for async enqueue (worker_pool set)."""
+
+    async def test_publish_enqueues_event_when_worker_pool_set(self, event_bus):
+        event = DeliveryCreatedEvent(
+            delivery_id=uuid.uuid4(),
+            factory_id=uuid.uuid4(),
+            store_id=uuid.uuid4(),
+            driver_id=uuid.uuid4(),
+        )
+        mock_handler = AsyncMock()
+        event_bus.subscribe(FakeEvent, mock_handler)
+        mock_pool = AsyncMock()
+        event_bus.worker_pool = mock_pool
+
+        await event_bus.publish(event)
+
+        mock_pool.enqueue_job.assert_awaited_once()
+        args = mock_pool.enqueue_job.call_args
+        assert args[0][0] == "handle_domain_event"
+        assert isinstance(args[0][1], str)
+        mock_handler.handle.assert_not_awaited()
+
+    async def test_publish_fallback_to_sync_when_worker_pool_cleared(self, event_bus):
+        handler = AsyncMock()
+        event_bus.subscribe(FakeEvent, handler)
+        event_bus.worker_pool = AsyncMock()
+        event_bus.worker_pool = None
+        await event_bus.publish(FakeEvent(value="fallback"))
+        handler.handle.assert_awaited_once()
 
 
 class TestDomainEvents:

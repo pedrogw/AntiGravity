@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 import uuid
@@ -32,9 +32,14 @@ async def create_delivery(
     )
 
 @router.get("/", response_model=List[DeliveryResponse])
-async def list_deliveries(limit: int = 50, offset: int = 0, db: AsyncSession = Depends(get_db)):
+async def list_deliveries(
+    request: Request,
+    limit: int = 50, offset: int = 0,
+    db: AsyncSession = Depends(get_db),
+):
     repo = DeliveryRepository(db)
-    use_case = ListDeliveriesUseCase(repo)
+    cache = getattr(request.app.state, "cache_service", None)
+    use_case = ListDeliveriesUseCase(repo, cache_service=cache)
     return await use_case.execute(limit=limit, offset=offset)
 
 @router.patch("/{delivery_id}", response_model=DeliveryResponse)
@@ -48,7 +53,10 @@ async def update_delivery(
     place_repo = PlaceRepository(db)
     eta_history_repo = EtaHistoryRepository(db)
     chaos_repo = ChaosRepository(db)
-    use_case = UpdateDeliveryUseCase(delivery_repo, place_repo, eta_history_repo, chaos_repo)
+    use_case = UpdateDeliveryUseCase(
+        delivery_repo, place_repo, eta_history_repo, chaos_repo,
+        event_bus=event_bus,
+    )
     return await use_case.execute(
         delivery_id=delivery_id,
         current_user_id=uuid.UUID(current_user["id"]),

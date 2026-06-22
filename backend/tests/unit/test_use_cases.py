@@ -3,9 +3,10 @@ import pytest
 from unittest.mock import AsyncMock
 from datetime import datetime, timezone
 
-from app.domain.entities.user import User
+from app.domain.entities.user import User, UserRole
 from app.domain.entities.delivery import Delivery
 from app.domain.entities.place import Factory, Store
+from app.domain.events import AlertCreationRequested, EtaRecalculationRequested
 from app.domain.value_objects.coordinates import Coordinates
 from app.use_cases.auth_use_cases import RegisterUserUseCase, LoginUserUseCase
 from app.use_cases.deliveries_use_cases import (
@@ -73,25 +74,25 @@ class TestRegisterUserUseCase:
     async def test_register_new_user(self, mock_user_repo):
         mock_user_repo.get_by_email.return_value = None
         mock_user_repo.create.return_value = User(
-            email="new@test.com", password_hash="hashed", role="lojista"
+            email="new@test.com", password_hash="hashed", role=UserRole.lojista
         )
 
         use_case = RegisterUserUseCase(mock_user_repo)
-        result = await use_case.execute("new@test.com", "secret123", "lojista")
+        result = await use_case.execute("new@test.com", "secret123", UserRole.lojista)
 
         mock_user_repo.get_by_email.assert_awaited_once_with("new@test.com")
         mock_user_repo.create.assert_awaited_once()
         assert result.email == "new@test.com"
-        assert result.role == "lojista"
+        assert result.role == UserRole.lojista
 
     async def test_register_duplicate_email_raises_409(self, mock_user_repo):
         mock_user_repo.get_by_email.return_value = User(
-            email="dup@test.com", password_hash="h", role="lojista"
+            email="dup@test.com", password_hash="h", role=UserRole.lojista
         )
 
         use_case = RegisterUserUseCase(mock_user_repo)
         with pytest.raises(Exception) as exc:
-            await use_case.execute("dup@test.com", "secret123", "lojista")
+            await use_case.execute("dup@test.com", "secret123", UserRole.lojista)
 
         assert exc.value.status_code == 409
         mock_user_repo.create.assert_not_awaited()
@@ -102,7 +103,7 @@ class TestLoginUserUseCase:
         from app.core.security import get_password_hash
         hashed = get_password_hash("correct_password")
         mock_user_repo.get_by_email.return_value = User(
-            email="user@test.com", password_hash=hashed, role="lojista"
+            email="user@test.com", password_hash=hashed, role=UserRole.lojista
         )
 
         use_case = LoginUserUseCase(mock_user_repo)
@@ -115,7 +116,7 @@ class TestLoginUserUseCase:
         from app.core.security import get_password_hash
         hashed = get_password_hash("correct_password")
         mock_user_repo.get_by_email.return_value = User(
-            email="user@test.com", password_hash=hashed, role="lojista"
+            email="user@test.com", password_hash=hashed, role=UserRole.lojista
         )
 
         use_case = LoginUserUseCase(mock_user_repo)
@@ -274,7 +275,7 @@ class TestUpdateDeliveryUseCase:
 
         driver_id = uuid.uuid4()
         existing.driver_id = driver_id
-        use_case = UpdateDeliveryUseCase(mock_delivery_repo, mock_place_repo, mock_eta_history_repo, mock_chaos_repo)
+        use_case = UpdateDeliveryUseCase(mock_delivery_repo, mock_place_repo, mock_eta_history_repo, mock_chaos_repo, event_bus=None)
         result = await use_case.execute(delivery_id, current_user_id=driver_id, status="em_transito")
 
         mock_delivery_repo.get_by_id.assert_awaited_once_with(delivery_id)
@@ -284,7 +285,7 @@ class TestUpdateDeliveryUseCase:
     async def test_update_nonexistent_raises_404(self, mock_delivery_repo, mock_place_repo, mock_eta_history_repo, mock_chaos_repo):
         mock_delivery_repo.get_by_id.return_value = None
 
-        use_case = UpdateDeliveryUseCase(mock_delivery_repo, mock_place_repo, mock_eta_history_repo, mock_chaos_repo)
+        use_case = UpdateDeliveryUseCase(mock_delivery_repo, mock_place_repo, mock_eta_history_repo, mock_chaos_repo, event_bus=None)
         with pytest.raises(Exception) as exc:
             await use_case.execute(uuid.uuid4(), current_user_id=uuid.uuid4(), status="em_transito")
 
@@ -299,7 +300,7 @@ class TestUpdateDeliveryUseCase:
         )
         mock_delivery_repo.get_by_id.return_value = existing
 
-        use_case = UpdateDeliveryUseCase(mock_delivery_repo, mock_place_repo, mock_eta_history_repo, mock_chaos_repo)
+        use_case = UpdateDeliveryUseCase(mock_delivery_repo, mock_place_repo, mock_eta_history_repo, mock_chaos_repo, event_bus=None)
         with pytest.raises(Exception) as exc:
             await use_case.execute(delivery_id, current_user_id=driver_id, status="pendente")
 
@@ -320,7 +321,7 @@ class TestUpdateDeliveryUseCase:
             return entity
         mock_delivery_repo.update.side_effect = update_side_effect
 
-        use_case = UpdateDeliveryUseCase(mock_delivery_repo, mock_place_repo, mock_eta_history_repo, mock_chaos_repo)
+        use_case = UpdateDeliveryUseCase(mock_delivery_repo, mock_place_repo, mock_eta_history_repo, mock_chaos_repo, event_bus=None)
         result = await use_case.execute(delivery_id, current_user_id=driver_id, lat=-23.55, lng=-46.63)
 
         mock_place_repo.get_store_by_id.assert_awaited_once_with(store_id)
@@ -342,6 +343,7 @@ class TestInjectChaosUseCase:
         use_case = InjectChaosUseCase(
             mock_delivery_repo, mock_chaos_repo, mock_alert_repo,
             mock_eta_history_repo, mock_place_repo,
+            event_bus=None,
         )
         with pytest.raises(Exception) as exc:
             await use_case.execute(delivery_id=uuid.uuid4(), event_type="engarrafamento")
@@ -367,6 +369,7 @@ class TestInjectChaosUseCase:
         use_case = InjectChaosUseCase(
             mock_delivery_repo, mock_chaos_repo, mock_alert_repo,
             mock_eta_history_repo, mock_place_repo,
+            event_bus=None,
         )
         result = await use_case.execute(delivery_id=delivery_id, event_type="acidente")
 
@@ -403,6 +406,7 @@ class TestInjectChaosUseCase:
         use_case = InjectChaosUseCase(
             mock_delivery_repo, mock_chaos_repo, mock_alert_repo,
             mock_eta_history_repo, mock_place_repo,
+            event_bus=None,
         )
         result = await use_case.execute(delivery_id=delivery_id, event_type="acidente")
 
@@ -430,6 +434,7 @@ class TestInjectChaosUseCase:
         use_case = InjectChaosUseCase(
             mock_delivery_repo, mock_chaos_repo, mock_alert_repo,
             mock_eta_history_repo, mock_place_repo,
+            event_bus=None,
         )
         await use_case.execute(
             delivery_id=delivery_id, event_type="deslizamento",
@@ -457,6 +462,7 @@ class TestInjectChaosUseCase:
         use_case = InjectChaosUseCase(
             mock_delivery_repo, mock_chaos_repo, mock_alert_repo,
             mock_eta_history_repo, mock_place_repo,
+            event_bus=None,
         )
         await use_case.execute(
             delivery_id=delivery_id, event_type="chuva",
@@ -464,6 +470,68 @@ class TestInjectChaosUseCase:
         )
 
         mock_alert_repo.create.assert_not_awaited()
+
+    async def test_inject_chaos_idempotency_key_returns_cached(
+        self, mock_delivery_repo, mock_chaos_repo, mock_alert_repo,
+        mock_eta_history_repo, mock_place_repo,
+    ):
+        delivery_id = uuid.uuid4()
+        existing = Delivery(
+            id=delivery_id, factory_id=uuid.uuid4(), store_id=uuid.uuid4(),
+            driver_id=uuid.uuid4(),
+        )
+        mock_delivery_repo.get_by_id.return_value = existing
+        from app.domain.entities.chaos import ChaosEventLog
+        cached_entity = ChaosEventLog(delivery_id=delivery_id, event_type="acidente")
+        mock_idempotency = AsyncMock()
+        mock_idempotency.get.return_value = cached_entity
+        from app.use_cases.chaos_use_cases import InjectChaosUseCase
+
+        use_case = InjectChaosUseCase(
+            mock_delivery_repo, mock_chaos_repo, mock_alert_repo,
+            mock_eta_history_repo, mock_place_repo,
+            idempotency_repo=mock_idempotency, event_bus=None,
+        )
+        result = await use_case.execute(
+            delivery_id=delivery_id, event_type="acidente",
+            idempotency_key="key-123",
+        )
+
+        mock_idempotency.get.assert_awaited_once_with("key-123")
+        mock_chaos_repo.create.assert_not_awaited()
+        assert result is cached_entity
+
+    async def test_inject_chaos_idempotency_key_saves_on_first_call(
+        self, mock_delivery_repo, mock_chaos_repo, mock_alert_repo,
+        mock_eta_history_repo, mock_place_repo,
+    ):
+        delivery_id = uuid.uuid4()
+        existing = Delivery(
+            id=delivery_id, factory_id=uuid.uuid4(), store_id=uuid.uuid4(),
+            driver_id=uuid.uuid4(),
+        )
+        mock_delivery_repo.get_by_id.return_value = existing
+        from app.domain.entities.chaos import ChaosEventLog
+        expected_entity = ChaosEventLog(delivery_id=delivery_id, event_type="acidente")
+        mock_chaos_repo.create.return_value = expected_entity
+        mock_idempotency = AsyncMock()
+        mock_idempotency.get.return_value = None
+        from app.use_cases.chaos_use_cases import InjectChaosUseCase
+
+        use_case = InjectChaosUseCase(
+            mock_delivery_repo, mock_chaos_repo, mock_alert_repo,
+            mock_eta_history_repo, mock_place_repo,
+            idempotency_repo=mock_idempotency, event_bus=None,
+        )
+        result = await use_case.execute(
+            delivery_id=delivery_id, event_type="acidente",
+            idempotency_key="key-456",
+        )
+
+        mock_idempotency.get.assert_awaited_once_with("key-456")
+        mock_idempotency.save.assert_awaited_once()
+        mock_chaos_repo.create.assert_awaited_once()
+        assert result.event_type == "acidente"
 
 
 class TestListAlertsUseCase:
@@ -522,3 +590,108 @@ class TestGetDashboardUseCase:
         assert len(result.chaos_by_type) == 2
         mock_alert_repo.count_all.assert_any_call()
         mock_alert_repo.count_all.assert_any_call(is_critical=True)
+
+
+class TestEtaRecalculationAsyncPath:
+    """Testa o path assíncrono (event_bus.worker_pool setado) — enfileira evento em vez de recalcular inline."""
+
+    async def test_update_delivery_enqueues_when_worker_pool_set(
+        self, mock_delivery_repo, mock_place_repo, mock_eta_history_repo, mock_chaos_repo,
+    ):
+        delivery_id = uuid.uuid4()
+        driver_id = uuid.uuid4()
+        existing = Delivery(id=delivery_id, factory_id=uuid.uuid4(), store_id=uuid.uuid4(), driver_id=driver_id)
+        mock_delivery_repo.get_by_id.return_value = existing
+        mock_delivery_repo.update.side_effect = lambda e: e
+
+        mock_event_bus = AsyncMock()
+        mock_event_bus.worker_pool = AsyncMock()
+
+        use_case = UpdateDeliveryUseCase(
+            mock_delivery_repo, mock_place_repo, mock_eta_history_repo,
+            mock_chaos_repo, event_bus=mock_event_bus,
+        )
+        result = await use_case.execute(delivery_id, current_user_id=driver_id, lat=-23.55, lng=-46.63)
+
+        mock_event_bus.publish.assert_awaited_once()
+        args = mock_event_bus.publish.call_args
+        published = args[0][0]
+        assert isinstance(published, EtaRecalculationRequested)
+        assert published.delivery_id == delivery_id
+        assert published.lat == -23.55
+        assert published.lng == -46.63
+        assert published.reason == "posicao_atualizada"
+        mock_place_repo.get_store_by_id.assert_not_awaited()
+        assert result.current_lat == -23.55
+        assert result.current_lng == -46.63
+
+    async def test_inject_chaos_enqueues_when_worker_pool_set(
+        self, mock_delivery_repo, mock_chaos_repo, mock_alert_repo,
+        mock_eta_history_repo, mock_place_repo,
+    ):
+        delivery_id = uuid.uuid4()
+        existing = Delivery(
+            id=delivery_id, factory_id=uuid.uuid4(), store_id=uuid.uuid4(),
+            driver_id=uuid.uuid4(), current_lat=-23.55, current_lng=-46.63,
+        )
+        mock_delivery_repo.get_by_id.return_value = existing
+        from app.domain.entities.chaos import ChaosEventLog
+        mock_chaos_repo.create.return_value = ChaosEventLog(delivery_id=delivery_id, event_type="acidente")
+        from app.use_cases.chaos_use_cases import InjectChaosUseCase
+
+        mock_event_bus = AsyncMock()
+        mock_event_bus.worker_pool = AsyncMock()
+
+        use_case = InjectChaosUseCase(
+            mock_delivery_repo, mock_chaos_repo, mock_alert_repo,
+            mock_eta_history_repo, mock_place_repo,
+            event_bus=mock_event_bus,
+        )
+        result = await use_case.execute(delivery_id=delivery_id, event_type="acidente")
+
+        mock_event_bus.publish.assert_awaited_once()
+        args = mock_event_bus.publish.call_args
+        published = args[0][0]
+        assert isinstance(published, EtaRecalculationRequested)
+        assert published.delivery_id == delivery_id
+        assert published.lat == -23.55
+        assert published.lng == -46.63
+        assert published.reason == "caos_injetado"
+        mock_delivery_repo.update.assert_not_awaited()
+        mock_place_repo.get_store_by_id.assert_not_awaited()
+
+    async def test_inject_critical_chaos_enqueues_alert_when_worker_pool_set(
+        self, mock_delivery_repo, mock_chaos_repo, mock_alert_repo,
+        mock_eta_history_repo, mock_place_repo,
+    ):
+        delivery_id = uuid.uuid4()
+        existing = Delivery(
+            id=delivery_id, factory_id=uuid.uuid4(), store_id=uuid.uuid4(),
+            driver_id=uuid.uuid4(),
+        )
+        mock_delivery_repo.get_by_id.return_value = existing
+        from app.domain.entities.chaos import ChaosEventLog
+        mock_chaos_repo.create.return_value = ChaosEventLog(delivery_id=delivery_id, event_type="deslizamento")
+        from app.use_cases.chaos_use_cases import InjectChaosUseCase
+
+        mock_event_bus = AsyncMock()
+        mock_event_bus.worker_pool = AsyncMock()
+
+        use_case = InjectChaosUseCase(
+            mock_delivery_repo, mock_chaos_repo, mock_alert_repo,
+            mock_eta_history_repo, mock_place_repo,
+            event_bus=mock_event_bus,
+        )
+        await use_case.execute(
+            delivery_id=delivery_id, event_type="deslizamento",
+            impact_factor=3.0, delay_minutes=90,
+        )
+
+        alert_published = [
+            args[0][0] for args in mock_event_bus.publish.call_args_list
+            if isinstance(args[0][0], AlertCreationRequested)
+        ]
+        assert len(alert_published) == 1
+        assert alert_published[0].delivery_id == delivery_id
+        assert alert_published[0].is_critical is True
+        mock_alert_repo.create.assert_not_awaited()

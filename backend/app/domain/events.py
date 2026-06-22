@@ -17,3 +17,18 @@ class DeliveryStatusChangedEvent(DomainEvent):
     delivery_id: uuid.UUID
     old_status: str
     new_status: str
+
+
+@dataclass(kw_only=True)
+class EtaRecalculationRequested(DomainEvent):
+    delivery_id: uuid.UUID
+    lat: float
+    lng: float
+    reason: str
+
+
+@dataclass(kw_only=True)
+class AlertCreationRequested(DomainEvent):
+    delivery_id: uuid.UUID
+    message: str
+    is_critical: bool

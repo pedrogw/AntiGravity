@@ -438,6 +438,46 @@ class TestChaosInjection:
         updated = next(d for d in deliveries if d["id"] == delivery_id)
         assert updated["eta_current"] is not None
 
+    async def test_inject_chaos_idempotency_returns_same_on_repeat(
+        self, client: AsyncClient, lojista: dict, motorista: dict
+    ):
+        factory_resp = await client.post(
+            "/places/factories",
+            json={"name": "F-idem", "lat": -23.0, "lng": -46.0},
+            headers=lojista["headers"],
+        )
+        store_resp = await client.post(
+            "/places/stores",
+            json={"name": "S-idem", "lat": -23.55, "lng": -46.63, "owner_id": lojista["id"]},
+            headers=lojista["headers"],
+        )
+        create_resp = await client.post(
+            "/deliveries/",
+            json={"factory_id": factory_resp.json()["id"], "store_id": store_resp.json()["id"], "driver_id": motorista["id"]},
+            headers=lojista["headers"],
+        )
+        delivery_id = create_resp.json()["id"]
+        idem_key = str(uuid.uuid4())
+
+        first = await client.post(
+            f"/deliveries/{delivery_id}/chaos",
+            json={"event_type": "acidente", "impact_factor": 1.5, "delay_minutes": 10},
+            headers={**lojista["headers"], "Idempotency-Key": idem_key},
+        )
+        assert first.status_code == 201
+        first_data = first.json()
+
+        second = await client.post(
+            f"/deliveries/{delivery_id}/chaos",
+            json={"event_type": "acidente", "impact_factor": 1.5, "delay_minutes": 10},
+            headers={**lojista["headers"], "Idempotency-Key": idem_key},
+        )
+        assert second.status_code == 201
+        second_data = second.json()
+
+        assert second_data["id"] == first_data["id"]
+        assert second_data["event_type"] == first_data["event_type"]
+
 
 class TestAlerts:
     async def test_list_alerts_empty(self, client: AsyncClient, lojista: dict):

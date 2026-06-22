@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     CHAOS_CRITICAL_DELAY_THRESHOLD: int = 60
     CACHE_TTL_SECONDS: int = 300
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
+    IDEMPOTENCY_KEY_TTL_HOURS: int = 24
 
     model_config = SettingsConfigDict(case_sensitive=True, env_file=".env")
 

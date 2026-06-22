@@ -1,4 +1,4 @@
-from app.domain.entities.user import User as UserEntity
+from app.domain.entities.user import User as UserEntity, UserRole
 from app.domain.repositories.user_repo import UserRepositoryProtocol
 from app.core.security import get_password_hash, verify_password, create_access_token, create_refresh_token, decode_refresh_token
 from app.core.exceptions import ConflictException, InvalidCredentialsException
@@ -8,7 +8,7 @@ class RegisterUserUseCase:
     def __init__(self, repo: UserRepositoryProtocol):
         self.repo = repo
 
-    async def execute(self, email: str, password: str, role: str) -> UserEntity:
+    async def execute(self, email: str, password: str, role: UserRole) -> UserEntity:
         existing_user = await self.repo.get_by_email(email)
         if existing_user:
             raise ConflictException("Email já cadastrado")

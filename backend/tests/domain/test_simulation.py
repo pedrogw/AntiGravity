@@ -1,12 +1,13 @@
 import pytest
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
-from app.domain.chaos import apply_chaos_to_eta, remove_chaos_from_eta
+from app.domain.entities.delivery import Delivery
+from app.domain.chaos import remove_chaos_from_eta
 from app.domain.safe_check import is_safe_check_expired, evaluate_truck_speed_status
 
 # ==== CHAOS SIMULATION TESTS (10 tests) ====
 
-# apply_chaos_to_eta usa datetime.now(timezone.utc) internamente (aware).
+# Delivery.apply_chaos usa datetime.now(timezone.utc) internamente (aware).
 # Usamos ETAs em 2050 para que current_eta >> now real,
 # tornando o remaining_time essencialmente constante (~24 anos).
 
@@ -16,22 +17,22 @@ def _dt(y, m, d, h, mi, s=0):
 
 def test_chaos_apply_delay_only():
     base = _FUTURE
-    new_eta = apply_chaos_to_eta(base, 1.0, 60)
+    new_eta = Delivery.apply_chaos(base, 1.0, 60)
     assert new_eta == _dt(2050, 6, 1, 13, 0, 0)
 
 def test_chaos_apply_factor_only():
     base = _FUTURE
-    new_eta = apply_chaos_to_eta(base, 1.3, 0)
+    new_eta = Delivery.apply_chaos(base, 1.3, 0)
     assert new_eta > base + timedelta(hours=0.3) - timedelta(seconds=5)
 
 def test_chaos_apply_factor_and_delay():
     base = _FUTURE
-    new_eta = apply_chaos_to_eta(base, 1.5, 30)
+    new_eta = Delivery.apply_chaos(base, 1.5, 30)
     assert new_eta > base + timedelta(minutes=30)
 
 def test_chaos_apply_zero_impact():
     base = _FUTURE
-    new_eta = apply_chaos_to_eta(base, 1.0, 0)
+    new_eta = Delivery.apply_chaos(base, 1.0, 0)
     assert new_eta == base.replace(microsecond=0)
 
 def test_chaos_remove_delay():
@@ -42,25 +43,25 @@ def test_chaos_remove_delay():
 
 def test_chaos_remove_factor():
     previous = _FUTURE
-    current = apply_chaos_to_eta(previous, 1.5, 0)
+    current = Delivery.apply_chaos(previous, 1.5, 0)
     reverted = remove_chaos_from_eta(current, previous, 1.5, 0)
     assert reverted == previous.replace(microsecond=0)
 
 def test_chaos_past_eta_adds_delay_only():
     base = _dt(2020, 1, 1, 12, 0, 0)
-    new_eta = apply_chaos_to_eta(base, 2.0, 30)
+    new_eta = Delivery.apply_chaos(base, 2.0, 30)
     assert new_eta == _dt(2020, 1, 1, 12, 30, 0)
 
 def test_chaos_apply_invalid_factor():
     with pytest.raises(ValueError, match="Impact factor cannot be negative"):
-        apply_chaos_to_eta(_dt(2030, 1, 1, 12, 0, 0), -1.0, 0)
+        Delivery.apply_chaos(_dt(2030, 1, 1, 12, 0, 0), -1.0, 0)
 
 def test_chaos_apply_invalid_delay():
     with pytest.raises(ValueError, match="Delay cannot be negative"):
-        apply_chaos_to_eta(_dt(2030, 1, 1, 12, 0, 0), 1.0, -10)
+        Delivery.apply_chaos(_dt(2030, 1, 1, 12, 0, 0), 1.0, -10)
 
 def test_chaos_zero_factor():
-    new_eta = apply_chaos_to_eta(_FUTURE, 0.0, 0)
+    new_eta = Delivery.apply_chaos(_FUTURE, 0.0, 0)
     now = datetime.now(timezone.utc).replace(microsecond=0)
     assert new_eta >= now - timedelta(seconds=2)
     assert new_eta <= now + timedelta(seconds=2)

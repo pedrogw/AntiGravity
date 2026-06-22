@@ -4,11 +4,6 @@ from app.domain.value_objects.coordinates import Coordinates
 
 def calculate_haversine_distance(point1: Coordinates, point2: Coordinates) -> float:
     """Distância em km entre duas coordenadas usando a fórmula de Haversine."""
-    if not (-90 <= point1.lat <= 90 and -90 <= point2.lat <= 90):
-        raise ValueError("Latitude out of bounds")
-    if not (-180 <= point1.lng <= 180 and -180 <= point2.lng <= 180):
-        raise ValueError("Longitude out of bounds")
-        
     R = 6371.0 # Radius of earth in km
     
     phi1 = math.radians(point1.lat)

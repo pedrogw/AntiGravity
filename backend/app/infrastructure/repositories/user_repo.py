@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.infrastructure.orm.user import User as UserModel
-from app.domain.entities.user import User as UserEntity
+from app.domain.entities.user import User as UserEntity, UserRole
 
 class UserRepository:
     def __init__(self, db: AsyncSession):
@@ -40,6 +40,6 @@ class UserRepository:
             id=model.id,
             email=model.email,
             password_hash=model.password_hash,
-            role=model.role,
+            role=UserRole(model.role),
             created_at=model.created_at
         )

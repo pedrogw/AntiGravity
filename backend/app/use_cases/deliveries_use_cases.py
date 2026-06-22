@@ -1,8 +1,6 @@
 from typing import List, Optional, TYPE_CHECKING
-from datetime import datetime, timezone
 from app.domain.entities.delivery import (
     Delivery as DeliveryEntity,
-    VALID_TRANSITIONS,
 )
 from app.domain.repositories.delivery_repo import DeliveryRepositoryProtocol
 from app.domain.repositories.place_repo import PlaceRepositoryProtocol
@@ -11,8 +9,8 @@ from app.domain.repositories.chaos_repo import ChaosRepositoryProtocol
 from app.domain.services.eta_service import calculate_eta_between_coordinates
 from app.domain.haversine import add_hours_to_now
 from app.core.config import settings
-from app.core.exceptions import EntityNotFoundException, InvalidTransitionException, ForbiddenException
-from app.domain.events import DeliveryCreatedEvent
+from app.core.exceptions import EntityNotFoundException, ForbiddenException
+from app.domain.events import DeliveryCreatedEvent, EtaRecalculationRequested
 from app.use_cases._eta_recalculation import recalculate_delivery_eta
 from app.infrastructure.cache.cache_service import CACHE_PREFIX
 import uuid
@@ -107,11 +105,13 @@ class UpdateDeliveryUseCase:
         place_repo: PlaceRepositoryProtocol,
         eta_history_repo: EtaHistoryRepositoryProtocol,
         chaos_repo: ChaosRepositoryProtocol,
+        event_bus: Optional["EventBus"] = None,
     ):
         self.delivery_repo = delivery_repo
         self.place_repo = place_repo
         self.eta_history_repo = eta_history_repo
         self.chaos_repo = chaos_repo
+        self.event_bus = event_bus
 
     async def execute(
         self,
@@ -128,31 +128,24 @@ class UpdateDeliveryUseCase:
         if str(delivery.driver_id) != str(current_user_id):
             raise ForbiddenException("Apenas o motorista responsável pode atualizar a entrega")
 
-        now = datetime.now(timezone.utc)
-
         if status:
-            allowed = VALID_TRANSITIONS.get(delivery.status, [])
-            if status not in allowed:
-                raise InvalidTransitionException(
-                    f"Transição inválida: {delivery.status} -> {status}. "
-                    f"Transições permitidas: {allowed}",
-                )
-            delivery.status = status
-            if status == "em_transito" and not delivery.departed_at:
-                delivery.departed_at = now
+            delivery.change_status(status)
 
         if lat is not None and lng is not None:
-            delivery.current_lat = lat
-            delivery.current_lng = lng
+            delivery.update_position(lat, lng)
 
-            await recalculate_delivery_eta(
-                delivery=delivery,
-                lat=lat,
-                lng=lng,
-                place_repo=self.place_repo,
-                chaos_repo=self.chaos_repo,
-                eta_history_repo=self.eta_history_repo,
-                reason="posicao_atualizada",
-            )
+            if self.event_bus and self.event_bus.worker_pool:
+                await self.event_bus.publish(EtaRecalculationRequested(
+                    delivery_id=delivery_id, lat=lat, lng=lng, reason="posicao_atualizada",
+                ))
+            else:
+                await recalculate_delivery_eta(
+                    delivery=delivery,
+                    lat=lat, lng=lng,
+                    place_repo=self.place_repo,
+                    chaos_repo=self.chaos_repo,
+                    eta_history_repo=self.eta_history_repo,
+                    reason="posicao_atualizada",
+                )
 
         return await self.delivery_repo.update(delivery)

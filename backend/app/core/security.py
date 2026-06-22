@@ -3,6 +3,7 @@ from typing import Any, Union
 from jose import jwt, JWTError
 import bcrypt
 from app.core.config import settings
+from app.domain.entities.user import UserRole
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
@@ -10,7 +11,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def get_password_hash(password: str) -> str:
     return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
-def create_access_token(subject: Union[str, Any], role: str, expires_delta: timedelta = None) -> str:
+def create_access_token(subject: Union[str, Any], role: Union[str, UserRole], expires_delta: timedelta = None) -> str:
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
@@ -18,7 +19,7 @@ def create_access_token(subject: Union[str, Any], role: str, expires_delta: time
     to_encode = {"exp": expire, "sub": str(subject), "role": role, "type": "access"}
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
-def create_refresh_token(subject: Union[str, Any], role: str) -> str:
+def create_refresh_token(subject: Union[str, Any], role: Union[str, UserRole]) -> str:
     expire = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     to_encode = {"exp": expire, "sub": str(subject), "role": role, "type": "refresh"}
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)

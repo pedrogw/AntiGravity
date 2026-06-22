@@ -43,7 +43,7 @@ Construir um motor analítico B2B de logística com rastreamento inteligente, SL
 
 ### Refinamentos do Bloco 2
 - Extraída lógica de recálculo de ETA para `_eta_recalculation.py` (helper compartilhado)
-- `UpdateDeliveryUseCase` e `InjectChaosUseCase` agora usam `recalculate_delivery_eta()`
+- `UpdateDeliveryUseCase` e `InjectChaosUseCase` usam `recalculate_delivery_eta()` via sync fallback; com Redis disponível, enfileiram `EtaRecalculationRequested` no worker ARQ
 - Razões: `"posicao_atualizada"` e `"caos_injetado"`
 
 ---
@@ -273,22 +273,71 @@ Construir um motor analítico B2B de logística com rastreamento inteligente, SL
 > Processos em andamento são rastreados em `docs/processos-andamento.md`
 
 ### Pendente 4 — Robustez
-**Situação:** Não iniciado
-- Retry/lock para concorrência em atualizações simultâneas
-- Idempotência no chaos injection (evitar duplicatas)
+**Situação:** Concluído ✅
+- Idempotência no chaos injection via header `Idempotency-Key`
+- Nova tabela `idempotency_keys` (key PK, response JSON, created_at)
+- `IdempotencyRepository` (protocolo + SQLAlchemy) com TTL de 24h
+- `InjectChaosUseCase` verifica key antes de criar evento; se cache hit, retorna response original sem efeito colateral
+- 2 testes unitários (cache hit, cache miss + save) + 1 teste de integração (mesma key → mesmo chaos_event_id)
+- 164 testes, 0 falhas, 97% cobertura total
+
+**Por que não fizemos optimistic lock:**
+- Lost update em PATCH é raro (cada motorista atualiza a própria entrega)
+- Idempotency Key tem impacto real imediato (duplicata de caos corrompe ETA)
+- Lock otimista pode vir depois se houver evidência de contenção
 
 ### Pendente 5 — Cache não injetado na produção
-**Situação:** CacheService implementado e testado, mas a rota `GET /deliveries` em `api/deliveries.py` não passa `cache_service` ao `ListDeliveriesUseCase`
+**Situação:** Concluído ✅
+- `app.state.cache_service` setado no lifespan de `main.py`
+- Rota `GET /deliveries` injeta `cache_service` via `getattr(request.app.state, "cache_service", None)`
+- Fallback seguro: se Redis caiu, `cache_service` é `None` → fallback para DB direto
+- `CacheInvalidationListener` continua funcionando (já estava wireado)
+- 164 testes, 0 falhas — nenhum teste precisou ser alterado
 
-### Pendente 6 — Worker Queue Async
-**Situação:** Não iniciado. Sem `arq`/`celery`/`rq` para processamento assíncrono em background.
+---
 
-### Pendente 7 — Housekeeping
-- `remove_chaos_from_eta` é código morto (definido em `chaos.py`, só testado, sem rota/use case)
+### 🔙 Backend
+
+#### Pendente 6 — Worker Queue Async
+**Situação:** Fase 1 (event handlers) ✅ + Fase 2 (ETA recalc) ✅ + Fase 3 (alert creation) ✅
+- Fase 1: `arq` + `app/infrastructure/worker.py` + EventBus enqueue + worker em docker-compose
+- Fase 2: `EtaRecalculationRequested` + `handle_eta_recalculation()` com DB session + sync fallback
+- Fase 3: `AlertCreationRequested(delivery_id, message, is_critical)` + `handle_alert_creation()` no worker; decisão `is_critical` inline (pure domain), apenas persistência no worker
+- **202 testes, 0 falhas, 99% cobertura**
+- **P6 completo ✅**
+
+#### Pendente 8 — Cobertura de Infraestrutura Real (<80%)
+**Situação:** Concluído ✅
+- Todos os 6 arquivos-alvo agora estão em **100%**:
+  - `main.py` (69% → **100%**) — lifespan success/failure, 3 exception handlers, health check
+  - `bootstrap.py` (67% → **100%**) — `get_db` generator, `dispose_engine`
+  - `redis_client.py` (50% → **100%**) — ambos branches de `get_redis` e `close_redis`
+  - `cache_invalidation_listener.py` (62% → **100%**) — `handle` com `DeliveryCreatedEvent` e `DeliveryStatusChangedEvent`
+  - `worker.py` (73% → **100%**) — cache invalidation com redis, `handle_alert_creation`, `handle_eta_recalculation` (found + not-found)
+  - `audit_listener.py` (já 100%)
+- **20 novos testes, 0 alterações em arquivos de produção**
+- Técnica: mocks de infraestrutura externa (Redis, engine, sessão DB), testagem direta de handlers (sem TestClient), reset de estado module-level
+- Cobertura total: **99%**
+
+#### Migration `idempotency_keys`
+**Situação:** Concluído ✅
+- `app/db/base.py` agora importa `IdempotencyKey` — Alembic detecta a tabela para auto-generate
+- Migration `05147e3ad5de_add_idempotency_keys.py` criada em `migrations/versions_pedro/` (diretório writable pelo pedro)
+- `alembic.ini` atualizado com `version_locations = migrations/versions/:migrations/versions_pedro/` (separador `:` no Linux)
+- `upgrade()` → `alembic upgrade head`: aplica todas as migrações + cria `idempotency_keys`
+- `downgrade()` → `alembic downgrade base`: remove todas as tabelas
+- **202 testes, 0 falhas, 99% cobertura**
+- **Problema de root-owned resolvido estruturalmente** — novas migrations vão para `versions_pedro/`
+
+---
+
+### 🔙 Frontend
+
+#### Pendente 7 — Housekeeping
 - Testes faltantes para `useDeliveries` e `usePlaces` no frontend
 - `src/use_cases/getRouteByRole.ts` legado (poderia ser movido para constants ou router config)
 
-### Pendente 8 — Linting Frontend (24 problemas: 16 erros, 8 warnings)
+#### Pendente 9 — Linting Frontend (24 problemas: 16 erros, 8 warnings)
 - **Erros (`@typescript-eslint/no-explicit-any`):**
   - `components/ui/dropdown-menu.tsx:27` (shadcn)
   - `hooks/useAuth.test.ts:22,29` (teste)
@@ -302,12 +351,141 @@ Construir um motor analítico B2B de logística com rastreamento inteligente, SL
 
 ---
 
+## Bloco 18 — Domínio Rico (Fase D.1: Coordinates)
+**Objetivo:** Eliminar anemic domain começando pelos Value Objects.
+
+**O que foi feito:**
+- `Coordinates.__post_init__()` — valida bounds inclusivos (`-90≤lat≤90`, `-180≤lng≤180`)
+- `Coordinates.distance_to(other)` — delega ao Haversine (lazy import para evitar circular import)
+- Duplicata de validação removida de `haversine.py:7-10` (agora redundante)
+- **145 testes, 0 falhas, 96% cobertura** — mantido
+- Cobertura de `coordinates.py`: 85% (linhas 17-18 do `distance_to` sem chamada direta nos testes)
+
+## Bloco 19 — Domínio Rico (Fase D.2: User)
+**Objetivo:** Tipar `role` com `UserRole` enum e adicionar métodos de consulta.
+
+**O que foi feito:**
+- `User.role: str` → `User.role: UserRole` (aproveita enum existente que era ignorado)
+- `User.is_motorista() -> bool` e `User.is_lojista() -> bool`
+- `UserRole` duplicado removido de `infrastructure/orm/user.py` — agora importa do domínio
+- `RegisterUserUseCase.role: str` → `RegisterUserUseCase.role: UserRole`
+- `security.py`: type hints aceitam `Union[str, UserRole]`
+- `user_repo.py`: conversão explícita `UserRole(model.role)` no reconstrutor
+- `seed.py` e `admin_seed.py`: imports corrigidos, `.value` removidos
+- `api/auth.py`: `.value` removido (use case já aceita `UserRole`)
+- **145 testes, 0 falhas, 96% cobertura** — mantido
+- Cobertura `user.py`: 89% (linhas 21,24 — `is_motorista`/`is_lojista` sem chamada direta)
+
+## Bloco 20 — Domínio Rico (Fase D.3: Alert)
+**Objetivo:** Encapsular lógica de criticalidade em factory method na entidade.
+
+**O que foi feito:**
+- `Alert.critical(delivery_id, message, impact_factor, delay_minutes, factor_threshold, delay_threshold)` — factory `@classmethod` que calcula `is_critical` internamente
+- Thresholds continuam no `config.py` e são passados como parâmetros (entity testável sem depender de settings)
+- `InjectChaosUseCase` refatorado: montagem da mensagem preservada, criação do alerta delegada ao factory, persistência condicional a `alert.is_critical`
+- **145 testes, 0 falhas** — NENHUM teste precisou ser alterado
+- `alert.py`: **100% cobertura**, `chaos_use_cases.py`: **100% cobertura**
+
+## Bloco 21 — Domínio Rico (Fase D.4a: Delivery.change_status)
+**Objetivo:** Encapsular máquina de estados na entidade Delivery.
+
+**O que foi feito:**
+- `VALID_TRANSITIONS` movido de constante de módulo para `ClassVar` dentro de `Delivery`
+- `Delivery.change_status(new_status)` — valida transição, seta `status` e `departed_at` automaticamente
+- `ClassVar` usado para evitar que vire campo de instância (preserva `DeliveryEntity(**item)` no cache)
+- `UpdateDeliveryUseCase` refatorado: 7 linhas de validação inline substituídas por `delivery.change_status(status)`
+- Import morto de `InvalidTransitionException` e `datetime` removidos do use case
+- **145 testes, 0 falhas** — NENHUM teste precisou ser alterado
+- `delivery.py`: **100% cobertura**, `deliveries_use_cases.py`: **100% cobertura**
+
+## Bloco 22 — Domínio Rico (Fase D.4b: Delivery.update_position)
+**Objetivo:** Encapsular atualização de posição na entidade.
+
+**O que foi feito:**
+- `Delivery.update_position(lat, lng)` — método que seta `current_lat` e `current_lng`
+- `UpdateDeliveryUseCase` refatorado: `delivery.current_lat = lat; delivery.current_lng = lng` → `delivery.update_position(lat, lng)`
+- **145 testes, 0 falhas** — NENHUM teste alterado
+- `delivery.py`: **100% cobertura**, `deliveries_use_cases.py`: **100% cobertura**
+
 ## Estado Atual
-- **145 testes backend**, 0 falhas, 8 warnings (timezone)
-- **Cobertura total:** 96%
-- **Cobertura por camada:** `app/use_cases/` 100%, `app/schemas/` 100%, `app/api/` 100%, `app/domain/` ~95%, `app/infrastructure/` ~88%
+- **164 testes backend**, 0 falhas, 8 warnings (cache deprecated)
+- **Cobertura total:** 97%
+- **Domínio (entities, VOs, services, haversine, safe_check, chaos): 100%**
+- **Use cases:** ~99%, **Schemas:** 100%, **API:** 100%
+- **Infraestrutura:** ~89% (pendentes <80% listados abaixo)
 - **Frontend:** ~10 testes (Vitest), MSW para mock de API
-- `remove_chaos_from_eta` é código morto (sem rota ou use case)
+- **Entidades com comportamento:** `Coordinates`, `User`, `Alert`, `Delivery` (todos os 4 métodos), `ChaosEventLog` (aggregate)
+- **Fase D (Domínio Rico): 9/9 tarefas concluídas ✅**
+- **P4 (Robustez): Concluído ✅** — Idempotency Key no chaos injection
+- **P5 (Cache produção): Concluído ✅** — Cache injetado via `app.state`
+
+## Bloco 23 — Domínio Rico (Fases D.4c, D.4d, D.2t)
+**Objetivo:** Completar migração de comportamento anêmico para domínio rico em Delivery e eliminar dead code.
+
+**O que foi feito:**
+
+### D.4c — Delivery.apply_chaos()
+- `@staticmethod apply_chaos(current_eta, impact_factor, delay_minutes)` movido de `domain/chaos.py` para `Delivery`
+- `Delivery.apply_chaos` usado em `_eta_recalculation.py` e `test_simulation.py`
+- `chaos.py:apply_chaos_to_eta` virou delegate (depois removido)
+
+### D.4d — Delivery.recalculate_eta()
+- `Delivery.recalculate_eta(origin, store_location, speed_kmh, chaos_events, reason)` → retorna `EtaHistory | None`
+- Método puro: recebe `Coordinates`, calcula distância via `origin.distance_to()`, ETA via Haversine, agrega caos, seta `eta_current`/`eta_original`
+- `_eta_recalculation.py` reduzido de 55 para 15 linhas (orquestrador thin: busca store+chaos, delega ao entity, persiste history)
+- 9 testes de domínio puros (sem async, sem DB)
+
+### D.2t — Testes User
+- `test_user_entity.py`: 2 testes para `is_motorista()` / `is_lojista()` — `user.py` 100%
+
+### Cleanup
+- `chaos.py`: removido `apply_chaos_to_eta` (dead code); só resta `remove_chaos_from_eta`
+- **156 testes, 0 falhas, 96% cobertura total**
+- **Domínio inteiro em 100%** (entities, VOs, services, haversine, safe_check, chaos)
+
+---
+
+## Bloco 24 — Domínio Rico (Fase D.5: ChaosEventLog.aggregate)
+**Objetivo:** Encapsular lógica de agregação de eventos de caos na entidade.
+
+**O que foi feito:**
+- `ChaosAggregate` dataclass com `total_impact_factor`, `total_delay_minutes`, `event_count`, `count_by_type`
+- `ChaosEventLog.aggregate(events)` — `@staticmethod` que calcula fator total (produto), atraso total (soma), contagem por tipo
+- `Delivery.recalculate_eta()` refatorado: loop inline de 6 linhas substituído por `ChaosEventLog.aggregate(chaos_events)` (lazy import)
+- `test_delivery_entity.py`: `FakeChaos` removido, testes usam `ChaosEventLog` real
+- `test_chaos_entity.py`: 5 testes para aggregate (lista vazia, único, múltiplos, defaults, fator 1.0)
+- **161 testes, 0 falhas, 96% cobertura total**
+- **Fase D completa (9/9 tarefas)**
+
+---
+
+## Bloco 25 — Robustez (P4: Idempotency Key no Chaos Injection)
+**Objetivo:** Evitar duplicatas de eventos de caos em caso de retry de rede ou duplo clique.
+
+**O que foi feito:**
+- `IDEMPOTENCY_KEY_TTL_HOURS = 24` em `config.py`
+- `IdempotencyKey` ORM model (`idempotency_keys` tabela com key PK, response JSON, created_at)
+- `IdempotencyRepositoryProtocol` no domínio
+- `IdempotencyRepository` SQLAlchemy com `get()` e `save()` — serializa `ChaosEventLogEntity` para JSON, TTL check no retrieve
+- `InjectChaosUseCase`: se `idempotency_key` fornecida e cache hit → retorna cached sem side effects; se cache miss → executa e salva
+- Header `Idempotency-Key` opcional em `POST /deliveries/{id}/chaos`
+- 2 testes unitários (hit + miss) + 1 teste de integração (mesma key → mesmo id)
+- `chaos_use_cases.py`: **100% cobertura**, `idempotency_repo.py`: **96%** (1 miss: TTL cutoff)
+- **164 testes, 0 falhas, 97% cobertura total**
+
+---
+
+## Bloco 26 — Cache injetado na produção (P5)
+**Objetivo:** Completar o wiring do cache-aside em `GET /deliveries` para produção.
+
+**O que foi feito:**
+- `main.py`: `app.state.cache_service = cache_service` dentro do `try` do lifespan (após criar `CacheService(redis)`)
+- `api/deliveries.py`: rota `list_deliveries` agora aceita `request: Request` e obtém `cache = getattr(request.app.state, "cache_service", None)`
+- `ListDeliveriesUseCase` recebe `cache_service=cache` — quando `None` (Redis caiu), fallback para `repo.list_all()`
+- Nenhum teste precisou ser alterado — em testes o lifespan não conecta Redis, `cache_service` fica `None`, fluxo cai para DB
+- **164 testes, 0 falhas**
+
+---
 
 ## Decisões-Chave
 | Decisão | Motivo |
@@ -323,13 +501,37 @@ Construir um motor analítico B2B de logística com rastreamento inteligente, SL
 | `ObservabilityMiddleware` + `DataMaskingFilter` | Rastreabilidade sem vazar PII |
 | SQLite in-memory para testes (não PostgreSQL) | Velocidade e isolamento; mesmas queries (SQLAlchemy abstrai) |
 | slowapi com `get_remote_address` | Rate limiting por IP; limites conservadores (3/min register, 5/min login, 10/min chaos) |
+| Validação de bounds em `Coordinates.__post_init__` (inclusiva `<=`) | Defense-in-depth; Pydantic valida na API, VO valida em qualquer caminho interno |
+| Lazy import (`from app.domain.haversine import ...` dentro do método) | Evita circular import entre `Coordinates` e `haversine` |
+| `User.role: UserRole` em vez de `str` | Aproveita enum já existente; `UserRole(str, Enum)` é compatível com JSON e str |
+| `UserRole` removido do ORM, importado do domain | Elimina duplicata; único ponto de verdade para o enum |
+| `Alert.critical()` factory method | Encapsula regra de criticalidade na entidade; thresholds passados como parâmetro p/ manter testabilidade sem depender de `settings` |
+| `VALID_TRANSITIONS` como `ClassVar` dentro de `Delivery` | `ClassVar` impede dataclass de tratá-lo como campo; `DeliveryEntity(**item)` do cache continua funcionando |
+| `Delivery.change_status()` no domínio | Validação de transição e set de `departed_at` encapsulados; use case vira orquestrador simples |
+| `Delivery.update_position()` no domínio | Método simples, mas prepara o terreno para validação futura de coordenadas na entidade |
+| `Delivery.apply_chaos()` como `@staticmethod` | Lógica pura independente de estado da instância; pode ser chamada de `_eta_recalculation.py` sem precisar construir Delivery |
+| `Delivery.recalculate_eta()` no domínio | Método puro que recebe VOs e retorna `EtaHistory`; use case vira orquestrador I/O |
+| Lazy import de `calculate_eta` dentro de `recalculate_eta` | Consistente com padrão já usado em `Coordinates.distance_to()`; evita import circular |
+| `from __future__ import annotations` em `delivery.py` | Necessário para forward reference de `EtaHistory` (definida após `Delivery` no mesmo módulo) |
+| Remoção de `apply_chaos_to_eta` de `chaos.py` | Dead code: todos os call-sites migrados para `Delivery.apply_chaos()` |
+| `ChaosEventLog.aggregate()` como `@staticmethod` | Lógica de agregação (produto de fatores, soma de delays, contagem por tipo) encapsulada na entidade; `Delivery.recalculate_eta()` consome via lazy import |
+| `ChaosAggregate` como dataclass separado | Objeto de retorno rico que pode ser usado por dashboards e outros consumidores futuros |
+| `Idempotency-Key` header em vez de uniqueness constraint na tabela chaos | Header é padrão REST (Stripe, etc.); não acopla idempotência ao schema de domínio; tabela separada `idempotency_keys` |
+| `IdempotencyRepository` opcional no use case (`None` por padrão) | Backward compatibility: testes existentes não precisam passar o repo; só ativado quando header é enviado |
+| TTL de 24h com verificação no `get()` | Evita acúmulo infinito de keys sem precisar de job de cleanup; cutoff é verificado no retrieve |
+| JSON serialization da resposta em vez de FK para `chaoseventlog` | `ChaosRepository` não tem `get_by_id`; serializar evita acoplar repositórios; resposta pode ser reconstruída sem consulta adicional |
+| Cache injetado via `app.state` em vez de `Depends()` | `CacheService` é criado no lifespan (após conectar Redis); `app.state` é o mecanismo padrão do FastAPI para compartilhar instâncias entre lifespan e rotas; `getattr` com fallback seguro se Redis caiu |
 
 ## Arquivos Relevantes
 
 ### Backend — Domínio
-- `app/domain/entities/`: Delivery (máquina de estados), EtaHistory, ChaosEventLog, Alert, Factory, Store, User
+- `app/domain/entities/alert.py`: `Alert` (com `critical()` factory method)
+- `app/domain/entities/user.py`: `User` (com `is_motorista()`/`is_lojista()`, `role: UserRole`)
+- `app/domain/entities/delivery.py`: `Delivery` (com `change_status()` + `update_position()` + `apply_chaos()` + `recalculate_eta()`, máquina de estados como `ClassVar`), `EtaHistory`
+- `app/domain/entities/chaos.py`: `ChaosEventLog` (com `aggregate()` estático), `ChaosAggregate`
+- `app/domain/entities/place.py`: `Factory`, `Store`
 - `app/domain/events.py`: `DeliveryCreatedEvent`, `DeliveryStatusChangedEvent`
-- `app/domain/value_objects/coordinates.py`: `Coordinates` (dataclass imutável)
+- `app/domain/value_objects/coordinates.py`: `Coordinates` (VO imutável com `__post_init__` valida bounds + `distance_to()`)
 - `app/domain/services/eta_service.py`: `calculate_eta_between_coordinates()`
 - `app/domain/haversine.py`, `app/domain/chaos.py`, `app/domain/safe_check.py`
 - `app/domain/repositories/`: Protocolos para delivery, place, eta_history, chaos, alert, user
@@ -344,8 +546,8 @@ Construir um motor analítico B2B de logística com rastreamento inteligente, SL
 - `app/core/rate_limiter.py`: `Limiter` com `get_remote_address`
 
 ### Backend — Infraestrutura
-- `app/infrastructure/repositories/`: Implementações SQLAlchemy (6 repositórios)
-- `app/infrastructure/orm/`: Modelos SQLAlchemy
+- `app/infrastructure/repositories/`: Implementações SQLAlchemy (7 repositórios, incluindo `idempotency_repo.py`)
+- `app/infrastructure/orm/`: Modelos SQLAlchemy (incluindo `idempotency_key.py`)
 - `app/infrastructure/cache/redis_client.py`, `cache_service.py`
 - `app/infrastructure/events/audit_listener.py`, `cache_invalidation_listener.py`
 
@@ -361,14 +563,15 @@ Construir um motor analítico B2B de logística com rastreamento inteligente, SL
 
 ### Backend — Testes
 - `tests/conftest.py`: Fixtures (lojista, motorista, db_session, client, fakeredis, cache_service)
-- `tests/unit/test_use_cases.py`: 24 testes
+- `tests/unit/test_use_cases.py`: 28 testes
 - `tests/unit/test_event_bus.py`: 8 testes
+- `tests/unit/test_worker.py`: 13 testes
 - `tests/unit/test_cache_service.py`: testes de cache
 - `tests/unit/test_list_deliveries_cache.py`: testes de cache-aside
 - `tests/api/test_integration.py`: 21 testes E2E
 - `tests/api/test_security.py`: 6 testes
 - `tests/api/test_validation.py`: ~22 casos parametrizados
-- `tests/domain/`: test_simulation.py, test_engine.py, test_extreme.py, test_eta_service.py
+- `tests/domain/`: test_simulation.py, test_engine.py, test_extreme.py, test_eta_service.py, test_delivery_entity.py, test_chaos_entity.py, test_user_entity.py
 - `tests/api/test_rate_limiting.py`: 3 testes de rate limiting (429 após exceder limite)
 
 ### Frontend
@@ -382,3 +585,129 @@ Construir um motor analítico B2B de logística com rastreamento inteligente, SL
 - `src/components/`: LoginForm, AuthGuard, dashboard/, driver/, control-tower/, chaos/, ui/ (shadcn)
 - `src/app/`: page.tsx (login), dashboard/, drive/, control-tower/
 - `__tests__/`: login.test.tsx, unit/, integration/ (login_flow, motorista_redirect, auth_guard)
+
+---
+
+## Bloco 22 — P6 Fase 2: ETA Recalculation em Background
+**Objetivo:** Mover recálculo de ETA do request-response para worker ARQ, com sync fallback para testes.
+
+**O que foi feito:**
+- `app/domain/events.py`: novo `EtaRecalculationRequested(delivery_id, lat, lng, reason)`
+- `app/infrastructure/worker.py`: `handle_eta_recalculation()` — cria DB session, busca delivery+store+chaos, chama `recalculate_delivery_eta()`, persiste `EtaHistory` + `Delivery.eta_current`
+- `app/use_cases/deliveries_use_cases.py`: `UpdateDeliveryUseCase` aceita `event_bus`; condiciona recálculo (enfileira se `worker_pool` setado, senão inline)
+- `app/use_cases/chaos_use_cases.py`: `InjectChaosUseCase` aceita `event_bus`; mesma lógica condicional
+- `app/api/deliveries.py` e `app/api/chaos.py`: passam `event_bus` para os use cases
+- `WorkerSettings.functions` atualizado para incluir `handle_eta_recalculation`
+
+**Testes:**
+- 3 novos testes: serialização `EtaRecalculationRequested`, dispatch no worker para ETA recalc, async path no use case
+- 11 testes unitários alterados: adicionado `event_bus=None` aos construtores
+- **178 testes, 0 falhas, 96% cobertura**
+- `chaos_use_cases.py`: 100%, `deliveries_use_cases.py`: 100%, `events.py`: 100%
+
+**Riscos mitigados:**
+- Concorrência: eventos carregam lat/lng no momento da criação, ordem de execução não importa
+- DB leak: `async with AsyncSessionLocal()` garante cleanup
+- Sync fallback: sem Redis, comportamento idêntico ao anterior
+
+---
+
+## Bloco 23 — P6 Fase 3: Alert Creation em Background
+**Objetivo:** Mover persistência de alertas críticos do request-response para worker ARQ, mantendo decisão `is_critical` inline.
+
+**O que foi feito:**
+- `app/domain/events.py`: novo `AlertCreationRequested(delivery_id, message, is_critical)`
+- `app/infrastructure/worker.py`: `handle_alert_creation()` — cria DB session, instancia `Alert`, persiste via `AlertRepository`
+- `app/use_cases/chaos_use_cases.py`: bloco de alerta condiciona:
+  - Decisão `is_critical` continua inline (pure domain, sem I/O)
+  - `worker_pool` setado → enfileira `AlertCreationRequested`
+  - `worker_pool` None → `alert_repo.create()` sync fallback
+- `WorkerSettings.functions` inclui `handle_alert_creation`
+
+**Testes:**
+- 2 novos testes: roundtrip serialização `AlertCreationRequested`, dispatch no worker, async path no use case
+- **0 alterações em testes existentes** — sync fallback preserva comportamento
+- **180 testes, 0 falhas, 95% cobertura**
+
+**Riscos mitigados:**
+- Duplicata de alerta prevenida por idempotency key no chaos injection
+- DB leak: `async with AsyncSessionLocal()` garante cleanup
+- Eventual consistency aceitável para alertas
+
+---
+
+## Bloco 24 — P8: Cobertura de Infraestrutura (≥80%)
+**Objetivo:** Elevar cobertura dos 6 arquivos de infraestrutura para ≥80% sem alterar código de produção.
+
+**Contexto:** 5 arquivos usavam conectores reais (DB, Redis, FastAPI) e eram substituídos por mocks nos testes, deixando branches sem cobertura. `audit_listener.py` já estava em 100%.
+
+**O que foi feito (20 novos testes, 0 alterações em produção):**
+
+### `tests/unit/test_redis_client.py` (4 testes)
+- `get_redis()` quando `_redis is None` → cria `AsyncRedis.from_url()`
+- `get_redis()` quando `_redis` já setado → retorna instância existente
+- `close_redis()` quando `_redis is not None` → fecha e reseta para `None`
+- `close_redis()` quando `_redis is None` → no-op
+
+### `tests/unit/test_bootstrap.py` (2 testes)
+- `dispose_engine()` → mock `engine` completo (slot-based), verifica `dispose()`
+- `get_db()` → mock `AsyncSessionLocal` como async context manager, verifica yield + cleanup
+
+### `tests/unit/test_cache_invalidation_listener.py` (2 testes)
+- `handle(DeliveryCreatedEvent)` → `invalidate_prefix` chamado com `CACHE_PREFIX`
+- `handle(DeliveryStatusChangedEvent)` → `invalidate_prefix` não chamado
+
+### `tests/unit/test_main.py` (6 testes)
+- `lifespan` success path → Redis pinga, ARQ pool criado, `CacheService` em `app.state`, `event_bus.worker_pool` setado; cleanup fecha pool
+- `lifespan` failure path → `get_redis()` lança exceção, log "Redis indisponível"
+- `domain_exception_handler` → retorna `JSONResponse` com status 400 e detail
+- `db_connection_exception_handler` → retorna 503 com "Database Unavailable"
+- `unhandled_exception_handler` → retorna 500 com "Erro interno do servidor"
+- `health_check` → retorna `{"status": "ok", "environment": "dev"}`
+
+### `tests/unit/test_worker.py` (6 testes novos)
+- Cache invalidation com `{"redis": mock}` no ctx → `CacheInvalidationListener.handle` chamado
+- Cache invalidation sem redis no ctx → handler não chamado
+- Cache invalidation com falha → log "Cache invalidation failed in worker"
+- `handle_alert_creation` → `AlertRepository.create` chamado com `AlertEntity` correto
+- `handle_eta_recalculation` delivery not found → log warning
+- `handle_eta_recalculation` delivery found → `recalculate_delivery_eta` + `update` chamados
+
+**Resultado final:** **200 testes, 0 falhas, 99% cobertura total.** Todos os 6 arquivos em 100%.
+
+---
+
+## Bloco 25 — Migration `idempotency_keys`
+**Objetivo:** Gerar migration física para a tabela `idempotency_keys` e corrigir bloqueio de diretório root-owned.
+
+**Causa raiz:**
+- `app/db/base.py` não importava `IdempotencyKey` — Alembic não detectava a tabela para `--autogenerate`
+- `migrations/versions/` era root-owned — impossível criar migrações novas
+
+**O que foi feito:**
+
+### `app/db/base.py`
+- Adicionado `from app.infrastructure.orm.idempotency_key import IdempotencyKey`
+- Agora todos os 7 modelos ORM estão centralizados (User, Factory, Store, Delivery, EtaHistory, ChaosEventLog, Alert, IdempotencyKey)
+
+### `alembic.ini`
+- `version_locations = migrations/versions/:migrations/versions_pedro/`
+- `versions_pedro/` é writable pelo `pedro` — novas migrations vão para lá
+
+### Migration `05147e3ad5de_add_idempotency_keys.py`
+- `upgrade()`: `CREATE TABLE idempotency_keys (key VARCHAR(255) PRIMARY KEY, response TEXT NOT NULL, created_at DATETIME DEFAULT now())`
+- `downgrade()`: `DROP TABLE idempotency_keys`
+- Verificado: `alembic upgrade head` + `alembic downgrade base` funcionam em SQLite
+
+### `tests/unit/test_schema.py` (2 testes)
+- `test_table_is_registered`: `"idempotency_keys" in Base.metadata.tables`
+- `test_table_columns`: key (String, PK), response (Text, NOT NULL), created_at (DateTime)
+
+**Chain final de migrações:**
+```
+<base> → 17589825805b (Init)
+       → 2a7f3c9e1d5d (current_lat/lng)
+       → 05147e3ad5de (idempotency_keys) [head]
+```
+
+**Resultado:** **202 testes, 0 falhas, 99% cobertura.** Root-owned resolvido estruturalmente.

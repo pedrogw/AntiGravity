@@ -3,7 +3,8 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from app.core.config import settings
 from app.core.security import get_password_hash
-from app.infrastructure.orm.user import User, UserRole
+from app.infrastructure.orm.user import User
+from app.domain.entities.user import UserRole
 
 ADMIN_EMAIL = "admin@antigravity.com"
 ADMIN_PASSWORD = "admin"
@@ -29,7 +30,7 @@ async def admin_seed():
         admin = User(
             email=ADMIN_EMAIL,
             password_hash=get_password_hash(ADMIN_PASSWORD),
-            role=UserRole.lojista.value
+            role=UserRole.lojista
         )
         session.add(admin)
         await session.commit()

@@ -1,7 +1,8 @@
 import asyncio
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from app.core.config import settings
-from app.infrastructure.orm.user import User, UserRole
+from app.infrastructure.orm.user import User
+from app.domain.entities.user import UserRole
 from app.infrastructure.orm.place import Factory, Store
 from app.core.security import get_password_hash
 
@@ -15,7 +16,7 @@ async def seed():
         lojista = User(
             email="lojista@antigravity.com",
             password_hash=get_password_hash("admin123"),
-            role=UserRole.lojista.value
+            role=UserRole.lojista
         )
         session.add(lojista)
 
@@ -23,7 +24,7 @@ async def seed():
         motorista = User(
             email="motorista@antigravity.com",
             password_hash=get_password_hash("driver123"),
-            role=UserRole.motorista.value
+            role=UserRole.motorista
         )
         session.add(motorista)
         await session.commit()

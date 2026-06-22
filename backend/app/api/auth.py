@@ -26,7 +26,7 @@ class RefreshData(BaseModel):
 async def register(request: Request, user_in: UserCreate, db: AsyncSession = Depends(get_db)):
     repo = UserRepository(db)
     use_case = RegisterUserUseCase(repo)
-    return await use_case.execute(user_in.email, user_in.password, user_in.role.value)
+    return await use_case.execute(user_in.email, user_in.password, user_in.role)
 
 @router.post("/login", response_model=Token)
 @limiter.limit("5/minute")

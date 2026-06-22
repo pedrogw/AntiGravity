@@ -13,6 +13,12 @@ class User:
     """Usuário autenticável com email, hash de senha e role."""
     email: str
     password_hash: str
-    role: str
+    role: UserRole
     id: uuid.UUID = field(default_factory=uuid.uuid4)
     created_at: datetime.datetime = field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc))
+
+    def is_motorista(self) -> bool:
+        return self.role == UserRole.motorista
+
+    def is_lojista(self) -> bool:
+        return self.role == UserRole.lojista

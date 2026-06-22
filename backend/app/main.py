@@ -4,6 +4,8 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from sqlalchemy.exc import OperationalError
+from arq import create_pool
+from arq.connections import RedisSettings
 from app.api.auth import router as auth_router
 from app.api.places import router as places_router
 from app.api.deliveries import router as deliveries_router
@@ -11,11 +13,9 @@ from app.api.chaos import router as chaos_router
 from app.api.alerts import router as alerts_router
 from app.api.dashboard import router as dashboard_router
 from app.core.bootstrap import dispose_engine
+from app.core.config import settings
 from app.core.events.bus import event_bus
 from app.core.exceptions import DomainException
-from app.domain.events import DeliveryCreatedEvent, DeliveryStatusChangedEvent
-from app.infrastructure.events.audit_listener import AuditListener
-from app.infrastructure.events.cache_invalidation_listener import CacheInvalidationListener
 from app.infrastructure.cache.cache_service import CacheService
 from app.infrastructure.cache.redis_client import get_redis, close_redis
 from app.api.middleware import ObservabilityMiddleware
@@ -32,17 +32,20 @@ logger = logging.getLogger("antigravity")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    event_bus.subscribe(DeliveryCreatedEvent, AuditListener())
-    event_bus.subscribe(DeliveryStatusChangedEvent, AuditListener())
+    worker_pool = None
     try:
         redis = await get_redis()
         await redis.ping()
         cache_service = CacheService(redis)
-        event_bus.subscribe(DeliveryCreatedEvent, CacheInvalidationListener(cache_service))
-        logger.info("Cache Redis conectado")
+        app.state.cache_service = cache_service
+        worker_pool = await create_pool(RedisSettings.from_dsn(settings.REDIS_URL))
+        event_bus.worker_pool = worker_pool
+        logger.info("Worker pool ARQ conectado — eventos serão processados em background")
     except Exception:
-        logger.warning("Redis indisponível — cache desabilitado")
+        logger.warning("Redis indisponível — eventos processados inline")
     yield
+    if worker_pool is not None:
+        worker_pool.close()
     await close_redis()
     await dispose_engine()
 
