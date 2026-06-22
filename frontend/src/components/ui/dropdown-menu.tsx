@@ -24,7 +24,7 @@ export function DropdownMenu({ children }: { children: React.ReactNode }) {
           return open ? child : null
         }
         if (React.isValidElement(child) && child.type === DropdownMenuTrigger) {
-          return React.cloneElement(child as React.ReactElement<any>, {
+          return React.cloneElement(child as React.ReactElement<{ onClick?: () => void }>, {
             onClick: () => setOpen(!open),
           })
         }

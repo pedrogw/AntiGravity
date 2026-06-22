@@ -45,10 +45,8 @@ export function Dialog({
 }
 
 export function DialogTrigger({
-  asChild,
   children,
 }: {
-  asChild?: boolean
   children: React.ReactNode
 }) {
   const { onOpenChange } = React.useContext(DialogContext)

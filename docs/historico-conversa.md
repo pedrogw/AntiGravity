@@ -711,3 +711,93 @@ Construir um motor analítico B2B de logística com rastreamento inteligente, SL
 ```
 
 **Resultado:** **202 testes, 0 falhas, 99% cobertura.** Root-owned resolvido estruturalmente.
+
+---
+
+## Bloco 27 — Documento de Obrigações do Projeto
+
+**Objetivo:** Criar um documento centralizado com as regras e convenções obrigatórias do projeto.
+
+**O que foi feito:**
+- `docs/obrigacoes.md` criado com:
+  - Clean Architecture / DDD (camadas, dependências, protocolos, event bus)
+  - Domínio Rico (entidades com comportamento, VOs imutáveis, proibição de domínio anêmico)
+  - TDD (teste primeiro, determinístico, coberturas mínimas)
+  - Cobertura mínima global de 80% em todas as camadas (100% domínio, 100% use cases, ≥80% infraestrutura)
+  - Código em português BR para mensagens, inglês para nomes técnicos
+  - Estrutura de diretórios e responsabilidades
+  - Convenções de commit
+
+---
+
+## Bloco 28 — P7 Housekeeping (Frontend)
+
+**Objetivo:** Eliminar lacunas de teste nos hooks do frontend e corrigir posicionamento arquitetural de `getRouteByRole`.
+
+**O que foi feito:**
+
+### P7.1 — Testes `useDeliveries` (10 cenários)
+- `src/hooks/useDeliveries.test.ts` criado
+- Cobertura: fetch (success, role param, AppError, generic error), create (success, AppError, generic error), update (success, AppError, generic error)
+
+### P7.2 — Testes `usePlaces` (6 cenários + fix import)
+- `src/hooks/usePlaces.test.ts` criado
+- Cobertura: createFactory (success, AppError, generic error), createStore (success, AppError, generic error)
+- Imports mortos de `Factory` e `Store` removidos de `usePlaces.ts:3`
+
+### P7.3 — `getRouteByRole.ts` (clean-up arquitetural)
+- `src/lib/routes.ts` criado com `getRouteByRole(role: UserRole)` type-safe
+- `src/use_cases/getRouteByRole.ts` deletado
+- Import em `useAuth.ts` atualizado para `'../lib/routes'`
+- Teste existente atualizado com `as UserRole` para casos de fallback
+
+**Arquivos:** 3 criados, 3 modificados, 1 deletado. Zero alteração de lógica de produção.
+
+---
+
+## Bloco 29 — P9 Linting Frontend
+
+**Objetivo:** Resolver 24 problemas de lint no frontend sem supressões genéricas.
+
+**O que foi feito:**
+
+| ID | Arquivo | Correção |
+|---|---|---|
+| P9.1 | `dropdown-menu.tsx:27` | `ReactElement<any>` → `ReactElement<{ onClick?: () => void }>` |
+| P9.2 | `useAuth.test.ts:22,29` | `mockExecute: any` → `ReturnType<typeof vi.fn>` + `as unknown as LoginUseCase` |
+| P9.3 | `ApiDeliveryRepository.ts:5` | `raw: any` → interface `DeliveryApiResponse` |
+| P9.4 | `handlers.ts:7,42` | `req.body as any` → `as { email: string; password: string }` |
+| P9.5 | `useDeliveries.test.ts` + `usePlaces.test.ts` | `as any` → `as unknown as UseCaseType` (6 ocorrências) |
+| P9.6 | `avatar.tsx:17` | `// eslint-disable-next-line` seletivo (shadcn) |
+| P9.7 | `dialog.tsx:48` | `asChild` removido (prop não usada) |
+| P9.8 | `jwt.ts:24` | `catch (e)` → `catch` sem parâmetro |
+
+**Resultado:** Zero `as any` em produção. shadcn preservado com suppress por linha. Zero alteração de runtime.
+
+---
+
+## Bloco 30 — Início da Fase Final (Infraestrutura)
+
+**Objetivo:** Preparar Dockerfile, CI/CD, Neon, DockerHub e Render para deploy.
+
+**O que foi feito (planejamento):**
+
+### F.1 — Dockerfile Otimizado (planejado)
+- Multi-stage build com `uv` em vez de `pip` (~300MB vs ~1.2GB)
+- Entrypoint inteligente: wait PostgreSQL só se for local (`db`/`localhost`/`127.0.0.1`)
+- Sem `--reload` no CMD de produção
+- `backend/Dockerfile` e `backend/entrypoint.sh` a serem modificados
+
+**Próximos passos planejados:**
+- F.2 — DockerHub (criar repositório público, build & push)
+- F.3 — CI/CD (GitHub Actions: test → build → push)
+- F.4 — Neon (criar projeto, obter DATABASE_URL)
+- F.5 — Render (WebService com existing image do DockerHub)
+
+---
+
+## Estado Atual (após Bloco 30)
+
+- **202 testes backend**, 0 falhas, 99% cobertura
+- **Frontend:** P7 ✅ + P9 ✅
+- **Fase Final:** F.1 planejado, aguardando implementação

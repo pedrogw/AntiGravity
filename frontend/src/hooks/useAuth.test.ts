@@ -2,6 +2,7 @@ import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useAuth } from './useAuth';
 import { makeLoginUseCase } from '../infrastructure/di/factories';
+import { LoginUseCase } from '../application/use_cases/LoginUseCase';
 import { InvalidCredentialsError } from '../domain/errors/InvalidCredentialsError';
 import { User } from '../domain/entities/User';
 
@@ -19,14 +20,14 @@ vi.mock('../infrastructure/di/factories', () => ({
 }));
 
 describe('useAuth hook', () => {
-  let mockExecute: any;
+  let mockExecute: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
     mockExecute = vi.fn();
     vi.mocked(makeLoginUseCase).mockReturnValue({
       execute: mockExecute,
-    } as any);
+    } as unknown as LoginUseCase);
   });
 
   it('deve realizar login, não setar erro e redirecionar', async () => {

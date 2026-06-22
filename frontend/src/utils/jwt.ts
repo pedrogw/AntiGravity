@@ -21,7 +21,7 @@ export function isTokenExpired(token: string | null): boolean {
     // JWT exp is in seconds, Date.now() is in milliseconds
     const currentTime = Math.floor(Date.now() / 1000);
     return payload.exp < currentTime;
-  } catch (e) {
+  } catch {
     // Qualquer erro de parsing tratamos como token inválido/expirado
     return true;
   }

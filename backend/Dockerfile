@@ -1,20 +1,29 @@
-FROM python:3.11-slim
+# === Stage 1: Builder ===
+FROM python:3.11-slim AS builder
+
+RUN pip install uv
 
 WORKDIR /app
 
-# Install system dependencies for asyncpg and cryptography
+COPY requirements.txt .
+
+RUN uv pip install --system -r requirements.txt
+
+
+# === Stage 2: Runtime ===
+FROM python:3.11-slim
+
 RUN apt-get update && apt-get install -y \
-    build-essential \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+WORKDIR /app
 
-RUN pip install --no-cache-dir -r requirements.txt
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 
 COPY . .
 
 RUN chmod +x entrypoint.sh
 
 ENTRYPOINT ["./entrypoint.sh"]
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

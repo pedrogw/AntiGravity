@@ -2,7 +2,28 @@ import { DeliveryRepositoryProtocol, UpdateDeliveryData } from '../../domain/rep
 import { Delivery, DeliveryProps } from '../../domain/entities/Delivery';
 import { apiClient } from '../api/api_client';
 
-function toDelivery(raw: any): Delivery {
+interface DeliveryApiResponse {
+  id?: string;
+  factory_id?: string;
+  factoryId?: string;
+  store_id?: string;
+  storeId?: string;
+  driver_id?: string;
+  driverId?: string;
+  status?: string;
+  eta_original?: string;
+  etaOriginal?: string;
+  eta_current?: string;
+  etaCurrent?: string;
+  departed_at?: string;
+  departedAt?: string;
+  current_lat?: number;
+  currentLat?: number;
+  current_lng?: number;
+  currentLng?: number;
+}
+
+function toDelivery(raw: DeliveryApiResponse): Delivery {
   const props: DeliveryProps = {
     factoryId: raw.factory_id || raw.factoryId,
     storeId: raw.store_id || raw.storeId,

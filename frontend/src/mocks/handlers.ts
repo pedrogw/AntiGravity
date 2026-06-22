@@ -4,7 +4,7 @@ let fakeRefreshToken = 'fake_refresh_token_default';
 
 export const handlers = [
   rest.post('*/auth/login', (req, res, ctx) => {
-    const { email, password } = req.body as any;
+    const { email, password } = req.body as { email: string; password: string };
 
     if (email === 'lojista@test.com' && password === '1234') {
       const token = 'fake_lojista_token';
@@ -39,7 +39,7 @@ export const handlers = [
   }),
 
   rest.post('*/auth/refresh', (req, res, ctx) => {
-    const { refresh_token } = req.body as any;
+    const { refresh_token } = req.body as { refresh_token: string };
 
     if (refresh_token === fakeRefreshToken) {
       const newToken = `new_access_${Date.now()}`;

@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { makeCreateFactoryUseCase, makeCreateStoreUseCase } from '../infrastructure/di/factories';
-import { Factory, Store } from '../domain/entities/Place';
+
 import { AppError } from '../domain/errors/AppError';
 import { CoordinatesProps } from '../domain/value_objects/Coordinates';
 

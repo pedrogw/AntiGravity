@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { makeLoginUseCase } from '../infrastructure/di/factories';
-import { getRouteByRole } from '../use_cases/getRouteByRole';
+import { getRouteByRole } from '../lib/routes';
 import { AppError } from '../domain/errors/AppError';
 
 export function useAuth() {
