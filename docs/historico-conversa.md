@@ -780,24 +780,38 @@ Construir um motor analítico B2B de logística com rastreamento inteligente, SL
 
 **Objetivo:** Preparar Dockerfile, CI/CD, Neon, DockerHub e Render para deploy.
 
-**O que foi feito (planejamento):**
+---
 
-### F.1 — Dockerfile Otimizado (planejado)
+## Bloco 31 — F.1 Dockerfile + F.2 DockerHub + F.3 CI/CD + F.4 Neon
+
+### F.1 — Dockerfile Otimizado ✅
 - Multi-stage build com `uv` em vez de `pip` (~300MB vs ~1.2GB)
-- Entrypoint inteligente: wait PostgreSQL só se for local (`db`/`localhost`/`127.0.0.1`)
+- Entrypoint inteligente: wait PostgreSQL só se local (`db`/`localhost`/`127.0.0.1`)
 - Sem `--reload` no CMD de produção
-- `backend/Dockerfile` e `backend/entrypoint.sh` a serem modificados
+- `backend/Dockerfile` e `backend/entrypoint.sh` modificados
 
-**Próximos passos planejados:**
-- F.2 — DockerHub (criar repositório público, build & push)
-- F.3 — CI/CD (GitHub Actions: test → build → push)
-- F.4 — Neon (criar projeto, obter DATABASE_URL)
-- F.5 — Render (WebService com existing image do DockerHub)
+### F.2 — DockerHub ✅
+- Repositório público `pedrogw/logistics-engine` criado
+- Build: `sudo docker build -t pedrogw/logistics-engine:latest ...`
+- Push: `sudo docker push pedrogw/logistics-engine:latest`
+
+### F.3 — CI/CD Pipeline ✅
+- `.github/workflows/ci.yml` criado e commitado
+- Jobs: test (backend + frontend) → docker (build & push)
+- Secrets no GitHub: `DOCKER_USER` e `DOCKER_PASSWORD` configurados
+
+### F.4 — Neon ✅
+- DATABASE_URL já existente no `.env`: Neon (sa-east-1, pooler)
+- Migrations rodadas (`alembic upgrade head`) com sucesso
+- Conexão verificada e banco acordado
+
+### Pendente
+- **F.5** — Render (WebService com existing image do DockerHub)
 
 ---
 
-## Estado Atual (após Bloco 30)
+## Estado Atual (após Bloco 31)
 
 - **202 testes backend**, 0 falhas, 99% cobertura
 - **Frontend:** P7 ✅ + P9 ✅
-- **Fase Final:** F.1 planejado, aguardando implementação
+- **Fase Final:** F.1 ✅ F.2 ✅ F.3 ✅ F.4 ✅ | **F.5 🔴 Pendente** (Render)
