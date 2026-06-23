@@ -33,6 +33,21 @@ sys.exit(0 if asyncio.run(check()) else 1)
   done
 
   echo "==> PostgreSQL está pronto!"
+
+  echo "==> Limpando tipos órfãos (caso existam)..."
+  python -c "
+import asyncio, asyncpg, os
+
+async def clean():
+    url = os.environ.get('DATABASE_URL', '').replace('+asyncpg', '')
+    conn = await asyncpg.connect(url)
+    try:
+        await conn.execute('DROP TYPE IF EXISTS public.alembic_version CASCADE')
+    finally:
+        await conn.close()
+
+asyncio.run(clean())
+"
 else
   echo "==> Conectando ao PostgreSQL remoto (Neon)..."
 fi
