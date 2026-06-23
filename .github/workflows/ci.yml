@@ -66,3 +66,12 @@ jobs:
           file: ./backend/Dockerfile
           push: true
           tags: pedrogw/logistics-engine:latest
+
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: docker
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger Render Deploy
+        run: curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK }}
