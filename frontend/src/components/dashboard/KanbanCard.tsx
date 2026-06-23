@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react'
 import { Delivery } from '@/domain/entities/Delivery'
 
 const statusLabel: Record<string, string> = {
@@ -18,6 +19,13 @@ interface Props {
 }
 
 export function KanbanCard({ delivery, column }: Props) {
+  const [now, setNow] = useState(Date.now)
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 30000)
+    return () => clearInterval(timer)
+  }, [])
+
   if (column === 'transit') {
     return (
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-blue-400/50 transition-all group">
@@ -53,7 +61,7 @@ export function KanbanCard({ delivery, column }: Props) {
 
   if (column === 'window') {
     const progress = delivery.etaCurrent
-      ? Math.max(0, Math.min(Math.floor((Date.now() - new Date(delivery.etaCurrent).getTime()) / 60000), 100))
+      ? Math.max(0, Math.min(Math.floor((now - new Date(delivery.etaCurrent).getTime()) / 60000), 100))
       : 0
     const dockNumber = (delivery.id?.charCodeAt(0) || 1) % 8 + 1
 

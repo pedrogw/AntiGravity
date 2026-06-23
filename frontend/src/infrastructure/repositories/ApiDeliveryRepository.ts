@@ -1,5 +1,6 @@
 import { DeliveryRepositoryProtocol, UpdateDeliveryData } from '../../domain/repositories/DeliveryRepositoryProtocol';
 import { Delivery, DeliveryProps } from '../../domain/entities/Delivery';
+import { DeliveryStatus } from '../../domain/DeliveryStatus';
 import { apiClient } from '../api/api_client';
 
 interface DeliveryApiResponse {
@@ -23,17 +24,30 @@ interface DeliveryApiResponse {
   currentLng?: number;
 }
 
+function pick(raw: DeliveryApiResponse, snake: keyof DeliveryApiResponse, camel: keyof DeliveryApiResponse): string {
+  return (raw[snake] || raw[camel] || '') as string;
+}
+
+function parseDate(raw: DeliveryApiResponse, snake: keyof DeliveryApiResponse, camel: keyof DeliveryApiResponse): Date | undefined {
+  const val: string | undefined = (raw[snake] || raw[camel]) as string | undefined;
+  return val ? new Date(val) : undefined;
+}
+
+function parseNum(raw: DeliveryApiResponse, snake: keyof DeliveryApiResponse, camel: keyof DeliveryApiResponse): number | undefined {
+  return ((raw[snake] ?? raw[camel]) as number | undefined) ?? undefined;
+}
+
 function toDelivery(raw: DeliveryApiResponse): Delivery {
   const props: DeliveryProps = {
-    factoryId: raw.factory_id || raw.factoryId,
-    storeId: raw.store_id || raw.storeId,
-    driverId: raw.driver_id || raw.driverId,
-    status: raw.status,
-    etaOriginal: raw.eta_original || raw.etaOriginal ? new Date(raw.eta_original || raw.etaOriginal) : undefined,
-    etaCurrent: raw.eta_current || raw.etaCurrent ? new Date(raw.eta_current || raw.etaCurrent) : undefined,
-    departedAt: raw.departed_at || raw.departedAt ? new Date(raw.departed_at || raw.departedAt) : undefined,
-    currentLat: raw.current_lat ?? raw.currentLat,
-    currentLng: raw.current_lng ?? raw.currentLng,
+    factoryId: pick(raw, 'factory_id', 'factoryId'),
+    storeId: pick(raw, 'store_id', 'storeId'),
+    driverId: pick(raw, 'driver_id', 'driverId'),
+    status: (raw.status ?? 'pendente') as DeliveryStatus,
+    etaOriginal: parseDate(raw, 'eta_original', 'etaOriginal'),
+    etaCurrent: parseDate(raw, 'eta_current', 'etaCurrent'),
+    departedAt: parseDate(raw, 'departed_at', 'departedAt'),
+    currentLat: parseNum(raw, 'current_lat', 'currentLat'),
+    currentLng: parseNum(raw, 'current_lng', 'currentLng'),
   };
   return new Delivery(props, raw.id);
 }

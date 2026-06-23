@@ -8,8 +8,12 @@ export function ControlTowerHeader() {
   const router = useRouter()
 
   const handleLogout = useCallback(async () => {
-    const logout = makeLogoutUseCase()
-    await logout.execute()
+    try {
+      const logout = makeLogoutUseCase()
+      await logout.execute()
+    } catch {
+      // Logout failure is non-critical; still redirect
+    }
     router.push('/')
   }, [router])
 

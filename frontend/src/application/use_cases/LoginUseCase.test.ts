@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { LoginUseCase } from './LoginUseCase';
 import { AuthRepositoryProtocol } from '../../domain/repositories/AuthRepositoryProtocol';
-import { TokenStorageProtocol } from '../../infrastructure/storage/TokenStorageAdapter';
+import { TokenStorageProtocol } from '../../domain/repositories/TokenStorageProtocol';
 import { User } from '../../domain/entities/User';
 import { InvalidCredentialsError } from '../../domain/errors/InvalidCredentialsError';
 

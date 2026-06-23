@@ -1,11 +1,11 @@
 import { UseCase } from './UseCase';
 import { User } from '../../domain/entities/User';
 import { AuthRepositoryProtocol } from '../../domain/repositories/AuthRepositoryProtocol';
-import { TokenStorageProtocol } from '../../infrastructure/storage/TokenStorageAdapter';
+import { TokenStorageProtocol } from '../../domain/repositories/TokenStorageProtocol';
 
 export interface LoginUseCaseInput {
   email: string;
-  password?: string;
+  password: string;
 }
 
 export class LoginUseCase implements UseCase<LoginUseCaseInput, User> {

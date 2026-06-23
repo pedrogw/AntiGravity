@@ -1,11 +1,11 @@
 import { UseCase } from './UseCase';
 import { Store } from '../../domain/entities/Place';
 import { PlaceRepositoryProtocol } from '../../domain/repositories/PlaceRepositoryProtocol';
-import { CoordinatesProps } from '../../domain/value_objects/Coordinates';
+import { Coordinates } from '../../domain/value_objects/Coordinates';
 
 export interface CreateStoreInput {
   name: string;
-  location: CoordinatesProps;
+  location: { lat: number; lng: number };
   ownerId: string;
 }
 
@@ -17,6 +17,7 @@ export class CreateStoreUseCase implements UseCase<CreateStoreInput, Store> {
       throw new Error('name, location e ownerId são obrigatórios.');
     }
 
-    return await this.placeRepository.createStore(input.name, input.location, input.ownerId);
+    const location = new Coordinates(input.location);
+    return await this.placeRepository.createStore(input.name, location, input.ownerId);
   }
 }

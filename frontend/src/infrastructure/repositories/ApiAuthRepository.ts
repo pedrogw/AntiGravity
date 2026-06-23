@@ -8,7 +8,7 @@ import { AxiosError } from 'axios';
 export class ApiAuthRepository implements AuthRepositoryProtocol {
   async login(email: string, password: string): Promise<{ user: User; token: string; refresh_token: string }> {
     try {
-      const response = await apiClient.post('/api/v1/auth/login', { email, password });
+      const response = await apiClient.post('/auth/login', { email, password });
       
       const { user: userData, token, refresh_token } = response.data;
       
@@ -33,7 +33,7 @@ export class ApiAuthRepository implements AuthRepositoryProtocol {
 
   async refreshToken(refresh_token: string): Promise<{ access_token: string; refresh_token: string }> {
     try {
-      const response = await apiClient.post('/api/v1/auth/refresh', { refresh_token });
+      const response = await apiClient.post('/auth/refresh', { refresh_token });
       return response.data;
     } catch (error) {
       if (error instanceof AxiosError) {

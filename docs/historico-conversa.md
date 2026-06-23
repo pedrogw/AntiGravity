@@ -815,3 +815,109 @@ Construir um motor analítico B2B de logística com rastreamento inteligente, SL
 - **202 testes backend**, 0 falhas, 99% cobertura
 - **Frontend:** P7 ✅ + P9 ✅
 - **Fase Final:** F.1 ✅ F.2 ✅ F.3 ✅ F.4 ✅ | **F.5 🔴 Pendente** (Render)
+
+---
+
+## Bloco 32 — Auditoria Geral + Correções (Backend + Frontend)
+
+**Objetivo:** Varrer backend e frontend em busca de problemas de código, tipagem, arquitetura e lint; corrigir todos seguindo as obrigações do projeto.
+
+### Auditoria
+
+**Backend (17 problemas encontrados):**
+| Severidade | Qtd | Principais |
+|---|---|---|
+| 🔴 Crítico | 1 | `worker_pool.close()` sem `await` — resource leak |
+| 🟠 Alto | 1 | `FactoryResponse`/`StoreResponse` com `from_attributes=True` conflita com `location: Coordinates` (stale — tests já passam) |
+| 🟡 Médio | 4 | `app/models/` com `.pyc` órfãos, `TestHandleDomainEvent` duplicado, type hints faltando em `map_factory`/`map_store`, `except: pass` silencioso no event bus |
+| 🟢 Baixo | 11 | `__init__.py` faltando em 14 diretórios, `error.txt` stale, string UUID comparisons, etc. |
+
+**Frontend (19 problemas encontrados):**
+| Severidade | Qtd | Principais |
+|---|---|---|
+| 🔴 Alto | 1 | `TokenStorageProtocol` na infrastructure, importado pela application — viola Clean Arch |
+| 🟡 Médio | 8 | `password?: string` opcional mas obrigatório, `Coordinates` vs `CoordinatesProps`, `login` sem `useCallback`, 3× unhandled rejection, `status: string` genérico |
+| 🟢 Baixo | 10 | Mock incompleto, unused components, `src/use_cases/` vazio, `as any` em 4 lugares, `setState` em `useEffect` (4x), `Date.now()` impuro, `statusActions` unused, `<img>` sem `alt` |
+
+### Correções
+
+#### Backend (7 alterações)
+| # | Arquivo | Correção |
+|---|---------|----------|
+| B1 | `app/main.py:48` | `worker_pool.close()` → `await worker_pool.close()` |
+| B2 | `app/models/` | Diretório com `__pycache__` órfão removido |
+| B3 | `tests/unit/test_worker.py:78-106` | Duplicata `TestHandleDomainEvent` removida; métodos órfãos (roundtrip) deletados |
+| B4 | `app/api/places.py:15-19` | Type hints `FactoryEntity`/`StoreEntity` adicionados a `map_factory`/`map_store` |
+| B5 | `app/core/events/bus.py:29` | `except: pass` → `logger.exception(...)` |
+| B6 | 14 diretórios | `__init__.py` criados nos pacotes faltantes |
+| B7 | `error.txt` | Deletado (stale de execução anterior) |
+
+#### Frontend — Arquiteturais (9 alterações)
+| # | Arquivo | Correção | Obrigação |
+|---|---------|----------|-----------|
+| F1 | `TokenStorageAdapter.ts` + `domain/repositories/TokenStorageProtocol.ts` | Interface movida da infrastructure para `domain/repositories/` | Clean Arch (protocolos no domínio) |
+| F2 | `LoginUseCase.ts:8` | `password?: string` → `password: string` | Type hints |
+| F3 | `CreateFactoryUseCase.ts:19` | Constrói `new Coordinates(input.location)` antes de passar ao protocolo | VO imutável no domínio |
+| F4 | `CreateStoreUseCase.ts:20` | Mesmo que F3 | VO imutável |
+| F5 | `ApiPlaceRepository.ts:6,11` | Aceita `Coordinates` (classe) em vez de `CoordinatesProps` | Protocolo é contrato |
+| F6 | `useAuth.ts:12` | `login` envolvido em `useCallback([router])` | Performance React |
+| F7 | 3× `handleLogout` (Sidebar, ControlTowerHeader, drive/page) | `try/catch` adicionado — falha de logout não bloqueia redirect | Tratamento de erros |
+| F8 | `Delivery.ts` + `DeliveryRepositoryProtocol.ts` + `useDeliveries.ts` | `DeliveryStatus` union type criado em `src/domain/DeliveryStatus.ts` e tipado em toda a cadeia | Domínio rico |
+| F9 | `LogoutUseCase.test.ts` + `src/use_cases/` | Mock completo (`refreshToken` adicionado) + diretório vazio deletado | Testes completos |
+
+#### Frontend — Lint (10 erros zerados)
+| # | Arquivo | Correção |
+|---|---------|----------|
+| L1 | `apiClient.test.ts:23,24,35,36` | 4× `as any` → tipo estrutural `AxiosInterceptorManager` |
+| L2 | `drive/page.tsx:16,20` | `email` state + `useEffect` removidos (variável nunca usada) |
+| L3 | `AuthGuard.tsx:19` | `useState(false)` → `useState(() => { ... lazy init ... })`; `useEffect` mantido só para side effects (redirect) |
+| L4 | `ChaosDevTools.tsx:42` | `catch (err: any)` → `catch (err: unknown)` com tipo estrutural |
+| L5 | `JanelaRecebimento.tsx:14` | `useEffect` → lazy initialization via `useState(fn)` |
+| L6 | `KanbanCard.tsx:56` | `Date.now()` → `useState(Date.now)` + `setInterval` a cada 30s |
+| L7 | `Sidebar.tsx:23` | `useEffect` → lazy initialization via `useState(fn)` |
+| L8 | `DeliveryCard.tsx:18` | `statusActions` (Record) removido — variável nunca usada |
+| L9 | `avatar.tsx:18` | `alt=""` adicionado ao `<img>` no shadcn AvatarImage |
+
+### Infraestrutura
+- Node.js 22.23.0 instalado via nvm (ambiente não tinha Node)
+- `npm install` executado para restaurar dependências
+
+### Resultado Final
+
+| Projeto | Testes | Cobertura | Lint |
+|---------|--------|-----------|------|
+| **Backend** | **202 ✅** | **99%** | N/A |
+| **Frontend** | **38 ✅** (13 arquivos) | N/A | **0 erros, 0 warnings** |
+
+## Bloco 33 — Final: Docker Compose, Frontend Fixes, Login Problem
+
+**Objetivo:** Subir todo o stack com Docker Compose e testar o fluxo de login E2E.
+
+### O que foi feito:
+
+#### Infraestrutura
+- Node.js 22.23.0 instalado via nvm
+- Frontend Dockerfile: `node:20-alpine` → `node:22-alpine` (lockfile v3 do npm 10 incompatível com npm 9)
+- Backend Dockerfile: adicionado `COPY --from=builder /usr/local/bin /usr/local/bin` (CLI scripts `uvicorn`, `alembic`, `arq` não eram copiados — só `site-packages/`)
+- `entrypoint.sh`: `.replace('+asyncpg', '')` no URL passado ao `asyncpg.connect()` (não entende scheme `postgresql+asyncpg://`); removido `2>/dev/null` para visibilidade; `alembic` → `python -m alembic`
+
+#### Rotas do Frontend
+- `ApiAuthRepository.ts`: `/api/v1/auth/login` → `/auth/login`; `/api/v1/auth/refresh` → `/auth/refresh`
+- `api_client.ts`: URL de refresh no interceptor corrigida
+- `docker-compose.yml`: `NEXT_PUBLIC_API_URL=http://api:8000` → `http://localhost:8000`
+
+#### Problema Não Resolvido
+- Login no navegador (`localhost:3000`) retorna "Erro de conexão com o servidor"
+- `apiClient.baseURL = 'http://localhost:8000'` (default, bakeado em build time)
+- Backend CORS permite `http://localhost:3000` → requisição cross-origin deveria funcionar
+- Build com `--no-cache frontend` não resolveu
+- API via `curl` direto no host deve ser testada para isolar se o problema é CORS ou rota
+
+### Estado Atual
+- `sudo docker compose up -d` → todos os 5 containers rodando (api healthy, frontend started)
+- Seed já rodou anteriormente → `lojista@antigravity.com` / `admin123` e `motorista@antigravity.com` / `driver123` existem no banco
+- Login via browser falha; pendente investigação (provável CORS ou baked URL errada no bundle)
+
+### Pendências
+- **F.5** — Render WebService (aguardando ação do usuário)
+- **Login E2E** — Resolver "Erro de conexão com o servidor" no login do frontend

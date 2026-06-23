@@ -39,8 +39,10 @@ export function ChaosDevTools({ deliveries }: Props) {
         impact_factor: action.id === 'delay' ? 1.5 : 1.0,
       })
       setLogs((prev) => [msg, ...prev])
-    } catch (err: any) {
-      setLogs((prev) => [`${msg} — ERRO: ${err?.response?.data?.detail || err.message}`, ...prev])
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { detail?: string } }; message?: string };
+      const detail = axiosErr?.response?.data?.detail || axiosErr?.message || 'Erro desconhecido';
+      setLogs((prev) => [`${msg} — ERRO: ${detail}`, ...prev])
     }
   }
 

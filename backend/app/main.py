@@ -45,7 +45,7 @@ async def lifespan(app: FastAPI):
         logger.warning("Redis indisponível — eventos processados inline")
     yield
     if worker_pool is not None:
-        worker_pool.close()
+        await worker_pool.close()
     await close_redis()
     await dispose_engine()
 

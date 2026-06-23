@@ -1,7 +1,8 @@
 import { Delivery } from '../entities/Delivery';
+import { DeliveryStatus } from '../DeliveryStatus';
 
 export interface UpdateDeliveryData {
-  status?: string;
+  status?: DeliveryStatus;
   lat?: number;
   lng?: number;
 }

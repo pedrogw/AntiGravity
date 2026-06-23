@@ -6,7 +6,11 @@ import { isTokenExpired } from '../utils/jwt';
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [isAuthorized] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    const token = localStorage.getItem('token');
+    return !!token && !isTokenExpired(token);
+  });
 
   useEffect(() => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
@@ -15,8 +19,6 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         localStorage.removeItem('token');
       }
       router.push('/');
-    } else {
-      setIsAuthorized(true);
     }
   }, [router]);
 

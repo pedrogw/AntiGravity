@@ -1,6 +1,9 @@
+import logging
 from typing import Optional, Type
 from arq.connections import ArqRedis
 from app.core.events.base import DomainEvent, EventHandler
+
+logger = logging.getLogger("antigravity")
 
 
 class EventBus:
@@ -26,7 +29,7 @@ class EventBus:
             try:
                 await handler.handle(event)
             except Exception:
-                pass
+                logger.exception("Event handler failed for %s", type(event).__name__)
 
 
 event_bus = EventBus()

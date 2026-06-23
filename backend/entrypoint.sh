@@ -13,15 +13,16 @@ import sys
 
 async def check():
     try:
-        url = os.environ.get('DATABASE_URL', '')
+        url = os.environ.get('DATABASE_URL', '').replace('+asyncpg', '')
         conn = await asyncpg.connect(url)
         await conn.close()
         return True
-    except Exception:
+    except Exception as e:
+        print(f'  [erro] {e}', flush=True)
         return False
 
 sys.exit(0 if asyncio.run(check()) else 1)
-" 2>/dev/null; do
+"; do
     RETRIES=$((RETRIES - 1))
     if [ $RETRIES -le 0 ]; then
       echo "==> ERRO: PostgreSQL não ficou pronto a tempo"
@@ -37,7 +38,7 @@ else
 fi
 
 echo "==> Executando migrações..."
-alembic upgrade head
+python -m alembic upgrade head
 
 echo "==> Iniciando servidor..."
 exec "$@"

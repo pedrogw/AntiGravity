@@ -1,11 +1,11 @@
 import { UseCase } from './UseCase';
 import { Factory } from '../../domain/entities/Place';
 import { PlaceRepositoryProtocol } from '../../domain/repositories/PlaceRepositoryProtocol';
-import { CoordinatesProps } from '../../domain/value_objects/Coordinates';
+import { Coordinates } from '../../domain/value_objects/Coordinates';
 
 export interface CreateFactoryInput {
   name: string;
-  location: CoordinatesProps;
+  location: { lat: number; lng: number };
 }
 
 export class CreateFactoryUseCase implements UseCase<CreateFactoryInput, Factory> {
@@ -16,6 +16,7 @@ export class CreateFactoryUseCase implements UseCase<CreateFactoryInput, Factory
       throw new Error('name e location são obrigatórios.');
     }
 
-    return await this.placeRepository.createFactory(input.name, input.location);
+    const location = new Coordinates(input.location);
+    return await this.placeRepository.createFactory(input.name, location);
   }
 }

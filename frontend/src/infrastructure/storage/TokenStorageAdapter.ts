@@ -1,11 +1,4 @@
-export interface TokenStorageProtocol {
-  getToken(): string | null;
-  saveToken(token: string): void;
-  removeToken(): void;
-  getRefreshToken(): string | null;
-  saveRefreshToken(token: string): void;
-  clearTokens(): void;
-}
+import { TokenStorageProtocol } from '../../domain/repositories/TokenStorageProtocol';
 
 export class TokenStorageAdapter implements TokenStorageProtocol {
   private readonly TOKEN_KEY = 'token';

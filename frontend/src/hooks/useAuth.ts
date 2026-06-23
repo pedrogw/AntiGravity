@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { makeLoginUseCase } from '../infrastructure/di/factories';
 import { getRouteByRole } from '../lib/routes';
@@ -9,7 +9,7 @@ export function useAuth() {
   const [error, setError] = useState('');
   const router = useRouter();
 
-  const login = async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string) => {
     setIsLoading(true);
     setError('');
 
@@ -29,7 +29,7 @@ export function useAuth() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [router]);
 
   return { login, isLoading, error };
 }

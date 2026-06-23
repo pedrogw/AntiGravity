@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { makeListDeliveriesUseCase, makeCreateDeliveryUseCase, makeUpdateDeliveryUseCase } from '../infrastructure/di/factories';
 import { Delivery } from '../domain/entities/Delivery';
+import { DeliveryStatus } from '../domain/DeliveryStatus';
 import { AppError } from '../domain/errors/AppError';
 
 export function useDeliveries() {
@@ -46,7 +47,7 @@ export function useDeliveries() {
     }
   }, []);
 
-  const updateDeliveryStatus = useCallback(async (deliveryId: string, status: string) => {
+  const updateDeliveryStatus = useCallback(async (deliveryId: string, status: DeliveryStatus) => {
     setError('');
     try {
       const useCase = makeUpdateDeliveryUseCase();

@@ -101,69 +101,6 @@ class TestHandleDomainEvent:
         assert "Audit: Status alterado" in caplog.text
         assert str(event.delivery_id) in caplog.text
 
-    async def test_handle_invalid_payload_does_not_crash(self):
-        await handle_domain_event({}, "invalid json")
-
-
-    def test_roundtrip_eta_recalculation_requested(self):
-        original = EtaRecalculationRequested(
-            delivery_id=uuid.uuid4(),
-            lat=-23.55,
-            lng=-46.63,
-            reason="posicao_atualizada",
-        )
-        payload = serialize_event(original)
-        restored = deserialize_event(payload)
-        assert restored is not None
-        assert restored.id == original.id
-        assert restored.delivery_id == original.delivery_id
-        assert restored.lat == original.lat
-        assert restored.lng == original.lng
-        assert restored.reason == original.reason
-        assert type(restored) is EtaRecalculationRequested
-
-    def test_roundtrip_alert_creation_requested(self):
-        original = AlertCreationRequested(
-            delivery_id=uuid.uuid4(),
-            message="Caos injetado: deslizamento, atraso de 90min, fator 3.0x",
-            is_critical=True,
-        )
-        payload = serialize_event(original)
-        restored = deserialize_event(payload)
-        assert restored is not None
-        assert restored.id == original.id
-        assert restored.delivery_id == original.delivery_id
-        assert restored.message == original.message
-        assert restored.is_critical is True
-        assert type(restored) is AlertCreationRequested
-
-
-class TestHandleDomainEvent:
-    async def test_handle_delivery_created_event_logs_audit(self, caplog):
-        caplog.set_level("INFO")
-        event = DeliveryCreatedEvent(
-            delivery_id=uuid.uuid4(),
-            factory_id=uuid.uuid4(),
-            store_id=uuid.uuid4(),
-            driver_id=uuid.uuid4(),
-        )
-        payload = serialize_event(event)
-        await handle_domain_event({}, payload)
-        assert "Audit: Entrega criada" in caplog.text
-        assert str(event.delivery_id) in caplog.text
-
-    async def test_handle_delivery_status_changed_event_logs_audit(self, caplog):
-        caplog.set_level("INFO")
-        event = DeliveryStatusChangedEvent(
-            delivery_id=uuid.uuid4(),
-            old_status="pendente",
-            new_status="em_transito",
-        )
-        payload = serialize_event(event)
-        await handle_domain_event({}, payload)
-        assert "Audit: Status alterado" in caplog.text
-        assert str(event.delivery_id) in caplog.text
-
     async def test_handle_eta_recalculation_requested_dispatches(self):
         delivery_id = uuid.uuid4()
         event = EtaRecalculationRequested(

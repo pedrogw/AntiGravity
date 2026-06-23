@@ -4,7 +4,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { makeLogoutUseCase } from '@/infrastructure/di/factories'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 
 const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: '▦', href: '/dashboard' },
@@ -17,15 +17,18 @@ const navItems = [
 export function Sidebar() {
   const router = useRouter()
   const pathname = usePathname()
-  const [email, setEmail] = useState('')
-
-  useEffect(() => {
-    setEmail(localStorage.getItem('user_email') || 'Operador Industrial')
-  }, [])
+  const [email] = useState(() => {
+    if (typeof window === 'undefined') return 'Operador Industrial';
+    return localStorage.getItem('user_email') || 'Operador Industrial'
+  })
 
   const handleLogout = useCallback(async () => {
-    const logout = makeLogoutUseCase()
-    await logout.execute()
+    try {
+      const logout = makeLogoutUseCase()
+      await logout.execute()
+    } catch {
+      // Logout failure is non-critical; still redirect
+    }
     router.push('/')
   }, [router])
 

@@ -1,6 +1,6 @@
 import { UseCase } from './UseCase';
 import { AuthRepositoryProtocol } from '../../domain/repositories/AuthRepositoryProtocol';
-import { TokenStorageProtocol } from '../../infrastructure/storage/TokenStorageAdapter';
+import { TokenStorageProtocol } from '../../domain/repositories/TokenStorageProtocol';
 
 export class LogoutUseCase implements UseCase<void, void> {
   constructor(

@@ -1,19 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 
 export function JanelaRecebimento() {
-  const [startTime, setStartTime] = useState('08:00')
-  const [endTime, setEndTime] = useState('18:00')
+  const [startTime, setStartTime] = useState(() => {
+    if (typeof window === 'undefined') return '08:00';
+    return localStorage.getItem('janela_inicio') || '08:00'
+  })
+  const [endTime, setEndTime] = useState(() => {
+    if (typeof window === 'undefined') return '18:00';
+    return localStorage.getItem('janela_termino') || '18:00'
+  })
   const [saved, setSaved] = useState(false)
-
-  useEffect(() => {
-    const savedStart = localStorage.getItem('janela_inicio')
-    const savedEnd = localStorage.getItem('janela_termino')
-    if (savedStart) setStartTime(savedStart)
-    if (savedEnd) setEndTime(savedEnd)
-  }, [])
 
   const handleUpdate = () => {
     localStorage.setItem('janela_inicio', startTime)

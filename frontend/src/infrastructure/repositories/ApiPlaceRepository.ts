@@ -1,15 +1,13 @@
 import { PlaceRepositoryProtocol } from '../../domain/repositories/PlaceRepositoryProtocol';
 import { Factory, Store } from '../../domain/entities/Place';
-import { CoordinatesProps, Coordinates } from '../../domain/value_objects/Coordinates';
+import { Coordinates } from '../../domain/value_objects/Coordinates';
 
 export class ApiPlaceRepository implements PlaceRepositoryProtocol {
-  async createFactory(name: string, location: CoordinatesProps): Promise<Factory> {
-    // Mock implementation for now
-    return new Factory({ name, location: new Coordinates(location) });
+  async createFactory(name: string, location: Coordinates): Promise<Factory> {
+    return new Factory({ name, location });
   }
 
-  async createStore(name: string, location: CoordinatesProps, ownerId: string): Promise<Store> {
-    // Mock implementation for now
-    return new Store({ name, location: new Coordinates(location), ownerId });
+  async createStore(name: string, location: Coordinates, ownerId: string): Promise<Store> {
+    return new Store({ name, location, ownerId });
   }
 }

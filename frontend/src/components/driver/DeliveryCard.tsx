@@ -15,12 +15,6 @@ const statusLabel: Record<string, string> = {
   cancelada: 'Cancelada',
 }
 
-const statusActions: Record<string, string> = {
-  pendente: 'em_transito',
-  em_transito: 'entregue',
-  em_rota: 'entregue',
-}
-
 interface Props {
   delivery: Delivery
   onStartRoute: (id: string) => void

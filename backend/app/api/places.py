@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from app.db.session import get_db
 from app.schemas.place import FactoryCreate, FactoryResponse, StoreCreate, StoreResponse
+from app.domain.entities.place import Factory as FactoryEntity, Store as StoreEntity
 from app.infrastructure.repositories.place_repo import PlaceRepository
 from app.use_cases.places_use_cases import (
     CreateFactoryUseCase, ListFactoriesUseCase,
@@ -12,10 +13,10 @@ from app.api.deps import require_role
 
 router = APIRouter()
 
-def map_factory(f) -> FactoryResponse:
+def map_factory(f: FactoryEntity) -> FactoryResponse:
     return FactoryResponse(id=f.id, name=f.name, lat=f.location.lat, lng=f.location.lng)
 
-def map_store(s) -> StoreResponse:
+def map_store(s: StoreEntity) -> StoreResponse:
     return StoreResponse(id=s.id, name=s.name, lat=s.location.lat, lng=s.location.lng, owner_id=s.owner_id)
 
 @router.post("/factories", response_model=FactoryResponse, status_code=status.HTTP_201_CREATED)

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { LogoutUseCase } from './LogoutUseCase';
 import { AuthRepositoryProtocol } from '../../domain/repositories/AuthRepositoryProtocol';
-import { TokenStorageProtocol } from '../../infrastructure/storage/TokenStorageAdapter';
+import { TokenStorageProtocol } from '../../domain/repositories/TokenStorageProtocol';
 
 describe('LogoutUseCase', () => {
   let mockAuthRepo: AuthRepositoryProtocol;
@@ -12,6 +12,7 @@ describe('LogoutUseCase', () => {
     mockAuthRepo = {
       login: vi.fn(),
       logout: vi.fn().mockResolvedValue(undefined),
+      refreshToken: vi.fn(),
     };
     mockTokenStorage = {
       saveToken: vi.fn(),

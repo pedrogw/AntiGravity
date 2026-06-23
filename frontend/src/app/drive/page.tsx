@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useCallback, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AuthGuard } from '@/components/AuthGuard'
 import { ActiveDeliveryView } from '@/components/driver/ActiveDeliveryView'
@@ -13,20 +13,19 @@ import { makeLogoutUseCase } from '@/infrastructure/di/factories'
 export default function DrivePage() {
   const { deliveries, isLoading, error, fetchDeliveries, updateDeliveryStatus } = useDeliveries()
   const router = useRouter()
-  const [email, setEmail] = useState('')
   const [toast, setToast] = useState('')
-
-  useEffect(() => {
-    setEmail(localStorage.getItem('user_email') || 'Motorista')
-  }, [])
 
   useEffect(() => {
     fetchDeliveries()
   }, [fetchDeliveries])
 
   const handleLogout = useCallback(async () => {
-    const logout = makeLogoutUseCase()
-    await logout.execute()
+    try {
+      const logout = makeLogoutUseCase()
+      await logout.execute()
+    } catch {
+      // Logout failure is non-critical; still redirect
+    }
     router.push('/')
   }, [router])
 
