@@ -34,7 +34,7 @@ sys.exit(0 if asyncio.run(check()) else 1)
 
   echo "==> PostgreSQL está pronto!"
 
-  echo "==> Limpando tipos órfãos (caso existam)..."
+  echo "==> Limpando schema public para migração limpa..."
   python -c "
 import asyncio, asyncpg, os
 
@@ -42,7 +42,8 @@ async def clean():
     url = os.environ.get('DATABASE_URL', '').replace('+asyncpg', '')
     conn = await asyncpg.connect(url)
     try:
-        await conn.execute('DROP TYPE IF EXISTS public.alembic_version CASCADE')
+        await conn.execute('DROP SCHEMA IF EXISTS public CASCADE')
+        await conn.execute('CREATE SCHEMA public')
     finally:
         await conn.close()
 
