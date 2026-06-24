@@ -1664,7 +1664,36 @@ Aguardam Item 2. A sequência correta após resolver o DockerHub:
 - `ruff` → All checks passed (novos arquivos)
 - Nenhum teste existente alterado
 
-**Commit:** `feat: implement GET /users/drivers endpoint with list_by_role repository method`
+**Commit:** `11817f7`
+
+---
+
+## Block B — Frontend: `ApiPlaceRepository` real ✅
+
+**Objetivo:** Substituir stubs internos por chamadas HTTP reais ao backend.
+
+**O que foi feito (TDD — 4 testes, RED → GREEN):**
+
+| Camada | Arquivo | Mudança |
+|--------|---------|---------|
+| **Infraestrutura** | `ApiPlaceRepository.ts` | Substituído `new Factory`/`new Store` stubs por `apiClient.post()` |
+| **Infraestrutura** | `ApiPlaceRepository.ts` | Interfaces `FactoryResponse`, `StoreResponse` para tipagem |
+| **Testes (novo)** | `__tests__/unit/ApiPlaceRepository.test.ts` | 4 testes |
+
+**Detalhes de implementação:**
+- `POST /places/factories` envia `{ name, lat, lng }` → recebe `{ id, name, lat, lng }` → `Factory` entity
+- `POST /places/stores` envia `{ name, lat, lng, owner_id }` → recebe `{ id, name, lat, lng, owner_id }` → `Store` entity
+- `AxiosError` → `NetworkError` do domínio
+- Manteve `Coordinates` VO na entity
+
+**Fix collateral:** `app/db/base.py` restaurado com `# noqa: F401` (imports removidos pelo `ruff --fix` no Block A)
+
+**Verificação:**
+- Frontend: `npm test` → **42/42 passed** | `npm run lint` → **0 erros**
+- Backend: `pytest` → **232/232 passed**, 99% cobertura | `ruff` → All checks passed
+- Nenhum teste existente alterado
+
+**Commit:** `feat: implement real HTTP calls in ApiPlaceRepository replacing stubs`
 
 ---
 
