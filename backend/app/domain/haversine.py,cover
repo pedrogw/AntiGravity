@@ -1,0 +1,35 @@
+> import math
+> from datetime import datetime, timedelta, timezone
+> from app.domain.value_objects.coordinates import Coordinates
+  
+> def calculate_haversine_distance(point1: Coordinates, point2: Coordinates) -> float:
+>     """Distância em km entre duas coordenadas usando a fórmula de Haversine."""
+!     R = 6371.0 # Radius of earth in km
+      
+!     phi1 = math.radians(point1.lat)
+!     phi2 = math.radians(point2.lat)
+!     delta_phi = math.radians(point2.lat - point1.lat)
+!     delta_lambda = math.radians(point2.lng - point1.lng)
+      
+!     a = math.sin(delta_phi / 2.0) ** 2 + \
+!         math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2.0) ** 2
+      
+!     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+      
+!     distance = R * c
+!     return distance
+  
+> def calculate_eta(distance_km: float, speed_kmh: float) -> float:
+>     """Horas estimadas para percorrer distance_km a speed_kmh."""
+!     if speed_kmh <= 0:
+!         raise ValueError("Speed must be positive")
+!     if distance_km < 0:
+!         raise ValueError("Distance cannot be negative")
+!     if distance_km == 0:
+!         return 0.0
+          
+!     return distance_km / speed_kmh
+  
+> def add_hours_to_now(hours: float) -> datetime:
+>     """Retorna datetime atual acrescido de hours horas."""
+!     return datetime.now(timezone.utc) + timedelta(hours=hours)

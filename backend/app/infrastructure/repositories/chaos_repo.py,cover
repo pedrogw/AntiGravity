@@ -1,0 +1,69 @@
+> from sqlalchemy.ext.asyncio import AsyncSession
+> from sqlalchemy.future import select
+> from sqlalchemy import func
+> from typing import List
+> import uuid
+> from app.infrastructure.orm.chaos import ChaosEventLog as ChaosEventLogModel
+> from app.domain.entities.chaos import ChaosEventLog as ChaosEventLogEntity
+  
+> class ChaosRepository:
+>     def __init__(self, db: AsyncSession):
+!         self.db = db
+  
+>     async def list_active_by_delivery(self, delivery_id: uuid.UUID) -> List[ChaosEventLogEntity]:
+!         result = await self.db.execute(
+!             select(ChaosEventLogModel)
+!             .where(ChaosEventLogModel.delivery_id == delivery_id)
+!             .where(ChaosEventLogModel.timestamp_end.is_(None))
+!         )
+!         models = result.scalars().all()
+!         return [self._to_entity(m) for m in models]
+  
+>     async def create(self, entity: ChaosEventLogEntity) -> ChaosEventLogEntity:
+!         model = ChaosEventLogModel(
+!             id=entity.id,
+!             delivery_id=entity.delivery_id,
+!             event_type=entity.event_type,
+!             impact_factor=entity.impact_factor,
+!             delay_minutes=entity.delay_minutes,
+!             lat_start=entity.lat_start,
+!             lng_start=entity.lng_start,
+!             lat_end=entity.lat_end,
+!             lng_end=entity.lng_end,
+!             timestamp_start=entity.timestamp_start,
+!             timestamp_end=entity.timestamp_end,
+!         )
+!         self.db.add(model)
+!         await self.db.commit()
+!         await self.db.refresh(model)
+!         return entity
+  
+>     async def count_active(self) -> int:
+!         result = await self.db.execute(
+!             select(func.count(ChaosEventLogModel.id))
+!             .where(ChaosEventLogModel.timestamp_end.is_(None))
+!         )
+!         return result.scalar() or 0
+  
+>     async def count_by_type(self) -> dict[str, int]:
+!         result = await self.db.execute(
+!             select(ChaosEventLogModel.event_type, func.count(ChaosEventLogModel.id))
+!             .where(ChaosEventLogModel.timestamp_end.is_(None))
+!             .group_by(ChaosEventLogModel.event_type)
+!         )
+!         return dict(result.all())
+  
+>     def _to_entity(self, model: ChaosEventLogModel) -> ChaosEventLogEntity:
+!         return ChaosEventLogEntity(
+!             id=model.id,
+!             delivery_id=model.delivery_id,
+!             event_type=model.event_type,
+!             impact_factor=model.impact_factor,
+!             delay_minutes=model.delay_minutes,
+!             lat_start=model.lat_start,
+!             lng_start=model.lng_start,
+!             lat_end=model.lat_end,
+!             lng_end=model.lng_end,
+!             timestamp_start=model.timestamp_start,
+!             timestamp_end=model.timestamp_end,
+!         )

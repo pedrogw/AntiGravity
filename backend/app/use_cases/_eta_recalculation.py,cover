@@ -1,0 +1,33 @@
+> from app.domain.entities.delivery import Delivery
+> from app.domain.repositories.place_repo import PlaceRepositoryProtocol
+> from app.domain.repositories.chaos_repo import ChaosRepositoryProtocol
+> from app.domain.repositories.eta_history_repo import EtaHistoryRepositoryProtocol
+> from app.domain.value_objects.coordinates import Coordinates
+> from app.core.config import settings
+  
+  
+> async def recalculate_delivery_eta(
+>     delivery: Delivery,
+>     lat: float,
+>     lng: float,
+>     place_repo: PlaceRepositoryProtocol,
+>     chaos_repo: ChaosRepositoryProtocol,
+>     eta_history_repo: EtaHistoryRepositoryProtocol,
+>     reason: str,
+> ) -> bool:
+!     store = await place_repo.get_store_by_id(delivery.store_id)
+!     if not store:
+!         return False
+  
+!     active_chaos = await chaos_repo.list_active_by_delivery(delivery.id)
+  
+!     history = delivery.recalculate_eta(
+!         origin=Coordinates(lat=lat, lng=lng),
+!         store_location=store.location,
+!         speed_kmh=settings.DEFAULT_SPEED_KMH,
+!         chaos_events=active_chaos,
+!         reason=reason,
+!     )
+!     if history:
+!         await eta_history_repo.create(history)
+!     return True

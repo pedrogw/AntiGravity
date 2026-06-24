@@ -4,23 +4,21 @@
 
 | Processo | Status |
 |---|---|
-| **Plano 4 — Deploy Vercel + Render + CI/CD** | 🔴 Pendente |
+| **Plano 4 — Deploy Vercel + Render + CI/CD** | 🟡 Em andamento |
 
 ### Plano 4 — Deploy Vercel + Render + CI/CD
 
 | Item | Status | Detalhe |
 |------|--------|---------|
 | 1. CORS configurável (config.py + main.py) | ✅ Concluído | `ALLOWED_ORIGINS` lido de env var em vez de hardcoded. |
-| 2. Build + push DockerHub | 🔴 Bloqueado | Build concluído (image `7c4f8d292ba3`). **Push negado:** `denied: requested access to the resource is denied`. Necessário login no DockerHub (`docker login --username pedrogw`) mas CLI não tem TTY interativo. |
-| 3. Render: adicionar env vars + redeploy | 🔴 Pendente | Aguarda Item 2 (precisa da imagem atualizada no DockerHub) |
-| 4. Vercel: adicionar `NEXT_PUBLIC_API_URL` + redeploy | 🔴 Pendente | Aguarda Item 3 (precisa do Render rodando com a imagem atualizada + CORS) |
-| 5. CI/CD (`.github/workflows/ci.yml`) | 🔴 Pendente | Aguarda resolução dos itens anteriores |
-
-**Bloqueante:** DockerHub push requer autenticação `pedrogw` — não foi possível fazer login via CLI sem TTY interativo.
+| 2. Build + push DockerHub | ✅ Concluído | Build com uv, push autenticado via access token (sudo docker login). Image digest: `sha256:21321bf29c975d86ea375ebffdfe7d8003300f8743f700ff77f26d178857a993` |
+| 3. Render: adicionar env vars + redeploy | 🔴 Aguardando usuário | Necessário: dashboard Render → Environment → `ALLOWED_ORIGINS=http://localhost:3000,https://anti-gravity-beryl.vercel.app` → Manual Deploy |
+| 4. Vercel: adicionar `NEXT_PUBLIC_API_URL` + redeploy | 🔴 Aguardando usuário | Necessário: dashboard Vercel → Settings → `NEXT_PUBLIC_API_URL=https://logistics-engine-latest.onrender.com` → Redeploy |
+| 5. CI/CD (`.github/workflows/ci.yml`) | 🔴 Pendente | Aguarda conclusão dos itens 3 e 4; precisa verificar secrets `DOCKER_USER`, `DOCKER_PASSWORD`, `RENDER_DEPLOY_HOOK` no GitHub |
 
 | Serviço | URL | Status |
 |---------|-----|--------|
-| DockerHub | `pedrogw/logistics-engine:latest` | ✅ Imagem existe (atualizada 13:36) |
+| DockerHub | `pedrogw/logistics-engine:latest` | ✅ Atualizada (2026-06-24 15:42, digest `sha256:21321...`) |
 | Render (backend) | `https://logistics-engine-latest.onrender.com` | ✅ Health 200, login funciona |
 | Neon (DB) | (via Render) | ✅ Conexão confirmada (login OK) |
 | Vercel (frontend) | `https://anti-gravity-beryl.vercel.app` | ✅ Página de login servida |
@@ -48,6 +46,23 @@
 | **F.3 — DockerHub (Imagem)** | ✅ **Concluído** |
 | **F.4 — Render (Deploy online)** | ✅ **Concluído** |
 | **CI/CD Pipeline** (testes → DockerHub → Render) | ✅ **Concluído** |
+
+---
+
+## Concluídos — Correções de Média Severidade (Blocos 4–6 ✅)
+
+| Bloco | Item | Status |
+|-------|------|--------|
+| **4a** | M2 — Auth em `GET /deliveries/` | ✅ Concluído |
+| **4b** | M2 — Auth em `GET /places/factories` | ✅ Concluído |
+| **4c** | M2 — Auth em `GET /places/stores` | ✅ Concluído |
+| **5** | M3 — Renomear `Alert.critical()` → `Alert.from_chaos()` | ✅ Concluído |
+| **6.1** | M5 — Criar schema `DeliveryCacheItem` | ✅ Concluído |
+| **6.2** | M5 — Adicionar `get_list`/`set_list` ao CacheService | ✅ Concluído |
+| **6.3** | M5 — Migrar `ListDeliveriesUseCase` para cache tipado | ✅ Concluído |
+| **6.4** | M5 — Atualizar testes | ✅ Concluído |
+| **6.5** | M5 — Verificar (pytest + ruff) | ✅ Concluído |
+| **6.6** | M5 — Atualizar docs | ✅ Concluído |
 
 ### Plano 3 — Bloqueantes Frontend
 

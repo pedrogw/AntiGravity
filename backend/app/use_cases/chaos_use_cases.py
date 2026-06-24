@@ -100,7 +100,7 @@ class InjectChaosUseCase:
             parts.append(f"fator {impact_factor}x")
 
         message = ", ".join(parts)
-        alert = AlertEntity.critical(
+        alert = AlertEntity.from_chaos(
             delivery_id=delivery_id,
             message=message,
             impact_factor=impact_factor,

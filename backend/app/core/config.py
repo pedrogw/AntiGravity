@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     CACHE_TTL_SECONDS: int = 300
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
     IDEMPOTENCY_KEY_TTL_HOURS: int = 24
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     ALLOWED_ORIGINS: str = "http://localhost:3000"
 
     model_config = SettingsConfigDict(case_sensitive=True, env_file=".env")

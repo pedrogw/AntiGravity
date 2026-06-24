@@ -12,7 +12,7 @@ class Alert:
     created_at: datetime.datetime = field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc))
 
     @classmethod
-    def critical(
+    def from_chaos(
         cls,
         delivery_id: uuid.UUID,
         message: str,

@@ -25,7 +25,7 @@ class TestCacheInvalidationListener:
         await listener.handle(event)
         cache_service.invalidate_prefix.assert_awaited_once_with(CACHE_PREFIX)
 
-    async def test_handle_other_event_skips_invalidation(self, cache_service):
+    async def test_handle_status_changed_invalidates(self, cache_service):
         listener = CacheInvalidationListener(cache_service)
         event = DeliveryStatusChangedEvent(
             delivery_id=uuid.uuid4(),
@@ -33,4 +33,4 @@ class TestCacheInvalidationListener:
             new_status="em_transito",
         )
         await listener.handle(event)
-        cache_service.invalidate_prefix.assert_not_awaited()
+        cache_service.invalidate_prefix.assert_awaited_once_with(CACHE_PREFIX)

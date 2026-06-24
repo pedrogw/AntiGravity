@@ -1,0 +1,7 @@
+> from typing import Protocol
+> from app.domain.entities.chaos import ChaosEventLog as ChaosEventLogEntity
+  
+  
+> class IdempotencyRepositoryProtocol(Protocol):
+-     async def get(self, key: str) -> ChaosEventLogEntity | None: ...
+-     async def save(self, key: str, entity: ChaosEventLogEntity) -> None: ...

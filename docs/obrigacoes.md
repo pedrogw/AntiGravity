@@ -97,3 +97,34 @@ main.py           → App factory, lifespan, routers, exception handlers, wiring
 - Commits no estilo conventional commits: `feat:`, `refactor:`, `fix:`, `docs:`, `test:`.
 - Mensagens em inglês, concisas.
 - Commits atômicos: uma mudança lógica por commit.
+
+## Garantia de Qualidade em Alterações
+
+Toda alteração de código deve seguir este fluxo obrigatório antes de ser commitada:
+
+### 1. Análise de Impacto
+- Identificar todos os arquivos e camadas afetados pela mudança (domínio, use cases, API, infraestrutura, schemas, testes).
+- Verificar se a mudança pode quebrar contratos existentes (response models, assinaturas de método, protocolos de repositório).
+- Verificar se a mudança afeta o comportamento em produção (Docker Compose, deploy Render/Vercel).
+- **Nenhuma alteração deve ser feita assumindo que "funciona por coincidência"** — toda dependência implícita deve ser explicitada ou eliminada.
+
+### 2. Testes Intensivos
+- **Nova funcionalidade:** Testes escritos antes do código (TDD), cobrindo sucesso, erro e boundaries.
+- **Correção de bug:** Teste que reproduz o bug deve ser adicionado antes da correção, e passar após.
+- **Refatoração:** Nenhum teste existente pode ser alterado (a menos que o contrato tenha mudado intencionalmente). Rodar suite completa antes e depois — resultado deve ser idêntico.
+- **Cobertura:** A alteração não pode reduzir a cobertura global. Idealmente, caminhos novos devem estar em 100%.
+
+### 3. Verificação Cruzada
+- Reler o diff completo antes de commitar — procurar por:
+  - Lógica duplicada ou contraditória
+  - Type hints faltando ou errados
+  - Recursos não fechados (conexões, files, sessions)
+  - Secrets ou IPs hardcoded
+  - Código comentado ou dead code
+- Verificar lint (backend: `ruff`, frontend: `npm run lint`).
+- Verificar que o código funciona no ambiente real: `docker compose up -d` + teste manual do fluxo alterado.
+
+### 4. Bloqueios
+- Nenhum commit é aprovado sem análise de impacto documentada (pelo menos no corpo da mensagem do commit).
+- Nenhum merge é aprovado com lint warnings ou testes falhando.
+- Qualquer alteração que toque em segurança (tokens, senhas, CORS, rate limiting) requer validação manual adicional do fluxo no Docker Compose.

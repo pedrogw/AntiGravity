@@ -1,7 +1,8 @@
+import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from app.infrastructure.orm.idempotency_key import IdempotencyKey as IdempotencyKeyModel
 from app.domain.entities.chaos import ChaosEventLog as ChaosEventLogEntity
 from app.core.config import settings
@@ -19,12 +20,24 @@ class IdempotencyRepository:
         if not model:
             return None
 
-        cutoff = datetime.now(timezone.utc) - __import__("datetime").timedelta(hours=settings.IDEMPOTENCY_KEY_TTL_HOURS)
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=settings.IDEMPOTENCY_KEY_TTL_HOURS)
         if model.created_at.replace(tzinfo=timezone.utc) < cutoff:
             return None
 
         data = json.loads(model.response)
-        return ChaosEventLogEntity(**data)
+        return ChaosEventLogEntity(
+            id=uuid.UUID(data["id"]),
+            delivery_id=uuid.UUID(data["delivery_id"]),
+            event_type=data["event_type"],
+            impact_factor=data["impact_factor"],
+            delay_minutes=data["delay_minutes"],
+            lat_start=float(data["lat_start"]) if data.get("lat_start") else None,
+            lng_start=float(data["lng_start"]) if data.get("lng_start") else None,
+            lat_end=float(data["lat_end"]) if data.get("lat_end") else None,
+            lng_end=float(data["lng_end"]) if data.get("lng_end") else None,
+            timestamp_start=datetime.fromisoformat(data["timestamp_start"]),
+            timestamp_end=datetime.fromisoformat(data["timestamp_end"]) if data.get("timestamp_end") else None,
+        )
 
     async def save(self, key: str, entity: ChaosEventLogEntity) -> None:
         data = {

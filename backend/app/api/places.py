@@ -9,7 +9,7 @@ from app.use_cases.places_use_cases import (
     CreateFactoryUseCase, ListFactoriesUseCase,
     CreateStoreUseCase, ListStoresUseCase
 )
-from app.api.deps import require_role
+from app.api.deps import require_role, get_current_user
 
 router = APIRouter()
 
@@ -31,7 +31,11 @@ async def create_factory(
     return map_factory(result)
 
 @router.get("/factories", response_model=List[FactoryResponse])
-async def list_factories(limit: int = 50, offset: int = 0, db: AsyncSession = Depends(get_db)):
+async def list_factories(
+    limit: int = 50, offset: int = 0,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
     repo = PlaceRepository(db)
     use_case = ListFactoriesUseCase(repo)
     results = await use_case.execute(limit=limit, offset=offset)
@@ -49,7 +53,11 @@ async def create_store(
     return map_store(result)
 
 @router.get("/stores", response_model=List[StoreResponse])
-async def list_stores(limit: int = 50, offset: int = 0, db: AsyncSession = Depends(get_db)):
+async def list_stores(
+    limit: int = 50, offset: int = 0,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
     repo = PlaceRepository(db)
     use_case = ListStoresUseCase(repo)
     results = await use_case.execute(limit=limit, offset=offset)

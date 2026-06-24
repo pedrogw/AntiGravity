@@ -16,6 +16,18 @@ class DeliveryUpdate(BaseModel):
     lat: Optional[float] = Field(None, ge=-90, le=90)
     lng: Optional[float] = Field(None, ge=-180, le=180)
 
+class DeliveryCacheItem(BaseModel):
+    id: uuid.UUID
+    factory_id: uuid.UUID
+    store_id: uuid.UUID
+    driver_id: uuid.UUID
+    status: str
+    eta_original: Optional[datetime] = None
+    eta_current: Optional[datetime] = None
+    departed_at: Optional[datetime] = None
+    current_lat: Optional[float] = None
+    current_lng: Optional[float] = None
+
 class DeliveryResponse(DeliveryBase):
     id: uuid.UUID
     status: str

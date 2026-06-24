@@ -36,6 +36,7 @@ async def list_deliveries(
     request: Request,
     limit: int = 50, offset: int = 0,
     db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
     repo = DeliveryRepository(db)
     cache = getattr(request.app.state, "cache_service", None)

@@ -133,7 +133,7 @@ class TestPlaces:
             json={"name": "F1", "lat": -23.0, "lng": -46.0},
             headers=lojista["headers"]
         )
-        response = await client.get("/places/factories")
+        response = await client.get("/places/factories", headers=lojista["headers"])
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, list)
@@ -165,7 +165,7 @@ class TestPlaces:
             json={"name": "S1", "lat": -23.0, "lng": -46.0, "owner_id": lojista["id"]},
             headers=lojista["headers"]
         )
-        response = await client.get("/places/stores")
+        response = await client.get("/places/stores", headers=lojista["headers"])
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, list)
@@ -201,7 +201,7 @@ class TestDeliveries:
         assert created["store_id"] == store_id
         assert created["driver_id"] == motorista["id"]
 
-        list_resp = await client.get("/deliveries/")
+        list_resp = await client.get("/deliveries/", headers=lojista["headers"])
         assert list_resp.status_code == 200
         deliveries = list_resp.json()
         assert isinstance(deliveries, list)
@@ -318,7 +318,6 @@ class TestDeliveries:
             "/auth/register",
             json={"email": f"outro_motorista_{uuid.uuid4().hex[:8]}@example.com", "password": "testpassword", "role": "motorista"},
         )
-        outro_id = outro_motorista.json()["id"]
         outro_login = await client.post(
             "/auth/login",
             json={"email": outro_motorista.json()["email"], "password": "testpassword"},
@@ -433,7 +432,7 @@ class TestChaosInjection:
         )
         assert chaos_resp.status_code == 201
 
-        get_resp = await client.get(f"/deliveries/")
+        get_resp = await client.get("/deliveries/", headers=lojista["headers"])
         deliveries = get_resp.json()
         updated = next(d for d in deliveries if d["id"] == delivery_id)
         assert updated["eta_current"] is not None

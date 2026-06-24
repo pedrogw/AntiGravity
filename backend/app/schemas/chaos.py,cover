@@ -1,0 +1,27 @@
+> from pydantic import BaseModel, Field
+> from typing import Optional
+> from datetime import datetime
+> import uuid
+  
+> class ChaosInject(BaseModel):
+>     event_type: str
+>     impact_factor: float = Field(default=1.0, ge=0.0)
+>     delay_minutes: int = Field(default=0, ge=0)
+>     lat_start: Optional[float] = Field(None, ge=-90, le=90)
+>     lng_start: Optional[float] = Field(None, ge=-180, le=180)
+>     lat_end: Optional[float] = Field(None, ge=-90, le=90)
+>     lng_end: Optional[float] = Field(None, ge=-180, le=180)
+  
+> class ChaosResponse(BaseModel):
+>     id: uuid.UUID
+>     delivery_id: uuid.UUID
+>     event_type: str
+>     impact_factor: float
+>     delay_minutes: int
+>     lat_start: Optional[float] = None
+>     lng_start: Optional[float] = None
+>     lat_end: Optional[float] = None
+>     lng_end: Optional[float] = None
+>     timestamp_start: datetime
+>     timestamp_end: Optional[datetime] = None
+>     model_config = {"from_attributes": True}

@@ -1,4 +1,3 @@
-import pytest
 from pydantic import BaseModel
 
 
@@ -45,3 +44,24 @@ class TestCacheService:
         assert await cache_service.get_json("deliveries:list:10:0") is None
         assert await cache_service.get_json("deliveries:list:50:0") is None
         assert await cache_service.get_json("other:key") == "c"
+
+    async def test_set_and_get_list(self, cache_service):
+        items = [FakeModel(id="a", value=1), FakeModel(id="b", value=2)]
+        await cache_service.set_list("test:list", items)
+        result = await cache_service.get_list("test:list", FakeModel)
+        assert result is not None
+        assert len(result) == 2
+        assert result[0].id == "a"
+        assert result[0].value == 1
+        assert result[1].id == "b"
+        assert result[1].value == 2
+
+    async def test_get_list_miss(self, cache_service):
+        result = await cache_service.get_list("nonexistent", FakeModel)
+        assert result is None
+
+    async def test_set_and_get_list_empty(self, cache_service):
+        await cache_service.set_list("test:empty", [])
+        result = await cache_service.get_list("test:empty", FakeModel)
+        assert result is not None
+        assert result == []

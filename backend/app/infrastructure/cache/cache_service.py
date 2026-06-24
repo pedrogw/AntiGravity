@@ -34,6 +34,20 @@ class CacheService:
         raw = value.model_dump_json()
         await self.redis.set(key, raw, ex=self.ttl)
 
+    async def get_list(self, key: str, model: Type[T]) -> Optional[list[T]]:
+        raw = await self.redis.get(key)
+        if raw is None:
+            return None
+        data = json.loads(raw)
+        return [model.model_validate(item) for item in data]
+
+    async def set_list(self, key: str, items: list[BaseModel]) -> None:
+        raw = json.dumps(
+            [item.model_dump(mode="json") for item in items],
+            default=str,
+        )
+        await self.redis.set(key, raw, ex=self.ttl)
+
     async def invalidate_prefix(self, prefix: str) -> int:
         cursor = 0
         deleted = 0

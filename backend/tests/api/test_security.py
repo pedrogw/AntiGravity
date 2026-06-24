@@ -57,6 +57,18 @@ class TestTokenValidation:
         )
         assert response.status_code in (401, 403)
 
+    async def test_list_deliveries_requires_auth(self, client: AsyncClient):
+        response = await client.get("/deliveries/")
+        assert response.status_code in (401, 403)
+
+    async def test_list_factories_requires_auth(self, client: AsyncClient):
+        response = await client.get("/places/factories")
+        assert response.status_code in (401, 403)
+
+    async def test_list_stores_requires_auth(self, client: AsyncClient):
+        response = await client.get("/places/stores")
+        assert response.status_code in (401, 403)
+
     async def test_malformed_token_returns_401(self, client: AsyncClient):
         response = await client.post(
             "/places/factories",

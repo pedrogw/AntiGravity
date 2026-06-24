@@ -1,0 +1,13 @@
+> from typing import Protocol, List
+> import uuid
+> from app.domain.entities.chaos import ChaosEventLog as ChaosEventLogEntity
+  
+> class ChaosRepositoryProtocol(Protocol):
+>     """Repositório para operações de persistência de eventos de caos."""
+-     async def list_active_by_delivery(self, delivery_id: uuid.UUID) -> List[ChaosEventLogEntity]: ...
+  
+-     async def create(self, entity: ChaosEventLogEntity) -> ChaosEventLogEntity: ...
+  
+-     async def count_active(self) -> int: ...
+  
+-     async def count_by_type(self) -> dict[str, int]: ...

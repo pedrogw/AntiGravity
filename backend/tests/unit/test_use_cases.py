@@ -592,6 +592,52 @@ class TestGetDashboardUseCase:
         mock_alert_repo.count_all.assert_any_call(is_critical=True)
 
 
+class TestUpdateDeliveryStatusEvent:
+    async def test_publishes_status_changed_event_when_status_changes(
+        self, mock_delivery_repo, mock_place_repo, mock_eta_history_repo, mock_chaos_repo,
+    ):
+        delivery_id = uuid.uuid4()
+        driver_id = uuid.uuid4()
+        existing = Delivery(id=delivery_id, factory_id=uuid.uuid4(), store_id=uuid.uuid4(), driver_id=driver_id)
+        mock_delivery_repo.get_by_id.return_value = existing
+        mock_delivery_repo.update.side_effect = lambda e: e
+
+        mock_event_bus = AsyncMock()
+        mock_event_bus.worker_pool = None
+
+        use_case = UpdateDeliveryUseCase(
+            mock_delivery_repo, mock_place_repo, mock_eta_history_repo,
+            mock_chaos_repo, event_bus=mock_event_bus,
+        )
+        await use_case.execute(delivery_id, current_user_id=driver_id, status="em_transito")
+
+        mock_event_bus.publish.assert_awaited_once()
+        args = mock_event_bus.publish.call_args
+        published = args[0][0]
+        from app.domain.events import DeliveryStatusChangedEvent
+        assert isinstance(published, DeliveryStatusChangedEvent)
+        assert published.delivery_id == delivery_id
+        assert published.old_status == "pendente"
+        assert published.new_status == "em_transito"
+
+    async def test_skips_event_when_no_event_bus(
+        self, mock_delivery_repo, mock_place_repo, mock_eta_history_repo, mock_chaos_repo,
+    ):
+        delivery_id = uuid.uuid4()
+        driver_id = uuid.uuid4()
+        existing = Delivery(id=delivery_id, factory_id=uuid.uuid4(), store_id=uuid.uuid4(), driver_id=driver_id)
+        mock_delivery_repo.get_by_id.return_value = existing
+        mock_delivery_repo.update.side_effect = lambda e: e
+
+        use_case = UpdateDeliveryUseCase(
+            mock_delivery_repo, mock_place_repo, mock_eta_history_repo,
+            mock_chaos_repo, event_bus=None,
+        )
+        result = await use_case.execute(delivery_id, current_user_id=driver_id, status="em_transito")
+
+        assert result.status == "em_transito"
+
+
 class TestEtaRecalculationAsyncPath:
     """Testa o path assíncrono (event_bus.worker_pool setado) — enfileira evento em vez de recalcular inline."""
 
@@ -647,7 +693,7 @@ class TestEtaRecalculationAsyncPath:
             mock_eta_history_repo, mock_place_repo,
             event_bus=mock_event_bus,
         )
-        result = await use_case.execute(delivery_id=delivery_id, event_type="acidente")
+        await use_case.execute(delivery_id=delivery_id, event_type="acidente")
 
         mock_event_bus.publish.assert_awaited_once()
         args = mock_event_bus.publish.call_args

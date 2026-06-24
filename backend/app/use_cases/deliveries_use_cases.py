@@ -10,9 +10,10 @@ from app.domain.services.eta_service import calculate_eta_between_coordinates
 from app.domain.haversine import add_hours_to_now
 from app.core.config import settings
 from app.core.exceptions import EntityNotFoundException, ForbiddenException
-from app.domain.events import DeliveryCreatedEvent, EtaRecalculationRequested
+from app.domain.events import DeliveryCreatedEvent, DeliveryStatusChangedEvent, EtaRecalculationRequested
 from app.use_cases._eta_recalculation import recalculate_delivery_eta
 from app.infrastructure.cache.cache_service import CACHE_PREFIX
+from app.schemas.delivery import DeliveryCacheItem
 import uuid
 
 if TYPE_CHECKING:
@@ -74,27 +75,28 @@ class ListDeliveriesUseCase:
             return await self.repo.list_all(limit=limit, offset=offset)
 
         cache_key = f"{CACHE_PREFIX}:{limit}:{offset}"
-        cached = await self.cache_service.get_json(cache_key)
+        cached = await self.cache_service.get_list(cache_key, DeliveryCacheItem)
         if cached is not None:
-            return [DeliveryEntity(**item) for item in cached]
+            return [DeliveryEntity(**item.model_dump()) for item in cached]
 
         entities = await self.repo.list_all(limit=limit, offset=offset)
         if entities:
-            await self.cache_service.set_json(
-                cache_key,
-                [{
-                    "id": str(e.id),
-                    "factory_id": str(e.factory_id),
-                    "store_id": str(e.store_id),
-                    "driver_id": str(e.driver_id),
-                    "status": e.status,
-                    "eta_original": e.eta_original.isoformat() if e.eta_original else None,
-                    "eta_current": e.eta_current.isoformat() if e.eta_current else None,
-                    "departed_at": e.departed_at.isoformat() if e.departed_at else None,
-                    "current_lat": e.current_lat,
-                    "current_lng": e.current_lng,
-                } for e in entities],
-            )
+            items = [
+                DeliveryCacheItem(
+                    id=e.id,
+                    factory_id=e.factory_id,
+                    store_id=e.store_id,
+                    driver_id=e.driver_id,
+                    status=e.status,
+                    eta_original=e.eta_original,
+                    eta_current=e.eta_current,
+                    departed_at=e.departed_at,
+                    current_lat=e.current_lat,
+                    current_lng=e.current_lng,
+                )
+                for e in entities
+            ]
+            await self.cache_service.set_list(cache_key, items)
         return entities
 
 class UpdateDeliveryUseCase:
@@ -129,7 +131,14 @@ class UpdateDeliveryUseCase:
             raise ForbiddenException("Apenas o motorista responsável pode atualizar a entrega")
 
         if status:
+            old_status = delivery.status
             delivery.change_status(status)
+            if self.event_bus:
+                await self.event_bus.publish(DeliveryStatusChangedEvent(
+                    delivery_id=delivery_id,
+                    old_status=old_status,
+                    new_status=delivery.status,
+                ))
 
         if lat is not None and lng is not None:
             delivery.update_position(lat, lng)

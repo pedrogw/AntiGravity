@@ -1,7 +1,7 @@
 import json
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any
 
 from arq.connections import ArqRedis, RedisSettings
@@ -164,5 +164,5 @@ async def enqueue_event(event: DomainEvent, pool: ArqRedis) -> None:
 
 
 class WorkerSettings:
-    functions = [handle_domain_event, handle_eta_recalculation, handle_alert_creation]
+    functions = [handle_domain_event]
     redis_settings = RedisSettings.from_dsn(settings.REDIS_URL)

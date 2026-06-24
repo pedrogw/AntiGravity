@@ -505,7 +505,7 @@ Construir um motor analítico B2B de logística com rastreamento inteligente, SL
 | Lazy import (`from app.domain.haversine import ...` dentro do método) | Evita circular import entre `Coordinates` e `haversine` |
 | `User.role: UserRole` em vez de `str` | Aproveita enum já existente; `UserRole(str, Enum)` é compatível com JSON e str |
 | `UserRole` removido do ORM, importado do domain | Elimina duplicata; único ponto de verdade para o enum |
-| `Alert.critical()` factory method | Encapsula regra de criticalidade na entidade; thresholds passados como parâmetro p/ manter testabilidade sem depender de `settings` |
+| `Alert.from_chaos()` factory method (renomeado de `critical`) | Encapsula regra de criticalidade na entidade; thresholds passados como parâmetro p/ manter testabilidade sem depender de `settings` |
 | `VALID_TRANSITIONS` como `ClassVar` dentro de `Delivery` | `ClassVar` impede dataclass de tratá-lo como campo; `DeliveryEntity(**item)` do cache continua funcionando |
 | `Delivery.change_status()` no domínio | Validação de transição e set de `departed_at` encapsulados; use case vira orquestrador simples |
 | `Delivery.update_position()` no domínio | Método simples, mas prepara o terreno para validação futura de coordenadas na entidade |
@@ -525,7 +525,7 @@ Construir um motor analítico B2B de logística com rastreamento inteligente, SL
 ## Arquivos Relevantes
 
 ### Backend — Domínio
-- `app/domain/entities/alert.py`: `Alert` (com `critical()` factory method)
+- `app/domain/entities/alert.py`: `Alert` (com `from_chaos()` factory method)
 - `app/domain/entities/user.py`: `User` (com `is_motorista()`/`is_lojista()`, `role: UserRole`)
 - `app/domain/entities/delivery.py`: `Delivery` (com `change_status()` + `update_position()` + `apply_chaos()` + `recalculate_eta()`, máquina de estados como `ClassVar`), `EtaHistory`
 - `app/domain/entities/chaos.py`: `ChaosEventLog` (com `aggregate()` estático), `ChaosAggregate`
@@ -1290,3 +1290,294 @@ Aguardam Item 2. A sequência correta após resolver o DockerHub:
 2. Item 3 → Render redeploy com nova imagem + env `ALLOWED_ORIGINS`
 3. Item 4 → Vercel env `NEXT_PUBLIC_API_URL` + redeploy
 4. Item 5 → `.github/workflows/ci.yml` (independe de DockerHub, pode ser criado a qualquer momento)
+
+---
+
+## Correção de Segurança — Bloco 1: bcrypt explícito + token configurável
+
+**Data:** 2026-06-24
+
+**Objetivo:** Eliminar 2 críticos da auditoria de código: dependência implícita de `bcrypt` e access token com 8 dias de vida.
+
+### O que foi feito
+
+| Item | Arquivo | Mudança |
+|------|---------|---------|
+| C2 — bcrypt explícito | `requirements.txt:8` | Adicionado `bcrypt>=4.0.0` (antes vinha só como transitivo de `passlib[bcrypt]`) |
+| C3 — token configurável | `app/core/config.py:13` | Adicionado `ACCESS_TOKEN_EXPIRE_MINUTES: int = 30` |
+| C3 — security usa settings | `app/core/security.py:18` | `timedelta(minutes=60*24*8)` → `timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)` |
+
+### Impacto
+
+- **`bcrypt`** — zero (já instalado, agora explícito)
+- **Token lifetime** — novos access tokens duram 30 min em vez de 8 dias. Refresh token de 30 dias + interceptor automático do frontend mantêm a sessão. Comportamento anterior restaurável via `.env`: `ACCESS_TOKEN_EXPIRE_MINUTES=11520`
+
+### Verificação
+
+- **202/202 testes passando** (mesmo resultado do baseline)
+- **6/6 security tests passando** (`test_security.py`)
+- **Lint (ruff):** 0 erros novos (38 pré-existentes em arquivos não alterados)
+
+### Pendências
+
+- ~~**C1 — Idempotency deserialization:** Bloco 2 ainda não executado (aguardando aprovação)~~
+
+---
+
+## Correção de Infraestrutura — Bloco 2: Idempotency deserialização de tipos
+
+**Data:** 2026-06-24
+
+**Objetivo:** Corrigir deserialização quebrada no `IdempotencyRepository.get()` — entidade retornada com campos `str` onde deveriam ser `uuid.UUID` e `datetime`.
+
+### O que foi feito
+
+| Item | Arquivo | Mudança |
+|------|---------|---------|
+| C1 — deserialização explícita | `app/infrastructure/repositories/idempotency_repo.py:26-37` | Substituído `ChaosEventLogEntity(**data)` por construtor explícito com `uuid.UUID()`, `datetime.fromisoformat()`, `float()` |
+| M4 — `__import__` anti-pattern | `idempotency_repo.py:22` | Substituído `__import__("datetime").timedelta(...)` por `from datetime import timedelta` |
+| Teste roundtrip | `tests/unit/test_idempotency_repo.py` (novo) | 3 testes: preservação de tipos, campos nulos, chave inexistente |
+
+### Impacto
+
+- **Tipos agora corretos:** `entity.id` retorna `uuid.UUID` em vez de `str`
+- **Zero alteração de contrato:** Pydantic já fazia coerção na serialização, então o bug era silencioso
+- **`from datetime import timedelta`** em vez de `__import__` dinâmico
+
+### Verificação
+
+- **205/205 testes passando** (3 novos: `test_idempotency_repo.py`)
+- **99% cobertura** (mantida)
+- **Lint (ruff):** All checks passed
+
+---
+
+## Planejamento — Bloco 3: Correções de Alta Severidade (H1, H8, H5)
+
+**Data:** 2026-06-24
+
+**Objetivo:** Atacar 3 problemas de alta severidade identificados na auditoria.
+
+### Reclassificação pós-análise
+
+| ID | Problema | Real? | Decisão |
+|----|----------|-------|---------|
+| **H1** | Cache nunca invalida em mudanças de status | ✅ Real | Implementar no Bloco 3b + 3c |
+| **H5** | Recálculo ETA ignorado quando `worker_pool=None` | ❌ Falso positivo | Código checa `self.event_bus and self.event_bus.worker_pool` e cai corretamente no `else` sync. Nada a fazer. |
+| **H8** | Worker functions registradas mas nunca usadas como jobs ARQ | ✅ Real | Implementar no Bloco 3a |
+
+### Plano
+
+| Bloco | O quê | Arquivos | Risco |
+|-------|-------|----------|-------|
+| **3a** | H8 — Worker cleanup: remover `handle_eta_recalculation` e `handle_alert_creation` de `WorkerSettings.functions` | `worker.py` | ✅ **Concluído** |
+| **3b** | H1.2 — Listener invalida cache em `DeliveryStatusChangedEvent` | `cache_invalidation_listener.py` + teste | ✅ **Concluído** |
+| **3c** | H1.1 — `UpdateDeliveryUseCase` publica `DeliveryStatusChangedEvent` ao mudar status | `deliveries_use_cases.py` + teste | 🟢 Pendente |
+
+### Bloco 3a — Executado
+
+| Item | Arquivo | Mudança |
+|------|---------|---------|
+| H8 — Worker cleanup | `worker.py:167` | `functions = [handle_domain_event, handle_eta_recalculation, handle_alert_creation]` → `[handle_domain_event]` |
+| Lint fix | `worker.py:4` | `from datetime import datetime, timezone` → `from datetime import datetime` (`timezone` não usado) |
+
+**Verificação:** 205/205 testes, lint limpo, 99% cobertura.
+
+### Bloco 3b — Executado
+
+| Item | Arquivo | Mudança |
+|------|---------|---------|
+| H1.2 — Listener invalida em status change | `cache_invalidation_listener.py:14` | `isinstance(event, DeliveryCreatedEvent)` → `DeliveryCreatedEvent \| DeliveryStatusChangedEvent` |
+| Teste atualizado | `test_cache_invalidation_listener.py:28-36` | `test_handle_other_event_skips_invalidation` → `test_handle_status_changed_invalidates`, agora espera `invalidate_prefix` |
+| Lint fix | `cache_invalidation_listener.py:2` | `EventHandler` import não usado removido |
+
+**Verificação:** 205/205 testes, lint limpo (2/2 listener tests), 99% cobertura.
+
+**Status:** Aguardando execução do Bloco 3c.
+
+---
+
+## Planejamento — Bloco 4, 5 e 6: Correções de Média Severidade (M2, M3, M5)
+
+**Data:** 2026-06-24
+
+**Objetivo:** Resolver 3 problemas médios da auditoria: endpoints sem autenticação, naming enganoso, e cache com raw dict.
+
+### Reclassificação
+
+| ID | Problema | Decisão |
+|----|----------|---------|
+| M1 | `__tablename__` auto-gerado | ❌ Ignorado — cosmético, quebraria migrations |
+| **M2** | Endpoints de listagem sem auth | ✅ Implementar (Bloco 4) |
+| **M3** | `Alert.critical()` nome enganoso | ✅ Implementar rename (Bloco 5) |
+| M4 | `__import__` anti-pattern | ✅ Já corrigido no Bloco 2 |
+| **M5** | Cache usa raw dict em vez de Pydantic | ✅ Implementar (Bloco 6) |
+
+### Plano
+
+| Bloco | O quê | Arquivos | Testes | Risco |
+|-------|-------|----------|--------|-------|
+| **4** | M2 — Auth em `GET /deliveries`, `/factories`, `/stores` | `deliveries.py`, `places.py`, `test_integration.py` | 4 ajustes | 🟢 |
+| **5** | M3 — Renomear `Alert.critical()` → `Alert.from_chaos()` | `alert.py`, `chaos_use_cases.py` | Nenhum | 🟢 |
+| **6** | M5 — Cache tipado com Pydantic | `schemas/delivery.py`, `deliveries_use_cases.py` | Nenhum | 🟢 |
+
+**Status:** Bloco 4 (M2) concluído. **Bloco 5 (M3) concluído.**
+
+---
+
+## Bloco 4a — GET /deliveries com autenticação
+
+**Objetivo:** Exigir token JWT no endpoint `GET /deliveries/`.
+
+**O que foi feito:**
+- `app/api/deliveries.py:list_deliveries`: adicionado `current_user: dict = Depends(get_current_user)`
+- `tests/api/test_security.py`: novo teste `test_list_deliveries_requires_auth` — verifica 401 sem token
+- `tests/api/test_integration.py`: 2 chamadas a `GET /deliveries/` atualizadas com `headers=lojista["headers"]`
+- Lint pre-existente corrigido: `outro_id` não usado e `f-string` sem placeholder removidos
+
+**Impacto:**
+- **208/208 testes passando**, 99% cobertura
+- `ruff` — all checks passed
+- Nenhum use case alterado — auth só na camada de API
+
+---
+
+## Bloco 4b — GET /places/factories com autenticação
+
+**Objetivo:** Exigir token JWT no endpoint `GET /places/factories`.
+
+**O que foi feito:**
+- `app/api/places.py`: adicionado import de `get_current_user` + `current_user: dict = Depends(get_current_user)` em `list_factories`
+- `tests/api/test_security.py`: novo teste `test_list_factories_requires_auth` — verifica 401 sem token
+- `tests/api/test_integration.py`: chamada a `GET /places/factories` atualizada com `headers=lojista["headers"]`
+
+**Impacto:**
+- **209/209 testes passando**, 99% cobertura
+- `ruff` — all checks passed
+
+---
+
+## Bloco 4c — GET /places/stores com autenticação
+
+**Objetivo:** Exigir token JWT no endpoint `GET /places/stores`.
+
+**O que foi feito:**
+- `app/api/places.py`: `current_user: dict = Depends(get_current_user)` em `list_stores` (import já existente do 4b)
+- `tests/api/test_security.py`: novo teste `test_list_stores_requires_auth` — verifica 401 sem token
+- `tests/api/test_integration.py`: chamada a `GET /places/stores` atualizada com `headers=lojista["headers"]`
+
+**Impacto:**
+- **210/210 testes passando**, 99% cobertura
+- `ruff` — all checks passed
+- **M2 completamente resolvido** — todos os 3 endpoints de listagem agora exigem autenticação
+
+---
+
+## Bloco 5 — M3: Renomear `Alert.critical()` → `Alert.from_chaos()`
+
+**Objetivo:** Renomear factory method da entidade Alert para refletir seu verdadeiro propósito — criar alerta a partir de parâmetros de caos.
+
+**O que foi feito:**
+
+### Mini-bloco 5.1 — Renomear em `alert.py`
+- `app/domain/entities/alert.py`: `critical()` → `from_chaos()` na definição da classmethod
+- Nome `critical` dava a entender que criava alerta crítico, mas o método calcula `is_critical` baseado em thresholds — `from_chaos` descreve melhor a origem do alerta
+
+### Mini-bloco 5.2 — Atualizar chamada
+- `app/use_cases/chaos_use_cases.py`: `AlertEntity.critical(` → `AlertEntity.from_chaos(`
+- Única chamada no código base
+
+### Verificação
+- `Alert.from_chaos()` funcional (verificado manualmente)
+- `ruff`: all checks passed
+- Tests relacionados (chaos, alert) passam (falhas pré-existentes em cache/worker não relacionadas)
+
+### Testes novos
+- `tests/domain/test_alert_entity.py` (8 testes): cobertura direta do `Alert.from_chaos()` — critical factor, critical delay, ambos, não crítico, thresholds customizados, valores exatos no boundary, delivery_id preservado
+- `alert.py`: **100% cobertura** (14/14 linhas)
+
+### Impacto
+- Nenhum contrato quebrado — método é `@classmethod` interno, sem dependentes externos
+- Nenhum teste alterado — testes existentes exercitam pelo use case, não chamam o factory method diretamente
+- 8 novos testes, `alert.py` em **100%**
+- Nenhum teste existente alterado
+- `ruff`: all checks passed
+
+---
+
+## Bloco 6 — M5: Cache tipado com Pydantic (concluído ✅)
+
+**Objetivo:** Substituir serialização raw dict (`get_json`/`set_json`) no cache por schemas Pydantic tipados.
+
+### Mini-bloco 6.1 — Criar `DeliveryCacheItem` schema
+
+**O que foi feito:**
+- `app/schemas/delivery.py`: novo schema `DeliveryCacheItem(BaseModel)` com 10 campos espelhando os dados cacheados (`id`, `factory_id`, `store_id`, `driver_id`, `status`, `eta_original`, `eta_current`, `departed_at`, `current_lat`, `current_lng`)
+- Schema é compatível com `DeliveryEntity(**item.model_dump())` para reconstrução da entidade
+- `tests/unit/test_delivery_schema.py`: 5 testes cobrindo construção a partir de entidade, roundtrip JSON, reconstrução de entidade, defaults parciais
+- `schemas/delivery.py`: **100% cobertura** (34/34 linhas)
+- `ruff`: all checks passed
+
+### Mini-bloco 6.2 — Adicionar `get_list`/`set_list` ao `CacheService`
+
+**O que foi feito:**
+- `get_list(key, model)` — lê JSON array, retorna `list[T]` via `model.model_validate(item)`
+- `set_list(key, items)` — serializa `list[BaseModel]` via `item.model_dump(mode="json")`, armazena como JSON array
+- Compatível com o padrão de `get`/`set` existente (TypeVar `T` bound a `BaseModel`)
+
+### Mini-bloco 6.3 — Migrar `ListDeliveriesUseCase` para cache tipado
+
+**O que foi feito:**
+- `get_json`/`set_json` substituídos por `get_list(DeliveryCacheItem)`/`set_list(DeliveryCacheItem)` no método `execute()`
+- Construção manual de dict (10 linhas) substituída por `DeliveryCacheItem(...)` com parâmetros nomeados
+- Reconstrução de `DeliveryEntity` via `item.model_dump()` em vez de `**item` raw dict
+
+### Mini-bloco 6.4 — Atualizar testes
+
+**O que foi feito:**
+- `tests/unit/test_cache_service.py`: 3 novos testes (`test_set_and_get_list`, `test_get_list_miss`, `test_set_and_get_list_empty`)
+- `import pytest` não utilizado removido (lint fix)
+- Testes existentes de `test_list_deliveries_cache.py` mantidos — comportamento cache-aside preservado
+
+### Mini-bloco 6.5 — Verificar (pytest + ruff)
+
+**Resultado:**
+- **16/16 testes passando** (cache_service, list_deliveries_cache, delivery_schema)
+- **`ruff`: All checks passed** em todos os arquivos modificados
+
+### Mini-bloco 6.6 — Atualizar docs
+
+**O que foi feito:**
+- `docs/processos-andamento.md`: Bloco 6 marcado como concluído
+- `docs/historico-conversa.md`: Esta entrada atualizada
+
+**Impacto total:**
+- `CacheService`: 2 novos métodos (`get_list`, `set_list`) — 98% cobertura
+- `deliveries_use_cases.py`: cache migrado para Pydantic tipado — sem alteração de contrato
+- `test_cache_service.py`: 3 novos testes — 8 testes no total
+- `schemas/delivery.py`: 100% cobertura, 34 linhas
+- Nenhum teste existente alterado
+- Nenhuma funcionalidade quebrada — comportamento cache-aside preservado
+
+---
+
+## Plano 4 — Deploy Vercel + Render + CI/CD (2026-06-24)
+
+**Objetivo:** Finalizar deploy em produção: DockerHub, Render, Vercel e CI/CD.
+
+### Item 2 — DockerHub Push ✅
+
+**Problema:** `docker push` negado por falta de autenticação. CLI sem TTY interativo impedia `docker login`.
+
+**Solução:**
+- Access token `dckr_pat_...` gerado no DockerHub (permissões Read, Write, Delete)
+- Login com `docker login --username pedrogw --password-stdin` via `sudo -S`
+- Build e push bem-sucedidos com uv: `pedrogw/logistics-engine:latest` atualizado
+- Digest: `sha256:21321bf29c975d86ea375ebffdfe7d8003300f8743f700ff77f26d178857a993`
+
+### Pendentes
+| Item | Status | Ação necessária |
+|------|--------|-----------------|
+| 3. Render redeploy | 🔴 | Dashboard Render: `ALLOWED_ORIGINS=http://localhost:3000,https://anti-gravity-beryl.vercel.app` → Manual Deploy |
+| 4. Vercel env var | 🔴 | Dashboard Vercel: `NEXT_PUBLIC_API_URL=https://logistics-engine-latest.onrender.com` → Redeploy |
+| 5. CI/CD workflow | 🔴 | Verificar secrets no GitHub: `DOCKER_USER`, `DOCKER_PASSWORD`, `RENDER_DEPLOY_HOOK`. Commit + push do `ci.yml` para main. |

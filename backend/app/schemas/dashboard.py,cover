@@ -1,0 +1,18 @@
+> from pydantic import BaseModel
+  
+> class DeliveryStatusCount(BaseModel):
+>     status: str
+>     count: int
+  
+> class ChaosTypeCount(BaseModel):
+>     event_type: str
+>     count: int
+  
+> class DashboardResponse(BaseModel):
+>     total_deliveries: int
+>     deliveries_by_status: list[DeliveryStatusCount]
+>     delayed_deliveries: int
+>     total_alerts: int
+>     critical_alerts: int
+>     active_chaos_events: int
+>     chaos_by_type: list[ChaosTypeCount]

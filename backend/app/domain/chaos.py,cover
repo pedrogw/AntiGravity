@@ -1,0 +1,6 @@
+! from datetime import datetime
+  
+  
+! def remove_chaos_from_eta(current_eta: datetime, previous_eta: datetime, impact_factor: float, delay_minutes: int) -> datetime:
+!     """Remove efeito do caos restaurando o ETA anterior ao evento."""
+!     return previous_eta.replace(microsecond=0)
