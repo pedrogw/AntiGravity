@@ -100,9 +100,9 @@
 | P-A4 — `current_user` não usado | A | 🟢 Baixo | 1 | ✅ **Concluído** |
 | P-A5 — Testes de paginação `limit`/`offset` | A | 🟡 Médio | 1 | ✅ **Concluído** |
 | P-A6 — Teste token expirado → 401 | A | 🟡 Médio | 1 | ✅ **Concluído** |
-| P-B1 — `ApiError` para erros HTTP 4xx/5xx | B | 🟡 Médio | 2 | 📋 Pendente |
-| P-B2 — Teste `Error` não-Axios propagado | B | 🟢 Baixo | 2 | 📋 Pendente |
-| P-B3 — Teste erro HTTP 400 → `ApiError` | B | 🟢 Baixo | 2 | 📋 Pendente |
+| P-B1 — `ApiError` para erros HTTP 4xx/5xx | B | 🟡 Médio | 2 | ✅ **Concluído** |
+| P-B2 — Teste `Error` não-Axios propagado | B | 🟢 Baixo | 2 | ✅ **Concluído** |
+| P-B3 — Teste erro HTTP 400 → `ApiError` | B | 🟢 Baixo | 2 | ✅ **Concluído** |
 
 ### Plano 3 — Bloqueantes Frontend
 

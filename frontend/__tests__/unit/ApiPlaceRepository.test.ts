@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ApiPlaceRepository } from '../../src/infrastructure/repositories/ApiPlaceRepository';
 import { Coordinates } from '../../src/domain/value_objects/Coordinates';
+import { ApiError } from '../../src/domain/errors/ApiError';
 import { NetworkError } from '../../src/domain/errors/NetworkError';
 import { AxiosError } from 'axios';
 
@@ -48,6 +49,26 @@ describe('ApiPlaceRepository', () => {
       await expect(
         repo.createFactory('Fabrica Teste', fakeLocation),
       ).rejects.toThrow(NetworkError);
+    });
+
+    it('deve propagar erro não-Axios sem alteração', async () => {
+      apiClient.post.mockRejectedValue(new Error('Erro genérico'));
+
+      await expect(
+        repo.createFactory('Fabrica Teste', fakeLocation),
+      ).rejects.toThrow('Erro genérico');
+    });
+
+    it('deve lançar ApiError quando recebe HTTP 400', async () => {
+      const axiosError = new AxiosError('Bad Request');
+      Object.assign(axiosError, {
+        response: { status: 400, data: { detail: 'Dado inválido' } },
+      });
+      apiClient.post.mockRejectedValue(axiosError);
+
+      await expect(
+        repo.createFactory('Fabrica Teste', fakeLocation),
+      ).rejects.toThrow(ApiError);
     });
   });
 

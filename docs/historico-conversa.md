@@ -1641,6 +1641,29 @@ Aguardam Item 2. A sequência correta após resolver o DockerHub:
 
 ---
 
+## Commit 2 (Refactor) — Correções Pós-Verificação Bloco B
+
+**Data:** 2026-06-24
+**TDD seguido conforme `docs/obrigacoes.md`:**
+
+| Fase | Ação | Resultado |
+|------|------|-----------|
+| Testes pré-implementação | `vitest run` frontend (baseline) | **42/42 passed**, lint 0 erros |
+| TDD (P-B2, P-B3) | 2 novos testes escritos → rodados | **1 RED** (P-B3: HTTP 400 → NetworkError), **1 GREEN** (P-B2: erro genérico) |
+| Implementação (P-B1) | `ApiError.ts` criado + catch diferenciado em `ApiPlaceRepository` | — |
+| Testes pós-implementação | `vitest run` + `npm run lint` + `pytest` backend | Front: **44/44** (2 novos), lint **0 erros**; Back: **235/235** |
+
+### Itens do Commit 2
+
+| Item | Arquivo | Mudança |
+|------|---------|---------|
+| **P-B1** | `src/domain/errors/ApiError.ts` **(novo)** | Classe `ApiError extends AppError` com `statusCode` |
+| **P-B1** | `src/infrastructure/repositories/ApiPlaceRepository.ts` | `catch` diferencia: AxiosError com response → `ApiError`, sem response → `NetworkError`, não-Axios → rethrow |
+| **P-B2** | `__tests__/unit/ApiPlaceRepository.test.ts` | Teste: erro não-Axios propagado sem alteração |
+| **P-B3** | `__tests__/unit/ApiPlaceRepository.test.ts` | Teste: HTTP 400 → `ApiError` |
+
+---
+
 ## Commit 1 (Refactor) — Correções Pós-Verificação (Blocos A + B)
 
 **Data:** 2026-06-24

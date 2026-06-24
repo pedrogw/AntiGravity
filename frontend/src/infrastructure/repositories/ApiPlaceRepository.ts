@@ -1,6 +1,7 @@
 import { PlaceRepositoryProtocol } from '../../domain/repositories/PlaceRepositoryProtocol';
 import { Factory, Store } from '../../domain/entities/Place';
 import { Coordinates } from '../../domain/value_objects/Coordinates';
+import { ApiError } from '../../domain/errors/ApiError';
 import { NetworkError } from '../../domain/errors/NetworkError';
 import { apiClient } from '../api/api_client';
 import { AxiosError } from 'axios';
@@ -34,6 +35,9 @@ export class ApiPlaceRepository implements PlaceRepositoryProtocol {
       );
     } catch (error) {
       if (error instanceof AxiosError) {
+        if (error.response) {
+          throw new ApiError(error.response.status, error.message);
+        }
         throw new NetworkError();
       }
       throw error;
@@ -58,6 +62,9 @@ export class ApiPlaceRepository implements PlaceRepositoryProtocol {
       );
     } catch (error) {
       if (error instanceof AxiosError) {
+        if (error.response) {
+          throw new ApiError(error.response.status, error.message);
+        }
         throw new NetworkError();
       }
       throw error;
