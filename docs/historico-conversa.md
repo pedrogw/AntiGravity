@@ -997,8 +997,23 @@ backend/scripts/setup.sh          # recria venv do zero
 | `backend/pytest_output.txt` | `git rm --cached` |
 | `backend/pytest_output_sqlite.txt` | `git rm --cached` |
 | `backend/test.db` | `git rm --cached` |
-| `backend/app/**/__pycache__/` (76 files) | `git rm --cached` |
+| `backend/app/**/__pycache__/` (79 files) | `git rm --cached` |
 | `backend/venv/` | `rm -rf` (já gitignorado) |
+
+### Execução (2026-06-24)
+**Commit C** — `8b6e566` `chore: update gitignore for stale artifacts`
+- Adicionados ao `.gitignore`: `*.log`, `error_log*`, `error_store*`, `pytest_output*`
+
+**Commit D** — `d8be6c8` `chore: remove tracked stale artifacts`
+- 7 stale files removidos do tracking (logs + test.db)
+- 79 `__pycache__` removidos do tracking (33 `.311` + 46 `.312`)
+- `backend/venv/` deletado do disco
+- 86 arquivos no total, 888 linhas de diff
+
+**Verificação:**
+- `git status` limpo (zero arquivos modificados)
+- `git ls-files backend/` sem pycache ou stale logs
+- `backend/venv/` deletado
 
 ---
 

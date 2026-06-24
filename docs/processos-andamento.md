@@ -5,7 +5,7 @@
 | Processo | Status |
 |---|---|
 | Plano 1 — Mitigação de Impacto Crítico (.venv) | ✅ Concluído |
-| Plano 2 — Limpeza Geral do Git | 🔄 Em planejamento |
+| Plano 2 — Limpeza Geral do Git | ✅ Concluído |
 
 ---
 
