@@ -906,21 +906,25 @@ Construir um motor analítico B2B de logística com rastreamento inteligente, SL
 - `api_client.ts`: URL de refresh no interceptor corrigida
 - `docker-compose.yml`: `NEXT_PUBLIC_API_URL=http://api:8000` → `http://localhost:8000`
 
-#### Problema Não Resolvido
-- Login no navegador (`localhost:3000`) retorna "Erro de conexão com o servidor"
-- `apiClient.baseURL = 'http://localhost:8000'` (default, bakeado em build time)
-- Backend CORS permite `http://localhost:3000` → requisição cross-origin deveria funcionar
-- Build com `--no-cache frontend` não resolveu
-- API via `curl` direto no host deve ser testada para isolar se o problema é CORS ou rota
+#### Problema Resolvido — Causa: Cache de Build Docker
+- **Sintoma:** Login no navegador (`localhost:3000`) retornava "Erro de conexão com o servidor"
+- **Investigação (6 camadas):**
+  1. Backend → `health` e `login` respondem 200 via curl ✅
+  2. CORS → Preflight retorna `access-control-allow-origin: http://localhost:3000` ✅
+  3. Bundle → `baseURL:"http://localhost:8000"` verificado via grep no bundle ✅
+  4. Rede → `wget` do container frontend → `api:8000` funciona ✅
+  5. Logs → Nenhum erro no backend ou frontend ✅
+  6. Axios real → `node -e "axios.post(...)"` do host funciona ✅
+- **Conclusão:** Nenhuma das 6 camadas apresentou problema. Causa mais provável: **cache de build Docker corrompido** — o rebuild com o ARG explícito `NEXT_PUBLIC_API_URL=http://localhost:8000` + camada `COPY --from=builder` fresca substituiu o artefato suspeito.
 
 ### Estado Atual
 - `sudo docker compose up -d` → todos os 5 containers rodando (api healthy, frontend started)
-- Seed já rodou anteriormente → `lojista@antigravity.com` / `admin123` e `motorista@antigravity.com` / `driver123` existem no banco
-- Login via browser falha; pendente investigação (provável CORS ou baked URL errada no bundle)
+- Seed rodou → `lojista@antigravity.com` / `admin123` e `motorista@antigravity.com` / `driver123` existem
+- **Login via browser:** ✅ **FUNCIONANDO** — causa provável: cache corrompido do build Docker
 
 ### Pendências
 - **F.5** — Render WebService (aguardando ação do usuário)
-- **Login E2E** — Resolver "Erro de conexão com o servidor" no login do frontend
+- Items 2 e 3 do Plano 3 codados mas **não commitados** (aguardando definição do usuário)
 
 ---
 
@@ -1017,9 +1021,114 @@ backend/scripts/setup.sh          # recria venv do zero
 
 ---
 
+## Plano 3 — Bloqueantes Frontend
+
+**Problemas identificados na análise do frontend (3 itens bloqueantes):**
+
+### 1. Login quebrado no Docker e Vercel
+
+**Causa raiz:** `NEXT_PUBLIC_API_URL=http://localhost:8000` é inlined no bundle JS no build time. Funciona local (dev) porque o backend está na mesma máquina na porta 8000. Falha em qualquer deploy:
+- **Docker:** `localhost:8000` dentro do container não alcança o backend (que está no container `api`)
+- **Vercel:** `localhost:8000` não existe — precisa da URL pública do backend no Render
+
+**Solução:**
+- `frontend/Dockerfile`: Adicionar `ARG NEXT_PUBLIC_API_URL` + `ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL` no stage `builder` (antes do `RUN npm run build`)
+- `docker-compose.yml`: Adicionar `build.args: - NEXT_PUBLIC_API_URL=http://api:8000` no serviço `frontend`
+- Para Vercel: configurar env var `NEXT_PUBLIC_API_URL` no dashboard da Vercel com a URL pública do Render backend
+- `next.config.ts` mantém `output: 'standalone'` (necessário para Docker; Vercel ignora)
+
+### 2. Remover Control Tower e placeholders da Sidebar
+
+**Problema:** Sidebar do lojista tem 3 links mortos: "Torre de Controle" (idéia morta), "Agendamentos" e "Inventário" (ambos `href: '#'`). Clica e nada acontece.
+
+**Solução:**
+- Deletar `frontend/src/app/control-tower/` (página inteira)
+- Deletar `frontend/src/components/control-tower/` (7 widgets + AlertasCriticos + ControlTowerHeader + SimuladorCaos)
+- `Sidebar.tsx`: Reduzir `navItems` para apenas `{ dashboard, entregas }`
+
+### 3. ChaosDevTools apenas para contas de teste
+
+**Problema:** `ChaosDevTools` é renderizado em produção (dashboard + drive pages) sem nenhum controle de acesso — qualquer usuário vê o botão ⚡ de injeção de caos.
+
+**Solução:**
+- `useAuth.ts`: Salvar `user.email` no localStorage após login bem-sucedido
+- `ChaosDevTools.tsx`: Ler `user_email` do localStorage e comparar com lista fixa de test accounts (`lojista@antigravity.com`, `motorista@antigravity.com`, `admin@antigravity.com`). Se não for test account, retornar `null` (não renderiza nada)
+- `Sidebar.tsx` e `drive/page.tsx`: Limpar `user_email` do localStorage no logout
+
+A lógica de gating fica exclusivamente na camada de UI (componentes e hooks), sem tocar em domínio, application, ou infraestrutura — apropriado para uma ferramenta dev.
+
+### Execução (2026-06-24)
+
+**Item 2 e 3 implementados, Item 1 sob investigação.**
+
+| Item | Status | O que foi feito |
+|------|--------|----------------|
+| 1. Login E2E | 🔴 Investigando | `build.args: http://api:8000` adicionado, mas é INSUFICIENTE — o browser roda no host, não resolve `api`. Precisa ser `http://localhost:8000`. Mesmo revertendo, o erro existia antes do Plano 3. Causa raiz desconhecida. |
+| 2. Control Tower removido | ✅ Código aplicado | `app/control-tower/` + `components/control-tower/` (11 arquivos: page, 7 widgets, AlertasCriticos, ControlTowerHeader, SimuladorCaos) deletados. `Sidebar.tsx`: navItems reduzido para só "Dashboard". |
+| 3. ChaosDevTools gated | ✅ Código aplicado | `useAuth.ts`: `localStorage.setItem('user_email', ...)` após login. `ChaosDevTools.tsx`: early return `null` se email não for test account (hooks movidos antes do gate). `Sidebar.tsx` + `drive/page.tsx`: `localStorage.removeItem('user_email')` no logout. |
+
+**Verificação pós-código:**
+- `npm run lint` → 0 erros, 0 warnings
+- `npm test` → 38/38 passando, 13 arquivos
+- Backend inalterado (nenhum .py tocado)
+
+**Pendência:** Nenhum commit foi feito ainda. Código está na working tree.
+
+#### Plano de Investigação — Login E2E (6 camadas)
+
+A investigação precisa cobrir 6 camadas na ordem correta, pois o erro já existia antes do Plano 3:
+
+**Camada 1 — Backend responde?**
+- `curl -s http://localhost:8000/health`
+- `curl -s -X POST http://localhost:8000/auth/login -H 'Content-Type: application/json' -d '{"email":"lojista@antigravity.com","password":"admin123"}'`
+- `sudo docker exec logistics-api curl -s http://localhost:8000/health`
+
+**Camada 2 — CORS**
+- `curl -s -X OPTIONS http://localhost:8000/auth/login -H 'Origin: http://localhost:3000' -H 'Access-Control-Request-Method: POST' -I`
+- Verificar `CORSMiddleware` em `backend/app/main.py`: `allow_origins` inclui `http://localhost:3000`?
+
+**Camada 3 — apiClient corrigido**
+- Reverter `docker-compose.yml` de `http://api:8000` para `http://localhost:8000` (browser acessa via host)
+- Rebuildar frontend e testar
+
+**Camada 4 — Rede Docker**
+- `sudo docker exec logistics-frontend wget -qO- http://api:8000/health` (comunicação entre containers)
+
+**Camada 5 — Logs**
+- `sudo docker compose logs api --tail 50` (requisição chega ao backend?)
+- `sudo docker compose logs frontend --tail 50`
+
+**Camada 6 — Bundle verificado**
+- `sudo docker exec logistics-frontend grep -r 'baseURL' /app/.next/` (confirmar que o valor correto foi inlined)
+
+**Árvore de decisão:**
+```
+curl localhost:8000/health funciona?
+├── SIM → CORS?
+│   ├── Preflight retorna Allow-Origin?
+│   │   ├── SIM → Seed rodou? Credenciais existem?
+│   │   │   ├── SIM → Network tab do navegador (F12)
+│   │   │   └── NÃO → Rodar seed.py no container
+│   │   └── NÃO → Corrigir CORS no main.py
+│   └── NÃO → curl dentro do container funciona?
+│       ├── SIM → Porta não mapeada
+│       └── NÃO → Uvicorn não subiu
+└── NÃO → Verificar uvicorn, binding, logs do entrypoint
+```
+
+**Arquivos para ler durante a investigação:**
+| Arquivo | O que verificar |
+|---------|----------------|
+| `backend/app/main.py` | CORS origins, `uvicorn.run(host='0.0.0.0')` |
+| `backend/app/core/config.py` | `settings.ALLOWED_ORIGINS` |
+| `backend/entrypoint.sh` | Se `alembic upgrade head` roda antes do uvicorn |
+| `frontend/src/infrastructure/api/api_client.ts` | `baseURL` e interceptor de refresh |
+| `docker-compose.yml` | Port mapping do `api`, networks |
+| `backend/seed.py` | Credenciais de seed |
+
 ## Decisão: Ordem de Execução
 
-**Plano 1 primeiro, Plano 2 depois.**
+**Plano 1 primeiro, Plano 2 depois, Plano 3 agora.**
 
 | Motivo | Explicação |
 |---|---|
@@ -1027,3 +1136,32 @@ backend/scripts/setup.sh          # recria venv do zero
 | Dependência lógica | O script `setup.sh` do Plano 1 é necessário para mitigar o Plano 2 (que também deleta arquivos) |
 | Foco na revisão | Cada PR com um plano só é mais fácil de revisar |
 | Rollback simples | Se o Plano 1 quebrar, só `.venv/` está envolvido; reverter é trivial |
+| Plano 3 é produção | Os bloqueantes afetam deploy e experiência do usuário final; prioridade máxima |
+
+---
+
+## Plano 3 — Resultado da Investigação (Login E2E)
+
+**Data:** 2026-06-24
+
+### Camadas investigadas
+
+| # | Camada | Teste | Resultado |
+|---|--------|-------|-----------|
+| 0 | Reverter `api:8000` → `localhost:8000` | `docker compose build frontend` | ✅ Rebuild concluído |
+| 1 | Backend | `curl localhost:8000/health`, `POST /auth/login` | ✅ 200 |
+| 2 | CORS | `OPTIONS /auth/login` com `Origin: localhost:3000` | ✅ `access-control-allow-origin` presente |
+| 3 | Axios real (host) | `node -e "axios.post(...)"` | ✅ 200, login funciona |
+| 4 | Rede Docker | `wget` frontend → `api:8000` | ✅ 200 |
+| 5 | Logs | `docker compose logs api` + `logs frontend` | ✅ Sem erros |
+| 6 | Bundle | `grep baseURL /app/.next/` | ✅ `http://localhost:8000` |
+
+### Conclusão
+
+Nenhum problema de código, configuração ou infraestrutura foi encontrado. O login passou a funcionar após o rebuild do frontend com o ARG explícito. Causa mais provável: **artefato de build corrompido** (cache sujo do Docker).
+
+### Pendências
+
+- **Commits:** Items 2 (Control Tower) e 3 (ChaosDevTools) do Plano 3 codados mas não commitados
+- **Permissões:** `pedro` não está no grupo `docker` (precisa `sudo`); `.pytest_cache/` e `migrations/versions/` root-owned
+- **Deploy:** Configurar Vercel frontend com `NEXT_PUBLIC_API_URL` apontando para Render backend

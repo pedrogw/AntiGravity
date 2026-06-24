@@ -14,6 +14,12 @@ class Token(BaseModel):
     refresh_token: str
     token_type: str
 
+class LoginResponse(BaseModel):
+    user: UserResponse
+    access_token: str
+    refresh_token: str
+    token_type: str
+
 class LoginData(BaseModel):
     email: str
     password: str
@@ -28,7 +34,7 @@ async def register(request: Request, user_in: UserCreate, db: AsyncSession = Dep
     use_case = RegisterUserUseCase(repo)
     return await use_case.execute(user_in.email, user_in.password, user_in.role)
 
-@router.post("/login", response_model=Token)
+@router.post("/login", response_model=LoginResponse)
 @limiter.limit("5/minute")
 async def login(request: Request, login_data: LoginData, db: AsyncSession = Depends(get_db)):
     repo = UserRepository(db)

@@ -26,6 +26,7 @@ export default function DrivePage() {
     } catch {
       // Logout failure is non-critical; still redirect
     }
+    localStorage.removeItem('user_email')
     router.push('/')
   }, [router])
 

@@ -8,10 +8,6 @@ import { useCallback, useState } from 'react'
 
 const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: '▦', href: '/dashboard' },
-  { id: 'torre', label: 'Torre de Controle', icon: '🗼', href: '/control-tower' },
-  { id: 'agendamentos', label: 'Agendamentos', icon: '📅', href: '#' },
-  { id: 'entregas', label: 'Entregas', icon: '📦', href: '#' },
-  { id: 'inventario', label: 'Inventário', icon: '📋', href: '#' },
 ]
 
 export function Sidebar() {
@@ -29,6 +25,7 @@ export function Sidebar() {
     } catch {
       // Logout failure is non-critical; still redirect
     }
+    localStorage.removeItem('user_email')
     router.push('/')
   }, [router])
 

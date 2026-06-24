@@ -33,9 +33,14 @@ sys.exit(0 if asyncio.run(check()) else 1)
   done
 
   echo "==> PostgreSQL está pronto!"
+else
+  echo "==> Conectando ao PostgreSQL remoto (Neon)..."
+fi
 
-  echo "==> Limpando schema public para migração limpa..."
-  python -c "
+if [[ "$1" == "uvicorn" ]]; then
+  if [ "$RESET_DB" = "true" ] && echo "$DATABASE_URL" | grep -qE '(localhost|127\.0\.0\.1|@db)'; then
+    echo "==> Limpando schema public para migração limpa (RESET_DB=true)..."
+    python -c "
 import asyncio, asyncpg, os
 
 async def clean():
@@ -49,12 +54,11 @@ async def clean():
 
 asyncio.run(clean())
 "
-else
-  echo "==> Conectando ao PostgreSQL remoto (Neon)..."
+  fi
+
+  echo "==> Executando migrações..."
+  python -m alembic upgrade head
 fi
 
-echo "==> Executando migrações..."
-python -m alembic upgrade head
-
-echo "==> Iniciando servidor..."
+echo "==> Iniciando container ($1)..."
 exec "$@"

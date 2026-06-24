@@ -16,7 +16,8 @@ export function useAuth() {
     try {
       const loginUseCase = makeLoginUseCase();
       const user = await loginUseCase.execute({ email, password });
-      
+
+      localStorage.setItem('user_email', user.email);
       const destination = getRouteByRole(user.role);
       router.push(destination);
 

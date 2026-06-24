@@ -18,11 +18,23 @@ const chaosActions = [
   { id: 'reroute', label: 'Redirecionar Rota', eventType: 'redirecionamento', icon: '🔄' },
 ] as const
 
+const TEST_ACCOUNTS = [
+  'lojista@antigravity.com',
+  'motorista@antigravity.com',
+  'admin@antigravity.com',
+];
+
 export function ChaosDevTools({ deliveries }: Props) {
+  const [userEmail] = useState(() => {
+    if (typeof window === 'undefined') return '';
+    return localStorage.getItem('user_email') || '';
+  });
   const [open, setOpen] = useState(false)
   const [logs, setLogs] = useState<string[]>([])
   const [selectedId, setSelectedId] = useState('')
   const [delayMinutes, setDelayMinutes] = useState(15)
+
+  if (!TEST_ACCOUNTS.includes(userEmail)) return null;
 
   const triggerChaos = async (action: typeof chaosActions[number]) => {
     const deliveryId = selectedId || deliveries?.[0]?.id
