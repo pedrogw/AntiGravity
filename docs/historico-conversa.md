@@ -1976,3 +1976,52 @@ Cada bloco segue rigidamente o fluxo de `docs/obrigacoes.md`:
 1. Análise de Impacto → 2. TDD (teste primeiro) → 3. Implementação
 → 4. pytest / npm test → 5. ruff / lint → 6. Commit atômico
 ```
+
+## Block D — CriarEntregaDialog (Frontend) ✅
+
+**Objetivo:** Criar diálogo modal no dashboard para lojista criar entregas com selects de fábrica, loja e motorista.
+
+**O que foi feito (TDD — 7 testes, RED → GREEN):**
+
+| Camada | Arquivo | Mudança |
+|--------|---------|---------|
+| **Componente (novo)** | `CriarEntregaDialog.tsx` | Modal com 3 selects + submit + loading/error states |
+| **Página** | `dashboard/page.tsx` | Botão "Nova Entrega" + `useState` dialog open + render dialog |
+| **Testes (novo)** | `CriarEntregaDialog.test.tsx` | 7 testes |
+
+**UX do Dialog:**
+```
+┌──────────────────────────────┐
+│  Criar Nova Entrega          │
+│                              │
+│  Fábrica:  [dropdown ▼]      │
+│  Loja:     [dropdown ▼]      │
+│  Motorista:[dropdown ▼]      │
+│                              │
+│        [Cancelar] [Criar]    │
+└──────────────────────────────┘
+```
+
+**Detalhes de implementação:**
+- `Dialog` wrapper evitado (renderiza children duas vezes) — modal direto com `fixed` positioning
+- `usePlaces().listFactories()` e `.listStores()` chamados ao abrir
+- `useUsers().fetchDrivers()` chamado ao abrir
+- `useDeliveries().createDelivery(factoryId, storeId, driverId)` no submit
+- Erro de submit capturado localmente (`submitError` state)
+- Botão "Criar" desabilitado enquanto `isLoading` ou campos vazios
+- Modal fecha automaticamente após criação bem-sucedida
+
+**Testes (7/7):**
+1. Renderiza quando `open=true`
+2. Não renderiza quando `open=false`
+3. Chama `listFactories`, `listStores`, `fetchDrivers` ao abrir
+4. Botão "Criar" desabilitado inicialmente
+5. Submit → `createDelivery` chamado com IDs corretos
+6. Falha no submit → erro exibido no `role="alert"`
+7. Loading state → botão "Criando..." desabilitado
+
+**Verificação:**
+- `npm test` → **66/66 passed** (19 arquivos)
+- `npm run lint` → **0 erros, 0 warnings**
+- Backend inalterado (nenhum .py tocado)
+- Nenhum teste existente alterado

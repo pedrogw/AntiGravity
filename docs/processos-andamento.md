@@ -4,8 +4,6 @@
 
 | Processo | Status | Depende de |
 |---|---|---|
-| **Block C — Listar places + drivers** (frontend) | 📋 Planejado | A, B |
-| **Block D — Dialog "Criar Entrega"** (frontend) | 📋 Planejado | C |
 | **Block E — Status `aceita`** (backend + frontend) | 📋 Planejado | — |
 | **Block F — Concluir Entrega** (frontend) | 📋 Planejado | E |
 
@@ -15,8 +13,8 @@
 |-------|----------|-----|
 | **A** ✅ | `user_repo.py` (protocolo + infra), `users.py` (API novo), `main.py`, `test_users.py` | `test_list_drivers_returns_only_motorista`, `test_list_drivers_requires_auth`, `test_list_drivers_empty_when_no_motorista` |
 | **B** ✅ | `ApiPlaceRepository.ts`, `ApiPlaceRepository.test.ts` | `test_createFactory_calls_POST`, `test_createFactory_network_error`, `test_createStore_calls_POST`, `test_createStore_network_error` |
-| **C** | `UserRepositoryProtocol.ts` (novo), `ApiUserRepository.ts` (novo), `ListDriversUseCase.ts` (novo), `useUsers.ts` (novo), `PlaceRepositoryProtocol.ts`, `usePlaces.ts`, `factories.ts` | Testes de use cases + hooks |
-| **D** | `CriarEntregaDialog.tsx` (novo), `dashboard/page.tsx` | Testes de render + submit |
+| **C** ✅ | `UserRepositoryProtocol.ts`, `ApiUserRepository.ts`, `ListDriversUseCase.ts`, `useUsers.ts`, `PlaceRepositoryProtocol.ts`, `usePlaces.ts`, `factories.ts` | Testes de use cases + hooks |
+| **D** ✅ | `CriarEntregaDialog.tsx`, `dashboard/page.tsx` | Testes de render + submit (7 testes) |
 | **E** | `delivery.py`, `DeliveryStatus.ts`, `DeliveryCard.tsx`, `drive/page.tsx`, `test_use_cases.py` | `pendente→aceita→em_transito`, botão "Aceitar" |
 | **F** | `drive/page.tsx` | `onComplete` wired |
 
@@ -26,6 +24,8 @@
 
 | Processo | Status |
 |---|---|
+| **Block D — CriarEntregaDialog** (frontend) | ✅ **Concluído** |
+| **Block C — Listar places + drivers** (frontend) | ✅ **Concluído** |
 | **Block B — ApiPlaceRepository real** (frontend) | ✅ **Concluído** |
 | **Block A — GET /users/drivers** (backend) | ✅ **Concluído** |
 | **Plano 4 — Deploy Vercel + Render + CI/CD** | ✅ **Concluído** |
