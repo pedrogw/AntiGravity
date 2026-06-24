@@ -35,6 +35,12 @@ node_modules/
 .next/
 out/
 
+# Test artifacts
+*.log
+error_log*
+error_store*
+pytest_output*
+
 # Docker
 test.db
 
