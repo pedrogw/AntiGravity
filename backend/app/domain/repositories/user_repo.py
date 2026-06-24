@@ -1,5 +1,5 @@
 from typing import Protocol, List
-from app.domain.entities.user import User as UserEntity
+from app.domain.entities.user import User as UserEntity, UserRole
 
 class UserRepositoryProtocol(Protocol):
     """Repositório para operações de persistência de usuários."""
@@ -8,3 +8,5 @@ class UserRepositoryProtocol(Protocol):
     async def get_by_id(self, user_id: str) -> UserEntity | None: ...
 
     async def create(self, user_entity: UserEntity) -> UserEntity: ...
+
+    async def list_by_role(self, role: UserRole, limit: int = 50, offset: int = 0) -> List[UserEntity]: ...

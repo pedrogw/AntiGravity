@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 def is_safe_check_expired(last_ping: datetime, timeout_minutes: int = 10) -> bool:
     """True se o último ping do motorista excedeu o timeout."""

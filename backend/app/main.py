@@ -7,6 +7,7 @@ from sqlalchemy.exc import OperationalError
 from arq import create_pool
 from arq.connections import RedisSettings
 from app.api.auth import router as auth_router
+from app.api.users import router as users_router
 from app.api.places import router as places_router
 from app.api.deliveries import router as deliveries_router
 from app.api.chaos import router as chaos_router
@@ -72,6 +73,7 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
+app.include_router(users_router, prefix="/users", tags=["users"])
 app.include_router(places_router, prefix="/places", tags=["places"])
 app.include_router(deliveries_router, prefix="/deliveries", tags=["deliveries"])
 app.include_router(chaos_router, prefix="", tags=["chaos"])

@@ -1,6 +1,6 @@
 import pytest
 from dataclasses import dataclass
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 from app.core.events.base import DomainEvent
 from app.core.events.bus import EventBus
 from app.domain.events import DeliveryCreatedEvent, DeliveryStatusChangedEvent

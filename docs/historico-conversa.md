@@ -1638,3 +1638,236 @@ Aguardam Item 2. A sequência correta após resolver o DockerHub:
 **Secret criado no GitHub:** `VERCEL_DEPLOY_HOOK`
 
 **Próximo push em `main` acionará:** testes → Docker → Render → Vercel
+
+---
+
+## Block A — Backend: `GET /users/drivers` ✅
+
+**Objetivo:** Lojista precisa ver motoristas disponíveis para atribuir uma entrega.
+
+**O que foi feito (TDD — 3 testes, RED → GREEN):**
+
+| Camada | Arquivo | Mudança |
+|--------|---------|---------|
+| **Domínio (protocolo)** | `app/domain/repositories/user_repo.py` | + `list_by_role(role: UserRole, limit, offset)` |
+| **Infraestrutura (repo)** | `app/infrastructure/repositories/user_repo.py` | Implementação `list_by_role` com `select().where().offset().limit()` |
+| **API (novo)** | `app/api/users.py` | Router `GET /drivers` com `get_current_user` (qualquer autenticado) |
+| **main.py** | `app/main.py` | Registrado `users_router` com prefixo `/users` |
+
+**Testes (3/3):**
+- `test_list_drivers_returns_only_motorista` — cria 2 lojistas + 2 motoristas, verifica apenas motoristas
+- `test_list_drivers_requires_auth` — 401 sem token
+- `test_list_drivers_empty_when_no_motorista` — apenas lojistas, lista vazia
+
+**Verificação:**
+- `pytest` → **232/232 passed**, 99% cobertura
+- `ruff` → All checks passed (novos arquivos)
+- Nenhum teste existente alterado
+
+**Commit:** `feat: implement GET /users/drivers endpoint with list_by_role repository method`
+
+---
+
+## Próximos Blocos — Funcionalidades do Site
+
+**Objetivo geral:** Completar o fluxo funcional do sistema de logística — cadastro de places (fábricas/lojas), criação de entregas, fluxo híbrido com aceitação do motorista e conclusão.
+
+### Plano em Mini-Blocos (seguindo `docs/obrigacoes.md`)
+
+```
+Block A (backend: listar motoristas)
+     │
+Block B (frontend: PlaceRepository real)
+     │
+     ├── Block C (frontend: lists de places + drivers)
+     │         │
+     │         └── Block D (frontend: dialog "Criar Entrega")
+     │
+Block E (backend + frontend: status "aceita")
+     │
+     └── Block F (frontend: concluir entrega)
+```
+
+---
+
+### BLOCK A — Backend: `GET /users/drivers`
+
+**Motivação:** Lojista precisa ver motoristas disponíveis para atribuir uma entrega. Atualmente o backend não tem endpoint para listar usuários.
+
+**Análise de Impacto:**
+
+| Camada | Arquivo | Mudança |
+|--------|---------|---------|
+| **Domínio (protocolo)** | `app/domain/repositories/user_repo.py` | + `list_by_role(role: str) -> List[UserEntity]` |
+| **Infraestrutura (repo)** | `app/infrastructure/repositories/user_repo.py` | Implementar `list_by_role` com query SQLAlchemy |
+| **API** | `app/api/users.py` **(novo)** | Router `GET /users/drivers` (protegido por `require_role("lojista")`) |
+| **Schemas** | `app/schemas/user.py` | Reutilizar `UserResponse` (já existe) |
+| **main.py** | `app/main.py` | Registrar `users_router` com prefixo `/users` |
+
+**TDD (testes primeiro):**
+```python
+async def test_list_drivers_returns_only_motoristas():
+    ...
+async def test_list_drivers_requires_lojista_role():
+    ...
+async def test_list_by_role_returns_empty_when_none_match():
+    ...
+```
+
+**Verificação:** `ruff check` → ✅ | `pytest -q` → ✅ | Cobertura ≥ 80%
+
+**Commit:** `feat: add GET /users/drivers endpoint for listing available drivers`
+
+---
+
+### BLOCK B — Frontend: ApiPlaceRepository real
+
+**Motivação:** `ApiPlaceRepository` é um stub — cria fábricas/lojas localmente sem chamar o backend. Qualquer place "criado" no frontend nunca persiste.
+
+**Análise de Impacto:**
+
+| Camada | Arquivo | Mudança |
+|--------|---------|---------|
+| **Infraestrutura** | `ApiPlaceRepository.ts` | Substituir stubs por `apiClient.post()` |
+| **Types** | `ApiPlaceRepository.ts` | Interfaces `FactoryResponse`, `StoreResponse` |
+
+**TDD (testes primeiro):**
+```typescript
+it('deve chamar POST /places/factories ao criar fábrica', async () => { ... });
+it('deve chamar POST /places/stores ao criar loja', async () => { ... });
+it('deve tratar erro 403 como AppError', async () => { ... });
+```
+
+**Verificação:** `npm run lint` → ✅ | `npm test` → ✅
+
+**Commit:** `feat: implement real HTTP calls in ApiPlaceRepository`
+
+---
+
+### BLOCK C — Frontend: Listar fábricas, lojas e motoristas
+
+**Motivação:** Frontend precisa buscar places e motoristas do backend para popular os selects do formulário de criação de entrega.
+
+**Análise de Impacto:**
+
+| Camada | Arquivo | Mudança |
+|--------|---------|---------|
+| **Domínio (protocolo)** | `PlaceRepositoryProtocol.ts` | + `listFactories()`, `listStores()` |
+| **Domínio (protocolo)** | `UserRepositoryProtocol.ts` **(novo)** | `listDrivers()` |
+| **Infraestrutura (repo)** | `ApiPlaceRepository.ts` | Implementar `listFactories`, `listStores` |
+| **Infraestrutura (repo)** | `ApiUserRepository.ts` **(novo)** | Implementar `listDrivers` |
+| **Application** | `ListDriversUseCase.ts` **(novo)** | Use case para listar motoristas |
+| **DI** | `factories.ts` | Adicionar novas dependências |
+| **Hooks** | `usePlaces.ts` | + `fetchFactories()`, `fetchStores()` |
+| **Hooks** | `useUsers.ts` **(novo)** | Hook para listar motoristas |
+
+**Estrutura nova no frontend:**
+```
+domain/repositories/UserRepositoryProtocol.ts
+application/use_cases/ListDriversUseCase.ts
+infrastructure/repositories/ApiUserRepository.ts
+hooks/useUsers.ts
+```
+
+**Commit:** `feat: add listFactories, listStores, listDrivers to frontend`
+
+---
+
+### BLOCK D — Frontend: Dialog "Criar Entrega"
+
+**Motivação:** Lojista não tem como criar entregas pelo dashboard. O `CreateDeliveryUseCase` existe, mas não há UI.
+
+**Análise de Impacto:**
+
+| Camada | Arquivo | Mudança |
+|--------|---------|---------|
+| **Componente** | `CriarEntregaDialog.tsx` **(novo)** | Dialog com selects de fábrica, loja, motorista |
+| **Página** | `dashboard/page.tsx` | Adicionar botão "+ Nova Entrega" + render dialog |
+
+**UX do Dialog:**
+```
+┌──────────────────────────────┐
+│  Criar Nova Entrega          │
+│                              │
+│  Fábrica:  [dropdown ▼]      │
+│  Loja:     [dropdown ▼]      │
+│  Motorista:[dropdown ▼]      │
+│                              │
+│        [Cancelar] [Criar]    │
+└──────────────────────────────┘
+```
+
+**Commit:** `feat: add CriarEntregaDialog with factory/store/driver selects`
+
+---
+
+### BLOCK E — Backend + Frontend: Status `aceita`
+
+**Motivação:** Implementar fluxo híbrido — lojista atribui entrega a um motorista, mas o motorista precisa aceitar antes de executar.
+
+**Análise de Impacto:**
+
+| Camada | Arquivo | Mudança |
+|--------|---------|---------|
+| **Backend Domínio** | `app/domain/entities/delivery.py` | `VALID_TRANSITIONS`: `pendente→aceita`, `aceita→em_transito` |
+| **Backend Testes** | `tests/unit/test_use_cases.py` | Atualizar transição direta `pendente→em_transito` |
+| **Frontend Domínio** | `DeliveryStatus.ts` | + `'aceita'` |
+| **Frontend Componente** | `DeliveryCard.tsx` | + `onAccept`, botão "Aceitar Oferta" |
+| **Frontend Página** | `drive/page.tsx` | + `handleAcceptDelivery`, lógica de exibição |
+
+**Máquina de estados nova:**
+```
+pendente → aceita → em_transito → entregue → concluida
+                                      ↘ cancelada
+```
+
+**TDD:**
+```python
+async def test_pendente_to_aceita_succeeds():
+    ...
+async def test_pendente_to_em_transito_fails():
+    ...
+```
+```typescript
+it('deve mostrar "Aceitar Oferta" quando status é pendente', () => { ... });
+it('deve mostrar "Iniciar Rota" quando status é aceita', () => { ... });
+```
+
+**Commit:** `feat: add aceita status for driver acceptance workflow`
+
+---
+
+### BLOCK F — Frontend: Concluir Entrega
+
+**Motivação:** `DeliveryCard` tem `onComplete` mas `DrivePage` nunca passa o callback — motorista não consegue finalizar entrega.
+
+**Análise de Impacto:**
+
+| Camada | Arquivo | Mudança |
+|--------|---------|---------|
+| **Página** | `drive/page.tsx` | + `handleCompleteDelivery(id)`, passar `onComplete` |
+| **Componente** | `DeliveryCard.tsx` | Já tem `onComplete` — só garantir que está wired |
+
+**Commit:** `feat: wire onComplete in DrivePage for delivery completion`
+
+---
+
+### Resumo de Arquivos
+
+| Bloco | Novos | Alterados |
+|-------|-------|-----------|
+| **A** | `users.py` (API) | `user_repo.py` (protocolo + infra), `main.py` |
+| **B** | — | `ApiPlaceRepository.ts` |
+| **C** | `UserRepositoryProtocol.ts`, `ApiUserRepository.ts`, `ListDriversUseCase.ts`, `useUsers.ts` | `PlaceRepositoryProtocol.ts`, `ApiPlaceRepository.ts`, `factories.ts`, `usePlaces.ts` |
+| **D** | `CriarEntregaDialog.tsx` | `dashboard/page.tsx` |
+| **E** | — | `delivery.py` (backend), `DeliveryStatus.ts`, `DeliveryCard.tsx`, `drive/page.tsx` |
+| **F** | — | `drive/page.tsx` |
+
+### Fluxo de Garantia de Qualidade (por bloco)
+
+Cada bloco segue rigidamente o fluxo de `docs/obrigacoes.md`:
+
+```
+1. Análise de Impacto → 2. TDD (teste primeiro) → 3. Implementação
+→ 4. pytest / npm test → 5. ruff / lint → 6. Commit atômico
+```

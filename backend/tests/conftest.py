@@ -7,11 +7,10 @@ limiter.enabled = False
 import pytest
 from httpx import AsyncClient, ASGITransport
 from app.main import app
-from app.db.session import get_db, AsyncSessionLocal
+from app.db.session import get_db
 from sqlalchemy.pool import StaticPool
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from app.db.base_class import Base
-from app.core.config import settings
 import uuid
 
 # Engine para SQLite in-memory

@@ -4,7 +4,6 @@ from sqlalchemy import String, DateTime, func
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.types import UUID
 from app.db.base_class import Base
-from app.domain.entities.user import UserRole
 
 class User(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

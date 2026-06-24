@@ -1,6 +1,6 @@
 import uuid
 import pytest
-from datetime import datetime, timezone
+from datetime import datetime
 from app.domain.entities.chaos import ChaosEventLog as ChaosEventLogEntity
 from app.infrastructure.repositories.idempotency_repo import IdempotencyRepository
 

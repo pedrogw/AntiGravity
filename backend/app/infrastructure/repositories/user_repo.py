@@ -1,3 +1,4 @@
+from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.infrastructure.orm.user import User as UserModel
@@ -21,6 +22,15 @@ class UserRepository:
         if not user_model:
             return None
         return self._to_entity(user_model)
+
+    async def list_by_role(self, role: UserRole, limit: int = 50, offset: int = 0) -> List[UserEntity]:
+        result = await self.db.execute(
+            select(UserModel)
+            .where(UserModel.role == role.value)
+            .offset(offset)
+            .limit(limit)
+        )
+        return [self._to_entity(m) for m in result.scalars().all()]
 
     async def create(self, user_entity: UserEntity) -> UserEntity:
         db_user = UserModel(

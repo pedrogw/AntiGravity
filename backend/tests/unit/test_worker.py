@@ -1,8 +1,6 @@
 import uuid
-from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 
-import pytest
 
 from app.domain.entities.delivery import Delivery
 from app.domain.events import (

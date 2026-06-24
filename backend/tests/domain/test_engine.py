@@ -1,5 +1,5 @@
 import pytest
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from app.domain.haversine import calculate_haversine_distance, calculate_eta, add_hours_to_now
 from app.domain.value_objects.coordinates import Coordinates
 

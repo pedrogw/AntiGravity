@@ -11,7 +11,7 @@ class DataMaskingFilter(logging.Filter):
             for field in SENSITIVE_FIELDS:
                 record.msg = re.sub(
                     rf'({field}["\']?\s*[:=]\s*["\']?)[^"\'\s,}}]+',
-                    rf'\1****',
+                    r'\1****',
                     record.msg,
                     flags=re.IGNORECASE,
                 )
