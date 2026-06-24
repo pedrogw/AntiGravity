@@ -921,3 +921,94 @@ Construir um motor analítico B2B de logística com rastreamento inteligente, SL
 ### Pendências
 - **F.5** — Render WebService (aguardando ação do usuário)
 - **Login E2E** — Resolver "Erro de conexão com o servidor" no login do frontend
+
+---
+
+## Plano 1 — Mitigação de Impacto Crítico (.venv)
+
+**Problema:** `git rm --cached backend/.venv/` deleta o venv do disco de todos os colaboradores ao fazer pull.
+
+**Solução:** Dois commits atômicos:
+
+### Commit A — `chore: add dev setup script`
+- Criar `backend/scripts/setup.sh` — script idempotente que recria o venv e instala dependências
+- Mensagens em português (conforme obrigações do projeto)
+- Nenhuma alteração em arquivos existentes
+
+### Commit B — `chore: remove tracked .venv from git`
+- `git rm -r --cached backend/.venv/`
+- Exclusivamente o `.venv/` — sem misturar com logs, pycache ou test.db
+
+### Fluxo seguro para colaboradores
+```
+git pull                          # pega setup.sh
+backend/scripts/setup.sh          # RECRIA o .venv (se existir, só reinstala)
+git pull                          # pega a remoção do tracking
+backend/scripts/setup.sh          # recria venv do zero
+```
+
+### Arquivos afetados
+| Arquivo | Operação |
+|---|---|
+| `backend/scripts/setup.sh` | Criar |
+| `.gitignore` | Nenhuma (já tem `.venv/`) |
+
+### Execução (2026-06-24)
+**Commit A** — `b0987c4` `chore: add dev setup script`
+- `backend/scripts/setup.sh` criado e commitado
+
+**Commit B** — `1b9cfca` `chore: remove tracked .venv from git`
+- 5.957 arquivos do `.venv/` removidos do tracking
+- `.venv/` preservado no disco, ignorado pelo `.gitignore`
+
+**Commit C** — `4c49db5` `docs: mark plan 1 as completed`
+- `docs/processos-andamento.md` atualizado
+
+**Verificação:**
+- 202/202 testes passando, 99% cobertura
+- Setup script funcional e idempotente
+- `git ls-files backend/.venv/` → 0 arquivos
+
+---
+
+## Plano 2 — Limpeza Geral do Git
+
+**Problema:** 8 categorias de arquivos desnecessários trackados, inchando o repositório em ~80 MB.
+
+**Solução:** Dois commits atômicos:
+
+### Commit C — `chore: update gitignore for stale artifacts`
+- Adicionar ao `.gitignore`: `*.log`, `error_log*`, `error_store*`, `pytest_output*`, `test.db`, `backend/venv/`
+- Nenhuma remoção de tracking ainda
+
+### Commit D — `chore: remove tracked stale artifacts`
+- `git rm --cached` dos 7 stale files (logs, test.db, pytest_output)
+- `git rm --cached` dos 76 `__pycache__/` do app
+- `rm -rf backend/venv/` (12 KB, vazio, gitignorado)
+
+### Arquivos afetados
+| Arquivo | Operação |
+|---|---|
+| `.gitignore` | Adicionar 6 padrões |
+| `backend/error_log.txt` | `git rm --cached` |
+| `backend/error_store.txt` | `git rm --cached` |
+| `backend/pytest_err.log` | `git rm --cached` |
+| `backend/pytest_err2.log` | `git rm --cached` |
+| `backend/pytest_output.txt` | `git rm --cached` |
+| `backend/pytest_output_sqlite.txt` | `git rm --cached` |
+| `backend/test.db` | `git rm --cached` |
+| `backend/app/**/__pycache__/` (76 files) | `git rm --cached` |
+| `backend/venv/` | `rm -rf` (já gitignorado) |
+
+---
+
+## Decisão: Ordem de Execução
+
+**Plano 1 primeiro, Plano 2 depois.**
+
+| Motivo | Explicação |
+|---|---|
+| Risco maior primeiro | Plano 1 deleta o ambiente de desenvolvimento se mal executado — merece atenção e validação isolada |
+| Dependência lógica | O script `setup.sh` do Plano 1 é necessário para mitigar o Plano 2 (que também deleta arquivos) |
+| Foco na revisão | Cada PR com um plano só é mais fácil de revisar |
+| Rollback simples | Se o Plano 1 quebrar, só `.venv/` está envolvido; reverter é trivial |
