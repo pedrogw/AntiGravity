@@ -1693,11 +1693,39 @@ Aguardam Item 2. A sequência correta após resolver o DockerHub:
 - Backend: `pytest` → **232/232 passed**, 99% cobertura | `ruff` → All checks passed
 - Nenhum teste existente alterado
 
-**Commit:** `feat: implement real HTTP calls in ApiPlaceRepository replacing stubs`
+**Commit:** `84d7753`
 
 ---
 
-## Próximos Blocos — Funcionalidades do Site
+## Verificação Intensiva — Correções Planejadas (Blocos A + B)
+
+**Contexto:** Após verificação cruzada intensiva dos Blocos A e B, foram identificados 9 itens de correção. Nenhum é blocker arquitetural — todas as 8 rotas do `app/api/` seguem o mesmo padrão de composition root (importam de `app.infrastructure.repositories`), portanto não faz sentido corrigir apenas `users.py`.
+
+### Plano de Correção
+
+#### Commit 1: `refactor: harden UserRepository protocol conformance and test coverage`
+
+| Item | Arquivo | Mudança | Risco |
+|------|---------|---------|-------|
+| P-A1 | `user_repo.py:7` (infra) | `class UserRepository:` → `class UserRepository(UserRepositoryProtocol):` | 🟢 |
+| P-A2 | `user_repo.py:19` (infra) | Mover `import uuid` para topo do arquivo | 🟢 |
+| P-A3 | `test_users.py:46` | `assert status_code in (401, 403)` → `== 401` | 🟢 |
+| P-A4 | `users.py:17,21` (API) | Assinalar `current_user` como não usado ou remover | 🟢 |
+| P-A5 | `test_users.py` (novo) | Testes de paginação `limit`/`offset` | 🟢 |
+| P-A6 | `test_users.py` (novo) | Teste token expirado retorna 401 | 🟢 |
+
+#### Commit 2: `refactor: improve ApiPlaceRepository error handling and test coverage`
+
+| Item | Arquivo | Mudança | Risco |
+|------|---------|---------|-------|
+| P-B1 | `ApiPlaceRepository.ts` | Diferenciar erro de rede (sem resposta) de erro HTTP (com resposta). Criar `ApiError` no domínio. | 🟡 |
+| P-B1 | `domain/errors/ApiError.ts` (novo) | `class ApiError extends AppError { statusCode; message }` | 🟢 |
+| P-B2 | `ApiPlaceRepository.test.ts` (novo) | Teste: `Error` não-Axios propagado sem alteração | 🟢 |
+| P-B3 | `ApiPlaceRepository.test.ts` (novo) | Teste: erro HTTP 400 → `ApiError` | 🟢 |
+
+**Nenhum contrato de API ou comportamento em produção é alterado.**
+
+---
 
 **Objetivo geral:** Completar o fluxo funcional do sistema de logística — cadastro de places (fábricas/lojas), criação de entregas, fluxo híbrido com aceitação do motorista e conclusão.
 

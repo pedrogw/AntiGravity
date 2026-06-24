@@ -90,6 +90,20 @@
 | **6.5** | M5 — Verificar (pytest + ruff) | ✅ Concluído |
 | **6.6** | M5 — Atualizar docs | ✅ Concluído |
 
+## Correção Pós-Verificação (Blocos A + B)
+
+| Item | Bloco | Severidade | Commit | Status |
+|------|-------|-----------|--------|--------|
+| P-A1 — `UserRepository` herdar protocolo explicitamente | A | 🟠 Alto | 1 | 📋 Pendente |
+| P-A2 — `import uuid` inline → topo do arquivo | A | 🟢 Baixo | 1 | 📋 Pendente |
+| P-A3 — Asserção `(401, 403)` → `401` | A | 🟢 Baixo | 1 | 📋 Pendente |
+| P-A4 — `current_user` não usado | A | 🟢 Baixo | 1 | 📋 Pendente |
+| P-A5 — Testes de paginação `limit`/`offset` | A | 🟡 Médio | 1 | 📋 Pendente |
+| P-A6 — Teste token expirado → 401 | A | 🟡 Médio | 1 | 📋 Pendente |
+| P-B1 — `ApiError` para erros HTTP 4xx/5xx | B | 🟡 Médio | 2 | 📋 Pendente |
+| P-B2 — Teste `Error` não-Axios propagado | B | 🟢 Baixo | 2 | 📋 Pendente |
+| P-B3 — Teste erro HTTP 400 → `ApiError` | B | 🟢 Baixo | 2 | 📋 Pendente |
+
 ### Plano 3 — Bloqueantes Frontend
 
 | Item | Status | Detalhe |
