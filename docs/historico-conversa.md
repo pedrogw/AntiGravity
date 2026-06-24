@@ -1072,7 +1072,7 @@ A lógica de gating fica exclusivamente na camada de UI (componentes e hooks), s
 - `npm test` → 38/38 passando, 13 arquivos
 - Backend inalterado (nenhum .py tocado)
 
-**Pendência:** Nenhum commit foi feito ainda. Código está na working tree.
+**Commit:** `db85e90` — `refactor: remove Control Tower UI, restrict ChaosDevTools to authorized users, and configure frontend build environment`
 
 #### Plano de Investigação — Login E2E (6 camadas)
 
@@ -1160,8 +1160,133 @@ curl localhost:8000/health funciona?
 
 Nenhum problema de código, configuração ou infraestrutura foi encontrado. O login passou a funcionar após o rebuild do frontend com o ARG explícito. Causa mais provável: **artefato de build corrompido** (cache sujo do Docker).
 
-### Pendências
+### Pendências (pós-investigação)
 
-- **Commits:** Items 2 (Control Tower) e 3 (ChaosDevTools) do Plano 3 codados mas não commitados
 - **Permissões:** `pedro` não está no grupo `docker` (precisa `sudo`); `.pytest_cache/` e `migrations/versions/` root-owned
-- **Deploy:** Configurar Vercel frontend com `NEXT_PUBLIC_API_URL` apontando para Render backend
+- **Deploy:** Configurar CORS + Vercel + Render + CI/CD (ver Plano 4)
+
+---
+
+## Plano 4 — Deploy Vercel + Render + CI/CD
+
+**Data:** 2026-06-24
+**Status:** Pendente (planejado, não executado)
+
+### Contexto
+
+Após o commit `db85e90` (Plano 3 completo), a verificação das plataformas mostrou:
+
+| Serviço | URL | Status |
+|---------|-----|--------|
+| DockerHub | `pedrogw/logistics-engine:latest` | ✅ Imagem existe |
+| Render | `https://logistics-engine-latest.onrender.com` | ✅ Health 200, login OK |
+| Neon | (via Render) | ✅ Conectado |
+| Vercel | `https://anti-gravity-beryl.vercel.app` | ✅ Login page servida |
+| CORS Render → Vercel | `OPTIONS /auth/login` | ❌ **Apenas `localhost:3000`** |
+
+**Problema central:** `backend/app/main.py:60` tem `origins = ["http://localhost:3000"]` hardcoded. O domínio da Vercel (`https://anti-gravity-beryl.vercel.app`) não está na lista CORS — o navegador bloqueará login quando o frontend estiver em produção.
+
+### Itens
+
+| # | O quê | Arquivos | Tipo |
+|---|-------|----------|------|
+| 1 | Tornar CORS configurável via env var | `config.py` (+1 attr) + `main.py` (1 linha) | Código |
+| 2 | Build + push DockerHub | `docker build` + `docker push` | Infra |
+| 3 | Render: env vars + redeploy | Dashboard Render | Config |
+| 4 | Vercel: `NEXT_PUBLIC_API_URL` + redeploy | Dashboard Vercel | Config |
+| 5 | CI/CD (`.github/workflows/ci.yml`) | Arquivo novo | Código novo |
+
+### Detalhamento
+
+#### Item 1 — CORS configurável
+
+```python
+# config.py (adicionar)
+ALLOWED_ORIGINS: str = "http://localhost:3000"
+
+# main.py:60 (substituir)
+origins = ["http://localhost:3000"]  # ANTES
+origins = settings.ALLOWED_ORIGINS.split(",")  # DEPOIS
+```
+
+No Render, setar env: `ALLOWED_ORIGINS=http://localhost:3000,https://anti-gravity-beryl.vercel.app`
+
+#### Item 2 — DockerHub
+
+```bash
+echo '1909Pg.' | sudo -S docker build -t pedrogw/logistics-engine:latest backend/
+echo '1909Pg.' | sudo -S docker push pedrogw/logistics-engine:latest
+```
+
+#### Item 3 — Render
+
+- Env vars: `ALLOWED_ORIGINS`, `DATABASE_URL` (Neon), `SECRET_KEY`
+- Health check: `/health`
+- Trigger manual deploy (ou via webhook)
+
+#### Item 4 — Vercel
+
+- Env var: `NEXT_PUBLIC_API_URL=https://logistics-engine-latest.onrender.com`
+- Trigger redeploy
+
+#### Item 5 — CI/CD
+
+`.github/workflows/ci.yml` (arquivo novo, 3 jobs):
+
+```
+test-backend (Python → pytest)
+   ↓
+test-frontend (Node → npm run lint → npm test)
+   ↓
+docker (build & push pedrogw/logistics-engine:latest)
+   ↓
+deploy (POST para Render Deploy Hook)
+```
+
+### Arquivos afetados
+
+| Arquivo | Operação |
+|---------|----------|
+| `backend/app/core/config.py` | Modificar (adicionar `ALLOWED_ORIGINS`) |
+| `backend/app/main.py:60` | Modificar (1 linha) |
+| `.github/workflows/ci.yml` | Criar |
+| `backend/.env` | (não versionado) |
+| Dashboard Render | Configurar env vars |
+| Dashboard Vercel | Configurar env vars |
+
+### Impacto zero em produção existente
+
+- Nenhum teste é alterado
+- Nenhum `.ts`/`.tsx` é alterado
+- `docker-compose.yml`, `Dockerfile`, `entrypoint.sh` — intactos
+- Comportamento local (`NEXT_PUBLIC_API_URL` não setada → fallback `localhost:8000`) preservado
+
+---
+
+## Execução do Plano 4 (2026-06-24)
+
+### ✅ Item 1 — CORS configurável (concluído)
+
+| Arquivo | Mudança |
+|---------|---------|
+| `backend/app/core/config.py:16` | Adicionado `ALLOWED_ORIGINS: str = "http://localhost:3000"` |
+| `backend/app/main.py:60` | `origins = ["http://localhost:3000"]` → `origins = settings.ALLOWED_ORIGINS.split(",")` |
+
+**Verificação:** 202/202 testes passando, 98% cobertura.
+
+### 🔴 Item 2 — DockerHub (bloqueado)
+
+**Build:** ✅ Concluído — imagem `7c4f8d292ba3` taggeada como `pedrogw/logistics-engine:latest`
+
+**Push:** ❌ Bloqueado — `denied: requested access to the resource is denied`
+- **Causa:** DockerHub requer `docker login --username pedrogw` com senha/access token
+- **Problema:** CLI do opencode não tem TTY interativo — `read` e `docker login` falham com "cannot perform an interactive login from a non TTY device"
+- `~/.docker/config.json` não existe (nunca fez login)
+
+### 🔴 Itens 3–5 (pendentes)
+
+Aguardam Item 2. A sequência correta após resolver o DockerHub:
+1. Item 2 → `docker push` (login manual ou access token via `--password-stdin`)
+2. Item 3 → Render redeploy com nova imagem + env `ALLOWED_ORIGINS`
+3. Item 4 → Vercel env `NEXT_PUBLIC_API_URL` + redeploy
+4. Item 5 → `.github/workflows/ci.yml` (independe de DockerHub, pode ser criado a qualquer momento)
