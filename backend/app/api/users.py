@@ -14,7 +14,7 @@ router = APIRouter()
 async def list_drivers(
     limit: int = 50, offset: int = 0,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    _current_user: dict = Depends(get_current_user),
 ):
     repo = UserRepository(db)
     users = await repo.list_by_role(UserRole.motorista, limit=limit, offset=offset)

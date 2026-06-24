@@ -1641,6 +1641,31 @@ Aguardam Item 2. A sequência correta após resolver o DockerHub:
 
 ---
 
+## Commit 1 (Refactor) — Correções Pós-Verificação (Blocos A + B)
+
+**Data:** 2026-06-24
+**TDD seguido conforme `docs/obrigacoes.md`:**
+
+| Fase | Ação | Resultado |
+|------|------|-----------|
+| Testes pré-implementação | `pytest` full suite (baseline) | **232/232 passed**, ruff limpo |
+| TDD (P-A5, P-A6) | 3 novos testes escritos → rodados | **3/3 passaram** (GREEN) |
+| Implementação (P-A1 a P-A4) | Correções estruturais aplicadas | — |
+| Testes pós-implementação | `pytest` full suite + ruff | **235/235 passed** (3 novos), ruff limpo nos alterados |
+
+### Itens do Commit 1
+
+| Item | Arquivo | Mudança |
+|------|---------|---------|
+| **P-A1** | `app/infrastructure/repositories/user_repo.py:11` | `class UserRepository` → `class UserRepository(UserRepositoryProtocol)` |
+| **P-A2** | `app/infrastructure/repositories/user_repo.py:1` | `import uuid` movido para topo do arquivo |
+| **P-A3** | `tests/api/test_users.py:51` | `assert in (401, 403)` → `== 401` |
+| **P-A4** | `app/api/users.py:17` | `current_user` → `_current_user` (prefixo unused) |
+| **P-A5** | `tests/api/test_users.py:69-89,91-111` | `test_list_drivers_respects_limit` + `test_list_drivers_respects_offset` |
+| **P-A6** | `tests/api/test_users.py:113-124` | `test_list_drivers_expired_token_returns_401` |
+
+---
+
 ## Block A — Backend: `GET /users/drivers` ✅
 
 **Objetivo:** Lojista precisa ver motoristas disponíveis para atribuir uma entrega.
