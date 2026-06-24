@@ -1,6 +1,7 @@
 import { ApiAuthRepository } from '../repositories/ApiAuthRepository';
 import { ApiPlaceRepository } from '../repositories/ApiPlaceRepository';
 import { ApiDeliveryRepository } from '../repositories/ApiDeliveryRepository';
+import { ApiUserRepository } from '../repositories/ApiUserRepository';
 import { TokenStorageAdapter } from '../storage/TokenStorageAdapter';
 
 const deliveryRepository = new ApiDeliveryRepository();
@@ -12,6 +13,7 @@ export const DI = {
   authRepository: apiAuthRepository,
   placeRepository: new ApiPlaceRepository(),
   deliveryRepository,
+  userRepository: new ApiUserRepository(),
 };
 
 import { LoginUseCase } from '../../application/use_cases/LoginUseCase';
@@ -21,6 +23,9 @@ import { ListDeliveriesUseCase } from '../../application/use_cases/ListDeliverie
 import { UpdateDeliveryUseCase } from '../../application/use_cases/UpdateDeliveryUseCase';
 import { CreateFactoryUseCase } from '../../application/use_cases/CreateFactoryUseCase';
 import { CreateStoreUseCase } from '../../application/use_cases/CreateStoreUseCase';
+import { ListDriversUseCase } from '../../application/use_cases/ListDriversUseCase';
+import { ListFactoriesUseCase } from '../../application/use_cases/ListFactoriesUseCase';
+import { ListStoresUseCase } from '../../application/use_cases/ListStoresUseCase';
 
 export const makeLoginUseCase = () => new LoginUseCase(DI.authRepository, DI.tokenStorage);
 export const makeLogoutUseCase = () => new LogoutUseCase(DI.authRepository, DI.tokenStorage);
@@ -29,3 +34,6 @@ export const makeListDeliveriesUseCase = () => new ListDeliveriesUseCase(DI.deli
 export const makeUpdateDeliveryUseCase = () => new UpdateDeliveryUseCase(DI.deliveryRepository);
 export const makeCreateFactoryUseCase = () => new CreateFactoryUseCase(DI.placeRepository);
 export const makeCreateStoreUseCase = () => new CreateStoreUseCase(DI.placeRepository);
+export const makeListDriversUseCase = () => new ListDriversUseCase(DI.userRepository);
+export const makeListFactoriesUseCase = () => new ListFactoriesUseCase(DI.placeRepository);
+export const makeListStoresUseCase = () => new ListStoresUseCase(DI.placeRepository);

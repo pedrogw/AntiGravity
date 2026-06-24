@@ -44,6 +44,46 @@ export class ApiPlaceRepository implements PlaceRepositoryProtocol {
     }
   }
 
+  async listFactories(): Promise<Factory[]> {
+    try {
+      const { data } = await apiClient.get<FactoryResponse[]>('/places/factories');
+      return data.map((item) => new Factory(
+        { name: item.name, location: new Coordinates({ lat: item.lat, lng: item.lng }) },
+        item.id,
+      ));
+    } catch (error) {
+      if (error instanceof AxiosError) {
+        if (error.response) {
+          throw new ApiError(error.response.status, error.message);
+        }
+        throw new NetworkError();
+      }
+      throw error;
+    }
+  }
+
+  async listStores(): Promise<Store[]> {
+    try {
+      const { data } = await apiClient.get<StoreResponse[]>('/places/stores');
+      return data.map((item) => new Store(
+        {
+          name: item.name,
+          location: new Coordinates({ lat: item.lat, lng: item.lng }),
+          ownerId: item.owner_id,
+        },
+        item.id,
+      ));
+    } catch (error) {
+      if (error instanceof AxiosError) {
+        if (error.response) {
+          throw new ApiError(error.response.status, error.message);
+        }
+        throw new NetworkError();
+      }
+      throw error;
+    }
+  }
+
   async createStore(name: string, location: Coordinates, ownerId: string): Promise<Store> {
     try {
       const { data } = await apiClient.post<StoreResponse>('/places/stores', {
