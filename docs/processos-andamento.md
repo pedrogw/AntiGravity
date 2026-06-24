@@ -1,20 +1,10 @@
 # Processos em Andamento
 
-## Em andamento
+## Concluídos
 
 | Processo | Status |
 |---|---|
-| **Plano 4 — Deploy Vercel + Render + CI/CD** | 🟡 Em andamento |
-
-### Plano 4 — Deploy Vercel + Render + CI/CD
-
-| Item | Status | Detalhe |
-|------|--------|---------|
-| 1. CORS configurável (config.py + main.py) | ✅ Concluído | `ALLOWED_ORIGINS` lido de env var em vez de hardcoded. |
-| 2. Build + push DockerHub | ✅ Concluído | Build com uv, push autenticado via access token (sudo docker login). Image digest: `sha256:21321bf29c975d86ea375ebffdfe7d8003300f8743f700ff77f26d178857a993` |
-| 3. Render: adicionar env vars + redeploy | 🔴 Aguardando usuário | Necessário: dashboard Render → Environment → `ALLOWED_ORIGINS=http://localhost:3000,https://anti-gravity-beryl.vercel.app` → Manual Deploy |
-| 4. Vercel: adicionar `NEXT_PUBLIC_API_URL` + redeploy | 🔴 Aguardando usuário | Necessário: dashboard Vercel → Settings → `NEXT_PUBLIC_API_URL=https://logistics-engine-latest.onrender.com` → Redeploy |
-| 5. CI/CD (`.github/workflows/ci.yml`) | 🔴 Pendente | Aguarda conclusão dos itens 3 e 4; precisa verificar secrets `DOCKER_USER`, `DOCKER_PASSWORD`, `RENDER_DEPLOY_HOOK` no GitHub |
+| **Plano 4 — Deploy Vercel + Render + CI/CD** | ✅ **Concluído** |
 
 | Serviço | URL | Status |
 |---------|-----|--------|
@@ -23,7 +13,19 @@
 | Neon (DB) | (via Render) | ✅ Conexão confirmada (login OK) |
 | Vercel (frontend) | `https://anti-gravity-beryl.vercel.app` | ✅ Página de login servida |
 | CORS | Render → localhost:3000 | ✅ Funciona |
-| CORS | Render → Vercel | ❌ **Não configurado** — `access-control-allow-origin` só tem `localhost:3000` |
+| CORS | Render → Vercel | ✅ Configurado — `ALLOWED_ORIGINS` no Render com ambos os origins |
+
+### Plano 4 — Deploy Vercel + Render + CI/CD
+
+| Item | Status | Detalhe |
+|------|--------|---------|
+| 1. CORS configurável (config.py + main.py) | ✅ Concluído | `ALLOWED_ORIGINS` lido de env var em vez de hardcoded. |
+| 2. Build + push DockerHub | ✅ Concluído | Build com uv, push autenticado via access token. |
+| 3. Render: env vars + redeploy | ✅ Concluído | `ALLOWED_ORIGINS=http://localhost:3000,https://anti-gravity-beryl.vercel.app`. CORS verificado. |
+| 4. Vercel: `NEXT_PUBLIC_API_URL` + redeploy | ✅ Concluído | `NEXT_PUBLIC_API_URL=https://logistics-engine-latest.onrender.com`. Frontend servindo. |
+| 5. CI/CD workflow | ✅ Concluído | GitHub Actions: `test → docker → deploy`. Pipeline completa com sucesso (run ID 28123517822). |
+| 6. CORS regex para previews Vercel | ✅ Concluído | `allow_origin_regex` aceita qualquer `*.vercel.app`. Testado com pytest (3/3). |
+| 7. Vercel auto-deploy no CI/CD | ✅ Concluído | Step `Trigger Vercel Deploy` adicionado após Render. Pipeline: `test → docker → deploy (Render) → deploy (Vercel)`. |
 
 ---
 

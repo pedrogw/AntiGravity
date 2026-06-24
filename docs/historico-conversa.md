@@ -1575,9 +1575,66 @@ Aguardam Item 2. A sequência correta após resolver o DockerHub:
 - Build e push bem-sucedidos com uv: `pedrogw/logistics-engine:latest` atualizado
 - Digest: `sha256:21321bf29c975d86ea375ebffdfe7d8003300f8743f700ff77f26d178857a993`
 
-### Pendentes
-| Item | Status | Ação necessária |
-|------|--------|-----------------|
-| 3. Render redeploy | 🔴 | Dashboard Render: `ALLOWED_ORIGINS=http://localhost:3000,https://anti-gravity-beryl.vercel.app` → Manual Deploy |
-| 4. Vercel env var | 🔴 | Dashboard Vercel: `NEXT_PUBLIC_API_URL=https://logistics-engine-latest.onrender.com` → Redeploy |
-| 5. CI/CD workflow | 🔴 | Verificar secrets no GitHub: `DOCKER_USER`, `DOCKER_PASSWORD`, `RENDER_DEPLOY_HOOK`. Commit + push do `ci.yml` para main. |
+### Itens 3 e 4 — Executados ✅
+
+**Render:**
+- `ALLOWED_ORIGINS=http://localhost:3000,https://anti-gravity-beryl.vercel.app` configurado via dashboard
+- Manual Deploy triggered → CORS verificado: `access-control-allow-origin: https://anti-gravity-beryl.vercel.app` ✅
+
+**Vercel:**
+- `NEXT_PUBLIC_API_URL=https://logistics-engine-latest.onrender.com` configurado (Production, não sensitive)
+- Redeploy → Frontend servindo, login page renderizada ✅
+
+### Item 5 — CI/CD Workflow ✅
+
+**Execução:**
+- Secrets do GitHub configurados: `DOCKER_USER`, `DOCKER_PASSWORD`, `RENDER_DEPLOY_HOOK`
+- Commit vazio `cfaa829` para trigger: `git commit --allow-empty -m "ci: trigger full pipeline with secrets configured"`
+- Pipeline completa (run ID 28123517822):
+  | Job | Resultado |
+  |-----|-----------|
+  | test (pytest backend + npm frontend) | ✅ success |
+  | docker (build & push DockerHub) | ✅ success |
+  | deploy (Render Deploy Hook) | ✅ success |
+
+**Resultado final — Plano 4 completo ✅:**
+- CORS configurável via env var
+- DockerHub com imagem fresh (`pedrogw/logistics-engine:latest`)
+- Render rodando com env vars corretas e CORS multi-origin
+- Vercel apontando para Render em produção
+- CI/CD automático no push para `main`
+
+---
+
+## Bloco CORS Regex + Vercel Auto-Deploy
+
+**Problema:** Preview deployments do Vercel (ex: `anti-gravity-1ckysewhd-pgwms.vercel.app`) eram bloqueados pelo CORS porque o `ALLOWED_ORIGINS` só tinha `localhost:3000` e o production URL. Além disso, o CI/CD não fazia deploy automático do Vercel.
+
+**O que foi feito:**
+
+### CORS — `allow_origin_regex`
+**Arquivo:** `backend/app/main.py`
+- Adicionado `allow_origin_regex=r"https://.*\.vercel\.app"` ao `CORSMiddleware`
+- Aceita **qualquer** deployment Vercel (`*.vercel.app`) sem precisar atualizar env vars
+- O `allow_origins` explícito continua funcionando em paralelo
+
+### CI/CD — Vercel Deploy Hook
+**Arquivo:** `.github/workflows/ci.yml`
+- Adicionado step `Trigger Vercel Deploy` após o deploy do Render
+- Usa `${{ secrets.VERCEL_DEPLOY_HOOK }}` (mesmo padrão do Render)
+- Pipeline final: `test → docker → deploy (Render) → deploy (Vercel)`
+
+### Testes (TDD — red/green)
+**Arquivo:** `backend/tests/api/test_cors.py`
+- `test_cors_allows_localhost` ✅ — `localhost:3000` continua permitido
+- `test_cors_blocks_unknown_origins` ✅ — origens desconhecidas continuam bloqueadas
+- `test_cors_allows_vercel_previews` ✅ — qualquer `*.vercel.app` é permitido
+
+**Verificação:**
+- `ruff check app/main.py` → All checks passed ✅
+- Full test suite → 229 passed, `app/main.py` 100% cobertura ✅
+- `npm run lint` → 0 warnings/errors ✅
+
+**Secret criado no GitHub:** `VERCEL_DEPLOY_HOOK`
+
+**Próximo push em `main` acionará:** testes → Docker → Render → Vercel
