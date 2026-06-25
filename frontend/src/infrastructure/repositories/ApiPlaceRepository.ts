@@ -84,6 +84,28 @@ export class ApiPlaceRepository implements PlaceRepositoryProtocol {
     }
   }
 
+  async getStoreById(id: string): Promise<Store> {
+    try {
+      const { data } = await apiClient.get<StoreResponse>(`/places/stores/${id}`);
+      return new Store(
+        {
+          name: data.name,
+          location: new Coordinates({ lat: data.lat, lng: data.lng }),
+          ownerId: data.owner_id,
+        },
+        data.id,
+      );
+    } catch (error) {
+      if (error instanceof AxiosError) {
+        if (error.response) {
+          throw new ApiError(error.response.status, error.message);
+        }
+        throw new NetworkError();
+      }
+      throw error;
+    }
+  }
+
   async createStore(name: string, location: Coordinates, ownerId: string): Promise<Store> {
     try {
       const { data } = await apiClient.post<StoreResponse>('/places/stores', {

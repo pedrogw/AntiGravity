@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, status
+import uuid
+from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from app.db.session import get_db
@@ -62,3 +63,15 @@ async def list_stores(
     use_case = ListStoresUseCase(repo)
     results = await use_case.execute(limit=limit, offset=offset)
     return [map_store(s) for s in results]
+
+@router.get("/stores/{store_id}", response_model=StoreResponse)
+async def get_store(
+    store_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    repo = PlaceRepository(db)
+    store = await repo.get_store_by_id(store_id)
+    if not store:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Loja não encontrada")
+    return map_store(store)

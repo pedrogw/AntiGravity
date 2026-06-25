@@ -171,6 +171,28 @@ class TestPlaces:
         assert isinstance(data, list)
         assert len(data) >= 1
 
+    async def test_get_store_by_id(self, client: AsyncClient, lojista: dict):
+        create_resp = await client.post(
+            "/places/stores",
+            json={"name": "Loja Teste", "lat": -23.5505, "lng": -46.6333, "owner_id": lojista["id"]},
+            headers=lojista["headers"]
+        )
+        assert create_resp.status_code == 201
+        store_id = create_resp.json()["id"]
+
+        response = await client.get(f"/places/stores/{store_id}", headers=lojista["headers"])
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == store_id
+        assert data["name"] == "Loja Teste"
+        assert data["lat"] == -23.5505
+        assert data["lng"] == -46.6333
+
+    async def test_get_store_by_id_not_found(self, client: AsyncClient, lojista: dict):
+        fake_id = "00000000-0000-0000-0000-000000000000"
+        response = await client.get(f"/places/stores/{fake_id}", headers=lojista["headers"])
+        assert response.status_code == 404
+
 
 class TestDeliveries:
     async def test_create_and_list_deliveries(self, client: AsyncClient, lojista: dict, motorista: dict):

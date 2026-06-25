@@ -6,7 +6,7 @@ import { NetworkError } from '../../src/domain/errors/NetworkError';
 import { AxiosError } from 'axios';
 
 const { apiClient } = vi.hoisted(() => ({
-  apiClient: { post: vi.fn() },
+  apiClient: { post: vi.fn(), get: vi.fn() },
 }));
 
 vi.mock('../../src/infrastructure/api/api_client', () => ({
@@ -101,6 +101,53 @@ describe('ApiPlaceRepository', () => {
       await expect(
         repo.createStore('Loja Centro', fakeLocation, 'owner-1'),
       ).rejects.toThrow(NetworkError);
+    });
+  });
+
+  describe('getStoreById', () => {
+    it('deve chamar GET /places/stores/{id} e retornar Store', async () => {
+      apiClient.get.mockResolvedValue({
+        data: { id: 'sto-789', name: 'Loja Teste', lat: -23.55, lng: -46.63, owner_id: 'owner-1' },
+      });
+
+      const store = await repo.getStoreById('sto-789');
+
+      expect(apiClient.get).toHaveBeenCalledWith('/places/stores/sto-789');
+      expect(store.id).toBe('sto-789');
+      expect(store.name).toBe('Loja Teste');
+      expect(store.location.lat).toBe(-23.55);
+      expect(store.location.lng).toBe(-46.63);
+      expect(store.ownerId).toBe('owner-1');
+    });
+
+    it('deve lançar NetworkError quando a requisição falha', async () => {
+      apiClient.get.mockRejectedValue(
+        new AxiosError('Network error', 'ERR_NETWORK'),
+      );
+
+      await expect(
+        repo.getStoreById('sto-789'),
+      ).rejects.toThrow(NetworkError);
+    });
+
+    it('deve propagar erro não-Axios sem alteração', async () => {
+      apiClient.get.mockRejectedValue(new Error('Erro genérico'));
+
+      await expect(
+        repo.getStoreById('sto-789'),
+      ).rejects.toThrow('Erro genérico');
+    });
+
+    it('deve lançar ApiError quando recebe HTTP 404', async () => {
+      const axiosError = new AxiosError('Not Found');
+      Object.assign(axiosError, {
+        response: { status: 404, data: { detail: 'Loja não encontrada' } },
+      });
+      apiClient.get.mockRejectedValue(axiosError);
+
+      await expect(
+        repo.getStoreById('sto-789'),
+      ).rejects.toThrow(ApiError);
     });
   });
 });

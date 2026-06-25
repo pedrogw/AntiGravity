@@ -13,9 +13,22 @@ const driverIcon = L.divIcon({
   iconAnchor: [12, 12],
 })
 
+const storeIcon = L.divIcon({
+  className: '',
+  html: '<div style="background-color:#F59E0B;width:24px;height:24px;border-radius:4px;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:white;font-size:14px;font-weight:bold">M</div>',
+  iconSize: [24, 24],
+  iconAnchor: [12, 12],
+})
+
+interface StoreLocation {
+  lat: number
+  lng: number
+}
+
 interface Props {
   delivery: Delivery
   onPositionChange?: (lat: number, lng: number) => void
+  storeLocation?: StoreLocation
 }
 
 function MapClickHandler({ onClick }: { onClick?: (lat: number, lng: number) => void }) {
@@ -27,7 +40,7 @@ function MapClickHandler({ onClick }: { onClick?: (lat: number, lng: number) => 
   return null
 }
 
-export function DeliveryMap({ delivery, onPositionChange }: Props) {
+export function DeliveryMap({ delivery, onPositionChange, storeLocation }: Props) {
   const [pos, setPos] = useState<[number, number]>(() => [
     delivery.currentLat ?? -23.5505,
     delivery.currentLng ?? -46.6333,
@@ -70,6 +83,12 @@ export function DeliveryMap({ delivery, onPositionChange }: Props) {
           eventHandlers={onPositionChange ? { dragend: handleDragEnd } : undefined}
         />
         <Circle center={pos} radius={50} pathOptions={{ color: '#3B82F6', fillOpacity: 0.1 }} />
+        {storeLocation && (
+          <Marker
+            position={[storeLocation.lat, storeLocation.lng]}
+            icon={storeIcon}
+          />
+        )}
       </MapContainer>
     </div>
   )

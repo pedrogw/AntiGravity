@@ -2663,3 +2663,54 @@ Após M, `cancelada` só será acessível via `aceita`.
 - **Backend:** 257/257 ✅ (inalterado)
 - **Frontend:** 120/120 ✅ (+5 novos)
 - **Lint:** 0 erros ✅
+
+---
+
+## Block P — Localização da Loja no Mapa ✅
+
+**Objetivo:** Mostrar o marcador da loja no mapa do motorista, permitindo que ele veja para onde está indo.
+
+**Motivação:** O mapa atualmente só mostra a posição do motorista. O motorista não consegue visualizar onde fica a loja de destino, o que é essencial para navegação.
+
+### O que foi feito
+
+#### P.1 — Backend: GET /places/stores/{store_id}
+- `backend/app/api/places.py`: Nova rota `GET /places/stores/{store_id}` usando `PlaceRepository.get_store_by_id()` (já existia)
+- Retorna `StoreResponse` com id, name, lat, lng
+- 404 se loja não encontrada
+- Requer autenticação (qualquer role)
+
+#### P.2 — Frontend: getStoreById no protocolo + repositório
+- `PlaceRepositoryProtocol.ts`: Adicionado `getStoreById(id: string): Promise<Store>`
+- `ApiPlaceRepository.ts`: Implementado com `GET /places/stores/{id}`
+- Tratamento de erro: `ApiError` (HTTP), `NetworkError`, erro genérico
+
+#### P.3 — Frontend: Expor fetchStoreById no usePlaces
+- `GetStoreByIdUseCase.ts`: Novo use case (thin wrapper)
+- `factories.ts`: `makeGetStoreByIdUseCase`
+- `usePlaces.ts`: Método `fetchStoreById(id)` com loading/error states
+
+#### P.4 — Frontend: Marcador da loja no DeliveryMap
+- `DeliveryMap.tsx`: Nova prop `storeLocation?: { lat: number; lng: number }`
+- `storeIcon`: Ícone laranja com "M" (diferente do azul do driver)
+- Render condicional: sem `storeLocation` não renderiza nada
+
+#### P.5 — Frontend: Wire no drive/page.tsx + ActiveDeliveryView
+- `ActiveDeliveryView.tsx`: Aceita `storeLocation` e repassa ao `DeliveryMap`
+- `drive/page.tsx`: Importa `usePlaces`, busca store do active delivery via `fetchStoreById`, passa `storeLocation`
+
+### Testes Novos (12)
+| Arquivo | Testes |
+|---------|--------|
+| `test_integration.py` | `test_get_store_by_id`, `test_get_store_by_id_not_found` (2 novos) |
+| `test_security.py` | `test_get_store_by_id_requires_auth` (1 novo) |
+| `GetStoreByIdUseCase.test.ts` | sucesso, propagação de erro (2 novos) |
+| `ApiPlaceRepository.test.ts` | GET /places/stores/{id}, NetworkError, erro não-Axios, ApiError 404 (4 novos) |
+| `usePlaces.test.ts` | fetchStoreById sucesso, AppError, erro genérico (3 novos) |
+| `DeliveryMap.test.tsx` | marcador loja com storeLocation, sem storeLocation (2 novos) |
+| `ActiveDeliveryView.test.tsx` | renderiza sem erro com storeLocation (1 novo) |
+
+### Verificação Final
+- **Backend:** 260/260 ✅ (+3)
+- **Frontend:** 132/132 ✅ (+12)
+- **Lint:** 0 erros ✅

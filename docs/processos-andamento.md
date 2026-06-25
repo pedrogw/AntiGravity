@@ -21,6 +21,7 @@
 | **N** ✅ | `Alert.ts`, `AlertRepositoryProtocol.ts`, `ApiAlertRepository.ts`, `ListAlertsUseCase.ts`, `factories.ts`, `useAlerts.ts`, `AlertList.tsx`, `Sidebar.tsx`, `dashboard/page.tsx` | N.1 a N.6 (ver historico-conversa.md) |
 | **N.1** ✅ | `ListAlertsUseCase.test.ts`, `useAlerts.test.ts`, `ApiAlertRepository.ts`, `Sidebar.test.tsx` (novo), `AlertList.test.tsx` | N1.1 a N1.5 (ver historico-conversa.md) |
 | **O** ✅ | `DeliveryMap.tsx`, `ActiveDeliveryView.tsx`, `drive/page.tsx`, `ChaosDevTools.tsx`, `useDeliveries.ts` | Pre: 115 frontend, 257 backend, lint 0 ✅ Post: 120 frontend, 257 backend, lint 0 ✅ |
+| **P** ✅ | `places.py` (API), `PlaceRepositoryProtocol.ts`, `ApiPlaceRepository.ts`, `GetStoreByIdUseCase.ts`, `usePlaces.ts`, `DeliveryMap.tsx`, `ActiveDeliveryView.tsx`, `drive/page.tsx` | Pre: 120 frontend, 257 backend, lint 0 ✅ Post: 132 frontend, 260 backend, lint 0 ✅ |
 
 ---
 
@@ -37,6 +38,7 @@
 |---|---|
 | **Block M — Cancelamento de Entrega** (backend + frontend) | ✅ **Concluído** |
 | **Block O — Mapa Arrastável + Simulação de Posição** (frontend) | ✅ **Concluído** |
+| **Block P — Localização da Loja no Mapa** (backend + frontend) | ✅ **Concluído** |
 | **Block L — Mapa Interativo Leaflet** (frontend) | ✅ **Concluído** |
 | **Block K — Report Problem Dialog** (frontend + backend) | ✅ **Concluído** |
 | **Block J — Refactor ActiveDeliveryView** (frontend) | ✅ **Concluído** |

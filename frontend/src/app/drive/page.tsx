@@ -8,16 +8,29 @@ import { DeliveryCard } from '@/components/driver/DeliveryCard'
 import { BottomNav } from '@/components/driver/BottomNav'
 import { ChaosDevTools } from '@/components/chaos/ChaosDevTools'
 import { useDeliveries } from '@/hooks/useDeliveries'
+import { usePlaces } from '@/hooks/usePlaces'
 import { makeLogoutUseCase } from '@/infrastructure/di/factories'
 
 export default function DrivePage() {
   const { deliveries, isLoading, error, fetchDeliveries, updateDeliveryStatus, updateDeliveryPosition } = useDeliveries()
+  const { fetchStoreById } = usePlaces()
   const router = useRouter()
   const [toast, setToast] = useState('')
+  const [storeLocation, setStoreLocation] = useState<{ lat: number; lng: number } | undefined>(undefined)
+
+  const activeDelivery = deliveries.find((d) => d.status === 'em_transito' || d.status === 'em_rota')
+  const pendingDeliveries = deliveries.filter((d) => d.status === 'pendente' || d.status === 'aceita')
 
   useEffect(() => {
     fetchDeliveries()
   }, [fetchDeliveries])
+
+  useEffect(() => {
+    if (!activeDelivery) return
+    fetchStoreById(activeDelivery.storeId)
+      .then((store) => setStoreLocation({ lat: store.location.lat, lng: store.location.lng }))
+      .catch(() => setStoreLocation(undefined))
+  }, [activeDelivery, fetchStoreById])
 
   const handleLogout = useCallback(async () => {
     try {
@@ -80,9 +93,6 @@ export default function DrivePage() {
     }
   }
 
-  const activeDelivery = deliveries.find((d) => d.status === 'em_transito' || d.status === 'em_rota')
-  const pendingDeliveries = deliveries.filter((d) => d.status === 'pendente' || d.status === 'aceita')
-
   return (
     <AuthGuard>
       <div className="min-h-screen bg-[#EFF6FF] flex flex-col">
@@ -126,6 +136,7 @@ export default function DrivePage() {
               onStartRoute={handleStartRoute}
               onComplete={handleCompleteDelivery}
               onPositionChange={handlePositionChange}
+              storeLocation={storeLocation}
             />
           ) : pendingDeliveries.length > 0 ? (
             <div className="space-y-3">

@@ -4,6 +4,7 @@ import {
   makeCreateStoreUseCase,
   makeListFactoriesUseCase,
   makeListStoresUseCase,
+  makeGetStoreByIdUseCase,
 } from '../infrastructure/di/factories';
 
 import { AppError } from '../domain/errors/AppError';
@@ -88,5 +89,23 @@ export function usePlaces() {
     }
   }, []);
 
-  return { isLoading, error, createFactory, createStore, factories, stores, listFactories, listStores };
+  const fetchStoreById = useCallback(async (id: string) => {
+    setIsLoading(true);
+    setError('');
+    try {
+      const useCase = makeGetStoreByIdUseCase();
+      return await useCase.execute(id);
+    } catch (err) {
+      if (err instanceof AppError) {
+        setError(err.message);
+      } else {
+        setError('Erro ao buscar loja.');
+      }
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  return { isLoading, error, createFactory, createStore, factories, stores, listFactories, listStores, fetchStoreById };
 }

@@ -75,4 +75,21 @@ describe('DeliveryMap', () => {
     render(<DeliveryMap delivery={makeDelivery({ lat: -23.55, lng: -46.63 })} onPositionChange={onChange} />);
     expect(screen.getByTestId('marker')).toHaveAttribute('data-draggable', 'true');
   });
+
+  it('renderiza marcador extra da loja quando storeLocation é fornecido', () => {
+    render(
+      <DeliveryMap
+        delivery={makeDelivery({ lat: -23.55, lng: -46.63 })}
+        storeLocation={{ lat: -23.56, lng: -46.64 }}
+      />
+    );
+    const markers = screen.getAllByTestId('marker');
+    expect(markers).toHaveLength(2);
+  });
+
+  it('não renderiza marcador extra da loja quando storeLocation não é fornecido', () => {
+    render(<DeliveryMap delivery={makeDelivery({ lat: -23.55, lng: -46.63 })} />);
+    const markers = screen.getAllByTestId('marker');
+    expect(markers).toHaveLength(1);
+  });
 });

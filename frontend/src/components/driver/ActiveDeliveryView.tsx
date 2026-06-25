@@ -11,6 +11,11 @@ const DeliveryMap = dynamic(
   { ssr: false },
 )
 
+interface StoreLocation {
+  lat: number
+  lng: number
+}
+
 interface Props {
   delivery: Delivery
   onAccept?: (id: string) => void
@@ -18,6 +23,7 @@ interface Props {
   onComplete?: (id: string) => void
   onCancel?: (id: string) => void
   onPositionChange?: (lat: number, lng: number) => void
+  storeLocation?: StoreLocation
 }
 
 export function ActiveDeliveryView({
@@ -27,12 +33,13 @@ export function ActiveDeliveryView({
   onComplete,
   onCancel,
   onPositionChange,
+  storeLocation,
 }: Props) {
   return (
     <div className="flex-1 flex flex-col gap-6">
       <div className="flex-1 flex flex-col items-center justify-center gap-8 bg-white rounded-3xl p-8 shadow-sm border border-slate-100">
         <EtaDisplay delivery={delivery} />
-        <DeliveryMap delivery={delivery} onPositionChange={onPositionChange} />
+        <DeliveryMap delivery={delivery} onPositionChange={onPositionChange} storeLocation={storeLocation} />
       </div>
       <DeliveryCard
         delivery={delivery}

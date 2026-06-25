@@ -6,4 +6,5 @@ export interface PlaceRepositoryProtocol {
   createStore(name: string, location: Coordinates, ownerId: string): Promise<Store>;
   listFactories(): Promise<Factory[]>;
   listStores(): Promise<Store[]>;
+  getStoreById(id: string): Promise<Store>;
 }

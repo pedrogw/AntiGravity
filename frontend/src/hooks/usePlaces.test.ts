@@ -6,11 +6,13 @@ import {
   makeCreateStoreUseCase,
   makeListFactoriesUseCase,
   makeListStoresUseCase,
+  makeGetStoreByIdUseCase,
 } from '../infrastructure/di/factories';
 import { CreateFactoryUseCase } from '../application/use_cases/CreateFactoryUseCase';
 import { CreateStoreUseCase } from '../application/use_cases/CreateStoreUseCase';
 import { ListFactoriesUseCase } from '../application/use_cases/ListFactoriesUseCase';
 import { ListStoresUseCase } from '../application/use_cases/ListStoresUseCase';
+import { GetStoreByIdUseCase } from '../application/use_cases/GetStoreByIdUseCase';
 import { AppError } from '../domain/errors/AppError';
 import { Factory, Store } from '../domain/entities/Place';
 import { Coordinates } from '../domain/value_objects/Coordinates';
@@ -20,6 +22,7 @@ vi.mock('../infrastructure/di/factories', () => ({
   makeCreateStoreUseCase: vi.fn(),
   makeListFactoriesUseCase: vi.fn(),
   makeListStoresUseCase: vi.fn(),
+  makeGetStoreByIdUseCase: vi.fn(),
 }));
 
 describe('usePlaces hook', () => {
@@ -27,6 +30,7 @@ describe('usePlaces hook', () => {
   let mockStoreExecute: ReturnType<typeof vi.fn>;
   let mockListFactoriesExecute: ReturnType<typeof vi.fn>;
   let mockListStoresExecute: ReturnType<typeof vi.fn>;
+  let mockGetStoreByIdExecute: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -34,10 +38,12 @@ describe('usePlaces hook', () => {
     mockStoreExecute = vi.fn();
     mockListFactoriesExecute = vi.fn();
     mockListStoresExecute = vi.fn();
+    mockGetStoreByIdExecute = vi.fn();
     vi.mocked(makeCreateFactoryUseCase).mockReturnValue({ execute: mockFactoryExecute } as unknown as CreateFactoryUseCase);
     vi.mocked(makeCreateStoreUseCase).mockReturnValue({ execute: mockStoreExecute } as unknown as CreateStoreUseCase);
     vi.mocked(makeListFactoriesUseCase).mockReturnValue({ execute: mockListFactoriesExecute } as unknown as ListFactoriesUseCase);
     vi.mocked(makeListStoresUseCase).mockReturnValue({ execute: mockListStoresExecute } as unknown as ListStoresUseCase);
+    vi.mocked(makeGetStoreByIdUseCase).mockReturnValue({ execute: mockGetStoreByIdExecute } as unknown as GetStoreByIdUseCase);
   });
 
   describe('createFactory', () => {
@@ -230,6 +236,55 @@ describe('usePlaces hook', () => {
       });
 
       expect(result.current.error).toBe('Erro ao buscar lojas.');
+      expect(result.current.isLoading).toBe(false);
+    });
+  });
+
+  describe('fetchStoreById', () => {
+    const fakeStore = new Store(
+      { name: 'Loja Teste', location: new Coordinates({ lat: -23.55, lng: -46.63 }), ownerId: 'owner1' },
+      'sto-456',
+    );
+
+    it('deve buscar loja por id com sucesso', async () => {
+      mockGetStoreByIdExecute.mockResolvedValue(fakeStore);
+
+      const { result } = renderHook(() => usePlaces());
+
+      let store: unknown;
+      await act(async () => {
+        store = await result.current.fetchStoreById('sto-456');
+      });
+
+      expect(mockGetStoreByIdExecute).toHaveBeenCalledWith('sto-456');
+      expect(store).toEqual(fakeStore);
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.error).toBe('');
+    });
+
+    it('deve definir erro e relançar ao receber AppError', async () => {
+      mockGetStoreByIdExecute.mockRejectedValue(new AppError('Loja não encontrada'));
+
+      const { result } = renderHook(() => usePlaces());
+
+      await act(async () => {
+        await expect(result.current.fetchStoreById('sto-456')).rejects.toThrow('Loja não encontrada');
+      });
+
+      expect(result.current.error).toBe('Loja não encontrada');
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    it('deve definir erro genérico e relançar ao receber erro comum', async () => {
+      mockGetStoreByIdExecute.mockRejectedValue(new Error('erro'));
+
+      const { result } = renderHook(() => usePlaces());
+
+      await act(async () => {
+        await expect(result.current.fetchStoreById('sto-456')).rejects.toThrow('erro');
+      });
+
+      expect(result.current.error).toBe('Erro ao buscar loja.');
       expect(result.current.isLoading).toBe(false);
     });
   });

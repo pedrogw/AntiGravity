@@ -59,4 +59,16 @@ describe('ActiveDeliveryView', () => {
     );
     expect(screen.queryByText('Concluir Entrega')).not.toBeInTheDocument();
   });
+
+  it('renderiza sem erro quando storeLocation é fornecido', () => {
+    const storeLocation = { lat: -23.56, lng: -46.64 };
+    render(
+      <ActiveDeliveryView
+        delivery={makeDelivery({ status: 'em_transito' })}
+        onComplete={vi.fn()}
+        storeLocation={storeLocation}
+      />,
+    );
+    expect(screen.getByText(/Safe-Check/i)).toBeInTheDocument();
+  });
 });

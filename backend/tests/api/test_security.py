@@ -69,6 +69,10 @@ class TestTokenValidation:
         response = await client.get("/places/stores")
         assert response.status_code in (401, 403)
 
+    async def test_get_store_by_id_requires_auth(self, client: AsyncClient):
+        response = await client.get("/places/stores/00000000-0000-0000-0000-000000000000")
+        assert response.status_code in (401, 403)
+
     async def test_malformed_token_returns_401(self, client: AsyncClient):
         response = await client.post(
             "/places/factories",
