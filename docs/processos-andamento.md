@@ -18,8 +18,17 @@
 | **K** ✅ | `ReportProblemDialog.tsx`, `ReportProblemDialog.test.tsx`, `DeliveryCard.tsx`, `ChaosReportButton.tsx` (removido), `ActiveDeliveryView.tsx`, `chaos_use_cases.py`, `drive/page.tsx` | Pre-tests ✅; Post: 252 backend, 84 frontend, lint 0 |
 | **L** ✅ | `DeliveryMap.tsx`, `DeliveryMap.test.tsx`, `delivery-map/` (pasta nova), `package.json` (+ leaflet, react-leaflet, @types/leaflet), `ActiveDeliveryView.tsx`, `MapPlaceholder.tsx` (removido) | Pre-tests ✅; Post: 252 backend, 87 frontend (23 files), lint 0 |
 | **M** ✅ | `delivery.py`, `DeliveryCard.tsx`, `drive/page.tsx`, `ActiveDeliveryView.tsx`, `test_delivery_entity.py`, `test_use_cases.py`, `test_integration.py`, `DeliveryCard.test.tsx` | Pre-tests ✅; Post: 257 backend, 91 frontend, lint 0 |
+| **N** | `Alert.ts`, `AlertRepositoryProtocol.ts`, `ApiAlertRepository.ts`, `ListAlertsUseCase.ts`, `factories.ts`, `useAlerts.ts`, `AlertasCriticos.tsx`, `Sidebar.tsx`, `dashboard/page.tsx` | N.1 a N.5 (ver historico-conversa.md) |
+| **O** | `DeliveryMap.tsx`, `ActiveDeliveryView.tsx`, `drive/page.tsx`, `ChaosDevTools.tsx` | O.1 a O.3 (ver historico-conversa.md) |
 
 ---
+
+## Planejado
+
+| Processo | Status | Depende de |
+|---|---|---|
+| **Block N — Alertas Visíveis** | 🔜 Pendente | Nenhum |
+| **Block O — Mapa Arrastável + Simulação** | 🔜 Pendente | N (reuso do mesmo fluxo de codificação) |
 
 ## Concluídos
 

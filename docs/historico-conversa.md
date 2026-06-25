@@ -2552,3 +2552,55 @@ Após M, `cancelada` só será acessível via `aceita`.
 
 - **Backend:** 257 passed (+5), 99% coverage, ruff 0 novos erros
 - **Frontend:** 91 passed (+4, DeliveryCard 5→9 tests), eslint 0 erros
+
+---
+
+## Bloco Fix — MSW v2 + Pipeline Fix
+
+**Objetivo:** Corrigir `npm ci` falhando no CI com `Missing: msw@2.14.6 from lock file`.
+
+**Causa raiz:** `vitest@4.1.9` → `@vitest/mocker@4.1.9` peer depende de `msw@^2.4.9`. Nosso `package.json` tinha `msw@^1.3.5`. No ambiente local (node 24, npm 11), `npm install` removeu o msw v2 aninhado como `extraneous`. CI (node 20, npm 10) resolve peer deps diferente e exigia `msw@2.14.6` no lockfile.
+
+### O que foi feito
+
+| # | Arquivo | Mudança |
+|---|---------|---------|
+| Fix.1 | `package.json` | `msw: "^1.3.5"` → `"^2.14.6"` |
+| Fix.2 | `package-lock.json` | Regenerado com msw v2, satisfazendo `@vitest/mocker` |
+| Fix.3 | `src/mocks/handlers.ts` | Migrado de `rest` API (v1) para `http` + `HttpResponse` (v2) |
+
+**Resultado:** `npm ls msw` → `msw@2.14.6 deduped` ✅. CI pipeline compatível.
+
+---
+
+## Block N — Alertas Visíveis (Planejado)
+
+**Objetivo:** Exibir alertas (reportados pelo motorista via "Reportar Problema") no dashboard do lojista.
+
+**Motivação:** O backend cria e persiste alerts via `GET /alerts`, mas o frontend nunca chama esse endpoint. O `AlertasCriticos` antigo era mock estático e foi removido junto com a Control Tower.
+
+### Mini-blocos
+
+| Mini-bloco | Arquivos | O que faz |
+|-----------|----------|-----------|
+| **N.1** | `Alert.ts`, `AlertRepositoryProtocol.ts` | Entidade + protocolo de repositório |
+| **N.2** | `ApiAlertRepository.ts`, `ListAlertsUseCase.ts`, `factories.ts` | Infraestrutura + use case + DI |
+| **N.3** | `useAlerts.ts` | Hook com polling 15s |
+| **N.4** | `AlertasCriticos.tsx` | Componente de UI |
+| **N.5** | `Sidebar.tsx`, `dashboard/page.tsx` | Integração (nav item + active view) |
+
+---
+
+## Block O — Mapa Arrastável + Simulação de Posição (Planejado)
+
+**Objetivo:** Permitir que o motorista arraste o marcador no mapa para simular mudança de posição (contas teste), com inputs de coordenadas no ChaosDevTools.
+
+**Motivação:** Só existem contas teste; não há GPS real. O motorista precisa conseguir simular "iniciei a rota em X, agora estou em Y, ainda não cheguei em Z (loja)".
+
+### Mini-blocos
+
+| Mini-bloco | Arquivos | O que faz |
+|-----------|----------|-----------|
+| **O.1** | `DeliveryMap.tsx` | `onPositionChange` prop, marker draggable, clique no mapa, mapEvents |
+| **O.2** | `ActiveDeliveryView.tsx`, `drive/page.tsx` | Wiring do callback de posição → PATCH |
+| **O.3** | `ChaosDevTools.tsx` | Seção "Simular Posição" com inputs lat/lng + botão Atualizar |
