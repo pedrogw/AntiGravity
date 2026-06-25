@@ -2366,4 +2366,189 @@ pendente → aceita → em_transito → entregue → concluida (terminal)
 | Backend (pytest) | 251 passed | 251 passed | ✅ |
 | Backend (ruff) | 0 errors | 0 errors | ✅ |
 
-**Observação:** Todos os blocos E, F, G, H, G.1, I, J concluídos. Pendente commit em lote.
+**Observação:** Blocos A–J concluídos, commitados e pushados.
+
+---
+
+## Próximos Blocos (Planejados)
+
+| Bloco | Nome | Prioridade |
+|-------|------|------------|
+| **M** | Cancelamento de Entrega | 🟡 Média (depende de K) |
+
+---
+
+## Bloco K — Reportar Problema + Diálogo ✅
+
+**Motivação:** O botão "Reportar Problema" no `DeliveryCard` só mostrava um toast, sem chamar o backend. O `ChaosReportButton` existente chamava a API mas com `impact_factor=1.0, delay=0`, não gerava alerta nem recalculava ETA. Além disso, o motorista não tinha como **especificar o tipo do problema**.
+
+### O que foi feito (TDD — 8 novos testes frontend + 1 backend)
+
+| # | Tarefa | Arquivos | Detalhe |
+|---|--------|----------|---------|
+| **K.1** | Criar `ReportProblemDialog.tsx` | `frontend/src/components/driver/ReportProblemDialog.tsx` | Modal com 6 opções predefinidas, cada uma com `delay_minutes` e `impact_factor` reais |
+| **K.2** | Integrar no `DeliveryCard` | `DeliveryCard.tsx` | "Reportar Problema" abre o diálogo (removeu `onReportProblem` prop) |
+| **K.3** | Remover `ChaosReportButton` | `ChaosReportButton.tsx` (deletado), `ActiveDeliveryView.tsx` | Substituído pelo diálogo completo |
+| **K.4** | Backend: alerta sempre criado para reporte | `chaos_use_cases.py:111` | `if alert.is_critical` → `if alert.is_critical or event_type.startswith('reporte_')` |
+| **K.5** | ETA recalculado | `chaos_use_cases.py` | Parâmetros reais de delay/impact já recalculavam ETA (sem alteração) |
+
+### Tipos de problema (definitivos)
+
+| Opção | `event_type` | `delay_minutes` | `impact_factor` | Alerta criado? |
+|-------|-------------|:-:|:-:|:-:|
+| Trânsito | `reporte_transito` | 15 | 1.5 | ✅ (sempre) |
+| Acidente | `reporte_acidente` | 45 | 2.5 | ✅ (sempre) |
+| Mecânico | `reporte_mecanico` | 30 | 2.0 | ✅ (sempre) |
+| Clima | `reporte_clima` | 20 | 1.3 | ✅ (sempre) |
+| Estrada bloqueada | `reporte_estrada_bloqueada` | 40 | 2.0 | ✅ (sempre) |
+| Outro | `reporte_outro` | 5 | 1.1 | ✅ (sempre) |
+
+### Regra de alerta (implementada)
+
+- `event_type.startswith('reporte_')` → alerta **sempre** persistido (visível ao lojista via `GET /alerts`)
+- Criticalidade continua sendo calculada pelos thresholds do `settings` para eventos não-reporte
+- ETA recalculado com os parâmetros reais escolhidos
+
+### Testes novos
+
+#### Frontend — `ReportProblemDialog.test.tsx` (7 testes)
+1. Renderiza título e descrição quando aberto
+2. Renderiza 6 opções de problema
+3. Chama `apiClient.post` com parâmetros corretos ao clicar em Trânsito
+4. Chama `apiClient.post` com parâmetros corretos ao clicar em Acidente
+5. Mostra mensagem de sucesso após submit
+6. Mostra mensagem de erro quando API falha
+7. Desabilita botões enquanto carregando
+
+#### Backend — `test_use_cases.py` (1 teste)
+1. `test_inject_chaos_reporte_event_always_creates_alert` — `reporte_transito` com `impact_factor=1.5, delay=15` cria alerta (antes só criava se `is_critical`)
+
+### Arquivos alterados
+
+| Arquivo | Operação |
+|---------|----------|
+| `frontend/src/components/driver/ReportProblemDialog.tsx` | **Criado** |
+| `frontend/src/components/driver/ReportProblemDialog.test.tsx` | **Criado** |
+| `frontend/src/components/driver/DeliveryCard.tsx` | Modificado: import dialog, gerencia estado `dialogOpen`, botão abre dialog |
+| `frontend/src/components/driver/DeliveryCard.test.tsx` | Modificado: `onReportProblem` removido de 5 renders |
+| `frontend/src/components/driver/ActiveDeliveryView.tsx` | Modificado: `onReportProblem` prop removida, `ChaosReportButton` removido |
+| `frontend/src/components/driver/ActiveDeliveryView.test.tsx` | (sem alteração — já não passava `onReportProblem`) |
+| `frontend/src/components/driver/ChaosReportButton.tsx` | **Deletado** |
+| `frontend/src/app/drive/page.tsx` | Modificado: `onReportProblem` removido de 2 usos |
+| `backend/app/use_cases/chaos_use_cases.py` | Modificado: `if alert.is_critical or event_type.startswith('reporte_')` |
+| `backend/tests/unit/test_use_cases.py` | Modificado: + `test_inject_chaos_reporte_event_always_creates_alert` |
+
+### Resultado
+
+| Suite | Antes | Depois | Resultado |
+|-------|-------|--------|-----------|
+| Backend (pytest) | 251 passed | **252 passed** (+1 novo) | ✅ |
+| Backend (ruff) | 0 errors | 0 errors | ✅ |
+| Frontend (vitest) | 76 passed | **84 passed** (+8 novos, 22 files) | ✅ |
+| Frontend (eslint) | 0 errors | 0 errors | ✅ |
+
+---
+
+## Bloco L — Mapa Interativo (Leaflet) ✅
+
+**Motivação:** `MapPlaceholder.tsx` era um placeholder estático (gradiente cinza + emoji). Não havia mapa real mostrando a rota ou posição do motorista.
+
+### O que foi feito (TDD — 3 novos testes)
+
+| # | Tarefa | Arquivos | Detalhe |
+|---|--------|----------|---------|
+| **L.1** | Instalar dependências | `package.json` | `leaflet@1.9.4`, `react-leaflet@5`, `@types/leaflet` |
+| **L.2** | Criar `delivery-map/DeliveryMap.tsx` | `frontend/src/components/driver/delivery-map/` | Componente Leaflet com `MapContainer`, `TileLayer` (OpenStreetMap), `Marker` (driver via `divIcon` azul), `Circle` (50m raio). SSR-safe via `next/dynamic` + `ssr:false` |
+| **L.3** | Substituir `MapPlaceholder` | `ActiveDeliveryView.tsx` | `<MapPlaceholder>` trocado por `<DeliveryMap>` via `dynamic(() => import(...), { ssr: false })` |
+
+### Mapa exibe
+
+- 🗺️ OpenStreetMap tiles (gratuito, sem API key)
+- 🔵 Marcador azul (`divIcon` CSS) → Posição do motorista (`currentLat`/`currentLng`, fallback SP)
+- 🔵 Círculo translúcido (50m) → Área de aproximação do motorista
+
+### Testes novos — `DeliveryMap.test.tsx` (3 testes)
+
+1. Renderiza `MapContainer` com coordenadas do driver
+2. Usa fallback SP (`-23.5505, -46.6333`) quando não há coordenadas
+3. Renderiza `TileLayer`, `Marker` e `Circle`
+
+### Arquivos alterados
+
+| Arquivo | Operação |
+|---------|----------|
+| `frontend/package.json` | Modificado: + `leaflet`, `react-leaflet`, `@types/leaflet` |
+| `frontend/package-lock.json` | Modificado |
+| `frontend/src/components/driver/delivery-map/DeliveryMap.tsx` | **Criado** |
+| `frontend/src/components/driver/delivery-map/DeliveryMap.test.tsx` | **Criado** |
+| `frontend/src/components/driver/ActiveDeliveryView.tsx` | Modificado: `MapPlaceholder` → `dynamic(DeliveryMap)` |
+| `frontend/src/components/driver/MapPlaceholder.tsx` | Permanece (não referenciado, pode ser removido) |
+
+### Resultado
+
+| Suite | Antes | Depois | Resultado |
+|-------|-------|--------|-----------|
+| Backend (pytest) | 252 passed | **252 passed** | ✅ |
+| Backend (ruff) | 0 errors | 0 errors | ✅ |
+| Frontend (vitest) | 84 passed | **87 passed** (+3 novos, 23 files) | ✅ |
+| Frontend (eslint) | 0 errors | 0 errors | ✅ |
+
+---
+
+## Bloco M — Cancelamento de Entrega (Planejado)
+
+**Motivação:** O motorista pode cancelar a entrega se estiver no status `aceita` (antes de iniciar a rota), mas não se já estiver `em_transito`. Hoje a máquina de estados permite `em_transito → cancelada`, o que não é desejado.
+
+### Regra de cancelamento definida
+
+| Status atual | Pode cancelar? |
+|-------------|:-:|
+| `pendente` | ❌ (só o lojista gerencia) |
+| `aceita` | ✅ |
+| `em_transito` | ❌ |
+| `entregue` | ❌ |
+| `concluida` | ❌ |
+
+### O que será feito
+
+| # | Tarefa | Arquivos | Detalhe |
+|---|--------|----------|---------|
+| **M.1** | Alterar `VALID_TRANSITIONS` | `delivery.py` | `"aceita": ["em_transito", "cancelada"]`; `"em_transito": ["entregue", "concluida"]` |
+| **M.2** | Botão "Cancelar" no DeliveryCard | `DeliveryCard.tsx` | Mostrar quando status é `aceita` |
+| **M.3** | Handler no drive/page.tsx | `drive/page.tsx` | `handleCancelDelivery` → `updateDeliveryStatus(id, 'cancelada')` |
+| **M.4** | Atualizar testes | `test_delivery_entity.py`, `test_use_cases.py`, `test_integration.py` | Entity: `aceita→cancelada` válida, `em_transito→cancelada` inválida. Use case: mesmo. Integration: adicionar teste de cancelamento. |
+
+---
+
+## Diagrama final da máquina de estados (após Bloco M)
+
+```
+pendente → aceita → em_transito → entregue → concluida (terminal)
+             ↘                      ↘
+            cancelada             cancelada
+              (terminal)          (removida)
+```
+
+Após M, `cancelada` só será acessível via `aceita`.
+
+---
+
+## Block M — Cancelamento de Entrega ✅
+
+**Objetivo:** Permitir que o motorista cancele a entrega no status `aceita`, removendo a transição `em_transito→cancelada`.
+
+### O que foi feito
+
+| # | Tarefa | Arquivos | Detalhe |
+|---|--------|----------|---------|
+| **M.1** | `VALID_TRANSITIONS` alterado | `delivery.py` | `aceita: ["em_transito", "cancelada"]`; `em_transito: ["entregue", "concluida"]` (sem `cancelada`) |
+| **M.2** | Botão "Cancelar" no DeliveryCard | `DeliveryCard.tsx` | Botão vermelho `variant="destructive"` aparece para status `aceita` quando `onCancel` é fornecido |
+| **M.3** | Handler no drive/page.tsx | `drive/page.tsx` | `handleCancelDelivery` → `updateDeliveryStatus(id, 'cancelada')` com toast |
+| **M.4** | `onCancel` propagado ao ActiveDeliveryView | `ActiveDeliveryView.tsx` | Aceita e repassa `onCancel` para o DeliveryCard interno |
+| **M.5** | Testes backend | `test_delivery_entity.py`, `test_use_cases.py`, `test_integration.py` | Entity: `aceita→cancelada` succeed, `em_transito→cancelada` fail. Use case: cancel test. Integration: 2 testes (aceita cancela, em_transito falha) |
+| **M.6** | Testes frontend | `DeliveryCard.test.tsx` | 4 novos testes: mostra Cancelar, chama onCancel, não mostra em em_transito, não mostra sem onCancel |
+
+### Resultado
+
+- **Backend:** 257 passed (+5), 99% coverage, ruff 0 novos erros
+- **Frontend:** 91 passed (+4, DeliveryCard 5→9 tests), eslint 0 erros

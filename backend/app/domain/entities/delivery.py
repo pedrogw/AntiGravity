@@ -12,8 +12,8 @@ class Delivery:
     """Entrega com rastreamento de status, posição do motorista e ETA."""
     VALID_TRANSITIONS: ClassVar[dict[str, list[str]]] = {
         "pendente": ["aceita"],
-        "aceita": ["em_transito"],
-        "em_transito": ["entregue", "concluida", "cancelada"],
+        "aceita": ["em_transito", "cancelada"],
+        "em_transito": ["entregue", "concluida"],
         "entregue": ["concluida"],
         "concluida": [],
         "cancelada": [],

@@ -280,6 +280,23 @@ class TestUpdateDeliveryUseCase:
         mock_delivery_repo.update.assert_awaited_once()
         assert result.status == "aceita"
 
+    async def test_update_status_aceita_to_cancelada(self, mock_delivery_repo, mock_place_repo, mock_eta_history_repo, mock_chaos_repo):
+        delivery_id = uuid.uuid4()
+        driver_id = uuid.uuid4()
+        existing = Delivery(id=delivery_id, factory_id=uuid.uuid4(), store_id=uuid.uuid4(), driver_id=driver_id, status="aceita")
+        mock_delivery_repo.get_by_id.return_value = existing
+        mock_delivery_repo.update.return_value = Delivery(
+            id=delivery_id, factory_id=existing.factory_id, store_id=existing.store_id,
+            driver_id=driver_id, status="cancelada",
+        )
+
+        use_case = UpdateDeliveryUseCase(mock_delivery_repo, mock_place_repo, mock_eta_history_repo, mock_chaos_repo, event_bus=None)
+        result = await use_case.execute(delivery_id, current_user_id=driver_id, status="cancelada")
+
+        mock_delivery_repo.get_by_id.assert_awaited_once_with(delivery_id)
+        mock_delivery_repo.update.assert_awaited_once()
+        assert result.status == "cancelada"
+
     async def test_update_status_aceita_to_em_transito(self, mock_delivery_repo, mock_place_repo, mock_eta_history_repo, mock_chaos_repo):
         delivery_id = uuid.uuid4()
         driver_id = uuid.uuid4()
@@ -541,6 +558,34 @@ class TestInjectChaosUseCase:
         )
 
         mock_alert_repo.create.assert_not_awaited()
+
+    async def test_inject_chaos_reporte_event_always_creates_alert(
+        self, mock_delivery_repo, mock_chaos_repo, mock_alert_repo,
+        mock_eta_history_repo, mock_place_repo,
+    ):
+        delivery_id = uuid.uuid4()
+        existing = Delivery(
+            id=delivery_id, factory_id=uuid.uuid4(), store_id=uuid.uuid4(),
+            driver_id=uuid.uuid4(),
+        )
+        mock_delivery_repo.get_by_id.return_value = existing
+        from app.domain.entities.chaos import ChaosEventLog
+        mock_chaos_repo.create.return_value = ChaosEventLog(
+            delivery_id=delivery_id, event_type="reporte_transito",
+        )
+        from app.use_cases.chaos_use_cases import InjectChaosUseCase
+
+        use_case = InjectChaosUseCase(
+            mock_delivery_repo, mock_chaos_repo, mock_alert_repo,
+            mock_eta_history_repo, mock_place_repo,
+            event_bus=None,
+        )
+        await use_case.execute(
+            delivery_id=delivery_id, event_type="reporte_transito",
+            impact_factor=1.5, delay_minutes=15,
+        )
+
+        mock_alert_repo.create.assert_awaited_once()
 
     async def test_inject_chaos_idempotency_key_returns_cached(
         self, mock_delivery_repo, mock_chaos_repo, mock_alert_repo,

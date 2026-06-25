@@ -24,7 +24,6 @@ describe('DeliveryCard', () => {
         onAccept={vi.fn()}
         onStartRoute={vi.fn()}
         onComplete={vi.fn()}
-        onReportProblem={vi.fn()}
       />,
     );
     expect(screen.getByText('Aceitar Oferta')).toBeInTheDocument();
@@ -37,7 +36,6 @@ describe('DeliveryCard', () => {
         onAccept={vi.fn()}
         onStartRoute={vi.fn()}
         onComplete={vi.fn()}
-        onReportProblem={vi.fn()}
       />,
     );
     expect(screen.getByText('Iniciar Rota')).toBeInTheDocument();
@@ -50,7 +48,6 @@ describe('DeliveryCard', () => {
         onAccept={vi.fn()}
         onStartRoute={vi.fn()}
         onComplete={vi.fn()}
-        onReportProblem={vi.fn()}
       />,
     );
     expect(screen.getByText('Concluir Entrega')).toBeInTheDocument();
@@ -65,7 +62,6 @@ describe('DeliveryCard', () => {
         onAccept={onAccept}
         onStartRoute={vi.fn()}
         onComplete={vi.fn()}
-        onReportProblem={vi.fn()}
       />,
     );
     fireEvent.click(screen.getByText('Aceitar Oferta'));
@@ -82,11 +78,62 @@ describe('DeliveryCard', () => {
         onAccept={vi.fn()}
         onStartRoute={vi.fn()}
         onComplete={onComplete}
-        onReportProblem={vi.fn()}
       />,
     );
     fireEvent.click(screen.getByText('Concluir Entrega'));
     expect(onComplete).toHaveBeenCalledTimes(1);
     expect(onComplete).toHaveBeenCalledWith(delivery.id);
+  });
+
+  it('mostra "Cancelar" quando status é aceita e onCancel existe', () => {
+    render(
+      <DeliveryCard
+        delivery={makeDelivery({ status: 'aceita' })}
+        onAccept={vi.fn()}
+        onStartRoute={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Cancelar')).toBeInTheDocument();
+  });
+
+  it('chama onCancel ao clicar em "Cancelar"', () => {
+    const onCancel = vi.fn();
+    const delivery = makeDelivery({ status: 'aceita' });
+    render(
+      <DeliveryCard
+        delivery={delivery}
+        onAccept={vi.fn()}
+        onStartRoute={vi.fn()}
+        onCancel={onCancel}
+      />,
+    );
+    fireEvent.click(screen.getByText('Cancelar'));
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(onCancel).toHaveBeenCalledWith(delivery.id);
+  });
+
+  it('não mostra "Cancelar" quando status é em_transito', () => {
+    render(
+      <DeliveryCard
+        delivery={makeDelivery({ status: 'em_transito' })}
+        onAccept={vi.fn()}
+        onStartRoute={vi.fn()}
+        onComplete={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.queryByText('Cancelar')).not.toBeInTheDocument();
+  });
+
+  it('não mostra "Cancelar" quando onCancel não é fornecido', () => {
+    render(
+      <DeliveryCard
+        delivery={makeDelivery({ status: 'aceita' })}
+        onAccept={vi.fn()}
+        onStartRoute={vi.fn()}
+      />,
+    );
+    expect(screen.queryByText('Cancelar')).not.toBeInTheDocument();
   });
 });

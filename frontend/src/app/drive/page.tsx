@@ -53,6 +53,15 @@ export default function DrivePage() {
     }
   }
 
+  const handleCancelDelivery = async (id: string) => {
+    try {
+      await updateDeliveryStatus(id, 'cancelada')
+      showToast(`Entrega cancelada: ${id.slice(0, 8)}`)
+    } catch {
+      showToast('Erro ao cancelar entrega')
+    }
+  }
+
   const handleCompleteDelivery = async (id: string) => {
     try {
       await updateDeliveryStatus(id, 'concluida')
@@ -107,7 +116,6 @@ export default function DrivePage() {
               onAccept={handleAcceptDelivery}
               onStartRoute={handleStartRoute}
               onComplete={handleCompleteDelivery}
-              onReportProblem={() => showToast('Problema reportado à central')}
             />
           ) : pendingDeliveries.length > 0 ? (
             <div className="space-y-3">
@@ -119,7 +127,7 @@ export default function DrivePage() {
                   onAccept={handleAcceptDelivery}
                   onStartRoute={handleStartRoute}
                   onComplete={handleCompleteDelivery}
-                  onReportProblem={() => showToast('Problema reportado à central')}
+                  onCancel={handleCancelDelivery}
                 />
               ))}
             </div>

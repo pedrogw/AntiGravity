@@ -1,9 +1,5 @@
 # Processos em Andamento
 
-## Planejado
-
-*Nenhum bloco pendente — todos os blocos planejados foram concluídos.*
-
 ### Detalhamento dos Blocos
 
 | Bloco | Arquivos | TDD |
@@ -19,6 +15,9 @@
 | **G.1** ✅ | `delivery.py`, `test_delivery_entity.py`, `test_use_cases.py` | `test_change_status_em_transito_to_concluida_succeeds`, `test_update_status_em_transito_to_concluida` |
 | **I** ✅ | `test_integration.py` | `test_full_delivery_cycle` percorrendo `pendente→aceita→em_transito→entregue→concluida` |
 | **J** ✅ | `ActiveDeliveryView.tsx`, `ActiveDeliveryView.test.tsx`, `drive/page.tsx` | `test_mostra_concluir_entrega_quando_em_transito`, `test_chama_onComplete_ao_clicar`, `test_nao_mostra_quando_status_errado`, `test_nao_mostra_quando_sem_onComplete`, `test_renderiza_safe_check` |
+| **K** ✅ | `ReportProblemDialog.tsx`, `ReportProblemDialog.test.tsx`, `DeliveryCard.tsx`, `ChaosReportButton.tsx` (removido), `ActiveDeliveryView.tsx`, `chaos_use_cases.py`, `drive/page.tsx` | Pre-tests ✅; Post: 252 backend, 84 frontend, lint 0 |
+| **L** ✅ | `DeliveryMap.tsx`, `DeliveryMap.test.tsx`, `delivery-map/` (pasta nova), `package.json` (+ leaflet, react-leaflet, @types/leaflet), `ActiveDeliveryView.tsx`, `MapPlaceholder.tsx` (removido) | Pre-tests ✅; Post: 252 backend, 87 frontend (23 files), lint 0 |
+| **M** ✅ | `delivery.py`, `DeliveryCard.tsx`, `drive/page.tsx`, `ActiveDeliveryView.tsx`, `test_delivery_entity.py`, `test_use_cases.py`, `test_integration.py`, `DeliveryCard.test.tsx` | Pre-tests ✅; Post: 257 backend, 91 frontend, lint 0 |
 
 ---
 
@@ -26,6 +25,9 @@
 
 | Processo | Status |
 |---|---|
+| **Block M — Cancelamento de Entrega** (backend + frontend) | ✅ **Concluído** |
+| **Block L — Mapa Interativo Leaflet** (frontend) | ✅ **Concluído** |
+| **Block K — Report Problem Dialog** (frontend + backend) | ✅ **Concluído** |
 | **Block J — Refactor ActiveDeliveryView** (frontend) | ✅ **Concluído** |
 | **Block I — Teste Ciclo Completo** (backend) | ✅ **Concluído** |
 | **Block H — Testes DeliveryCard** (frontend) | ✅ **Concluído** |

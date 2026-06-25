@@ -108,7 +108,7 @@ class InjectChaosUseCase:
             factor_threshold=settings.CHAOS_CRITICAL_FACTOR_THRESHOLD,
             delay_threshold=settings.CHAOS_CRITICAL_DELAY_THRESHOLD,
         )
-        if alert.is_critical:
+        if alert.is_critical or event_type.startswith('reporte_'):
             if self.event_bus and self.event_bus.worker_pool:
                 await self.event_bus.publish(AlertCreationRequested(
                     delivery_id=alert.delivery_id,

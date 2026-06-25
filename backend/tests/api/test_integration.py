@@ -285,6 +285,74 @@ class TestDeliveries:
         )
         assert update_resp.status_code == 404
 
+    async def test_cancel_delivery_aceita_succeeds(self, client: AsyncClient, lojista: dict, motorista: dict):
+        factory_resp = await client.post(
+            "/places/factories",
+            json={"name": "F-cancel", "lat": -23.0, "lng": -46.0},
+            headers=lojista["headers"],
+        )
+        store_resp = await client.post(
+            "/places/stores",
+            json={"name": "S-cancel", "lat": -23.55, "lng": -46.63, "owner_id": lojista["id"]},
+            headers=lojista["headers"],
+        )
+        create_resp = await client.post(
+            "/deliveries/",
+            json={"factory_id": factory_resp.json()["id"], "store_id": store_resp.json()["id"], "driver_id": motorista["id"]},
+            headers=lojista["headers"],
+        )
+        delivery_id = create_resp.json()["id"]
+
+        await client.patch(
+            f"/deliveries/{delivery_id}",
+            json={"status": "aceita"},
+            headers=motorista["headers"],
+        )
+
+        cancel_resp = await client.patch(
+            f"/deliveries/{delivery_id}",
+            json={"status": "cancelada"},
+            headers=motorista["headers"],
+        )
+        assert cancel_resp.status_code == 200
+        assert cancel_resp.json()["status"] == "cancelada"
+
+    async def test_cancel_delivery_em_transito_fails(self, client: AsyncClient, lojista: dict, motorista: dict):
+        factory_resp = await client.post(
+            "/places/factories",
+            json={"name": "F-cancel2", "lat": -23.0, "lng": -46.0},
+            headers=lojista["headers"],
+        )
+        store_resp = await client.post(
+            "/places/stores",
+            json={"name": "S-cancel2", "lat": -23.55, "lng": -46.63, "owner_id": lojista["id"]},
+            headers=lojista["headers"],
+        )
+        create_resp = await client.post(
+            "/deliveries/",
+            json={"factory_id": factory_resp.json()["id"], "store_id": store_resp.json()["id"], "driver_id": motorista["id"]},
+            headers=lojista["headers"],
+        )
+        delivery_id = create_resp.json()["id"]
+
+        await client.patch(
+            f"/deliveries/{delivery_id}",
+            json={"status": "aceita"},
+            headers=motorista["headers"],
+        )
+        await client.patch(
+            f"/deliveries/{delivery_id}",
+            json={"status": "em_transito", "lat": -23.5, "lng": -46.6},
+            headers=motorista["headers"],
+        )
+
+        cancel_resp = await client.patch(
+            f"/deliveries/{delivery_id}",
+            json={"status": "cancelada"},
+            headers=motorista["headers"],
+        )
+        assert cancel_resp.status_code == 422
+
     async def test_lojista_cannot_update_delivery(self, client: AsyncClient, lojista: dict, motorista: dict):
         factory_resp = await client.post(
             "/places/factories",

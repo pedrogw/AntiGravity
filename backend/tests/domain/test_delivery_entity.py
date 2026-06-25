@@ -189,6 +189,26 @@ def test_change_status_concluida_to_anything_fails():
             pass
 
 
+def test_change_status_aceita_to_cancelada_succeeds():
+    d = _delivery()
+    d.change_status("aceita")
+    d.change_status("cancelada")
+    assert d.status == "cancelada"
+    assert d.departed_at is None
+
+
+def test_change_status_em_transito_to_cancelada_fails():
+    d = _delivery()
+    d.change_status("aceita")
+    d.change_status("em_transito")
+    from app.core.exceptions import InvalidTransitionException
+    try:
+        d.change_status("cancelada")
+        assert False, "Deveria ter lançado InvalidTransitionException"
+    except InvalidTransitionException:
+        pass
+
+
 def test_change_status_em_transito_to_concluida_succeeds():
     d = _delivery()
     d.change_status("aceita")
