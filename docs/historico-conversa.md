@@ -2714,3 +2714,33 @@ Após M, `cancelada` só será acessível via `aceita`.
 - **Backend:** 260/260 ✅ (+3)
 - **Frontend:** 132/132 ✅ (+12)
 - **Lint:** 0 erros ✅
+
+---
+
+## P.1 — Hotfix: Store não encontrada no Neon (produção)
+
+**Problema:** Durante verificação do Block P em produção, marcador da loja não aparecia no mapa. Erro no console:
+
+```
+GET https://logistics-engine-latest.onrender.com/places/stores/d87eb0fc-9d2f-47f5-82d3-755977ced762 → 404 (Not Found)
+```
+
+**Causa raiz:** A loja referenciada pela entrega não existe no banco Neon (o `seed.py` nunca foi executado em produção). Código frontend/backend está 100% correto — `storeLocation` fica `undefined` porque a API retorna 404 e o `.catch()` silencia.
+
+**Impacto por camada:** Zero — domínio, use cases, API, schemas, infraestrutura e frontend não precisam de alteração.
+
+### Plano de Correção
+
+| Passo | Comando | Descrição |
+|-------|---------|-----------|
+| 1 | `curl -s -X POST https://logistics-engine-latest.onrender.com/auth/login -H "Content-Type: application/json" -d '{"email":"lojista@antigravity.com","password":"admin123"}'` | Login como lojista, extrair `access_token` e `user.id` (owner_id) |
+| 2 | `curl -X POST https://logistics-engine-latest.onrender.com/places/stores -H "Content-Type: application/json" -H "Authorization: Bearer <TOKEN>" -d '{"name":"Loja Parceira RJ","lat":-22.9068,"lng":-43.1729,"owner_id":"<OWNER_ID>"}'` | Criar a loja no Neon |
+
+Após criar a loja, recarregar a página de drive com entrega `em_transito` faz o marcador âmbar "M" aparecer.
+
+### Execução (2026-06-25)
+- Login como `lojista@antigravity.com`: ✅ 200, user ID `b5175b73-...`
+- Store criada: `Loja Parceira RJ` (lat -22.9068, lng -43.1729) → 201, ID `d8c8bc3c-...`
+- Factory criada: `Fábrica Central SP` (lat -23.5505, lng -46.6333) → 201, ID `02eab21d-...`
+- Verificação: usuário e loja existem no Neon — marcador deve aparecer ao criar nova entrega com esta store
+- Testes pós-P.1: 260 backend ✅ + 132 frontend ✅ + lint 0 ✅

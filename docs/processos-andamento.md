@@ -29,6 +29,7 @@
 
 | Processo | Status | Depende de |
 |---|---|---|
+| **Block P.1 — Hotfix: Store ausente no Neon** | ✅ **Concluído** | Nenhum |
 | **Block N — Alertas Visíveis** | ✅ **Concluído** | Nenhum |
 | **Block O — Mapa Arrastável + Simulação** | ✅ **Concluído** | Nenhum |
 
