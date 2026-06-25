@@ -263,18 +263,34 @@ class TestPlacesUseCases:
 
 
 class TestUpdateDeliveryUseCase:
-    async def test_update_status_only(self, mock_delivery_repo, mock_place_repo, mock_eta_history_repo, mock_chaos_repo):
+    async def test_update_status_pendente_to_aceita(self, mock_delivery_repo, mock_place_repo, mock_eta_history_repo, mock_chaos_repo):
         delivery_id = uuid.uuid4()
-        existing = Delivery(id=delivery_id, factory_id=uuid.uuid4(), store_id=uuid.uuid4(), driver_id=uuid.uuid4())
+        driver_id = uuid.uuid4()
+        existing = Delivery(id=delivery_id, factory_id=uuid.uuid4(), store_id=uuid.uuid4(), driver_id=driver_id)
         mock_delivery_repo.get_by_id.return_value = existing
         mock_delivery_repo.update.return_value = Delivery(
             id=delivery_id, factory_id=existing.factory_id, store_id=existing.store_id,
-            driver_id=existing.driver_id, status="em_transito",
+            driver_id=driver_id, status="aceita",
+        )
+
+        use_case = UpdateDeliveryUseCase(mock_delivery_repo, mock_place_repo, mock_eta_history_repo, mock_chaos_repo, event_bus=None)
+        result = await use_case.execute(delivery_id, current_user_id=driver_id, status="aceita")
+
+        mock_delivery_repo.get_by_id.assert_awaited_once_with(delivery_id)
+        mock_delivery_repo.update.assert_awaited_once()
+        assert result.status == "aceita"
+
+    async def test_update_status_aceita_to_em_transito(self, mock_delivery_repo, mock_place_repo, mock_eta_history_repo, mock_chaos_repo):
+        delivery_id = uuid.uuid4()
+        driver_id = uuid.uuid4()
+        existing = Delivery(id=delivery_id, factory_id=uuid.uuid4(), store_id=uuid.uuid4(), driver_id=driver_id, status="aceita")
+        mock_delivery_repo.get_by_id.return_value = existing
+        mock_delivery_repo.update.return_value = Delivery(
+            id=delivery_id, factory_id=existing.factory_id, store_id=existing.store_id,
+            driver_id=driver_id, status="em_transito",
             departed_at=datetime.now(timezone.utc),
         )
 
-        driver_id = uuid.uuid4()
-        existing.driver_id = driver_id
         use_case = UpdateDeliveryUseCase(mock_delivery_repo, mock_place_repo, mock_eta_history_repo, mock_chaos_repo, event_bus=None)
         result = await use_case.execute(delivery_id, current_user_id=driver_id, status="em_transito")
 
@@ -303,6 +319,21 @@ class TestUpdateDeliveryUseCase:
         use_case = UpdateDeliveryUseCase(mock_delivery_repo, mock_place_repo, mock_eta_history_repo, mock_chaos_repo, event_bus=None)
         with pytest.raises(Exception) as exc:
             await use_case.execute(delivery_id, current_user_id=driver_id, status="pendente")
+
+        assert exc.value.status_code == 422
+
+    async def test_update_pendente_to_em_transito_fails_422(self, mock_delivery_repo, mock_place_repo, mock_eta_history_repo, mock_chaos_repo):
+        delivery_id = uuid.uuid4()
+        driver_id = uuid.uuid4()
+        existing = Delivery(
+            id=delivery_id, factory_id=uuid.uuid4(), store_id=uuid.uuid4(),
+            driver_id=driver_id,
+        )
+        mock_delivery_repo.get_by_id.return_value = existing
+
+        use_case = UpdateDeliveryUseCase(mock_delivery_repo, mock_place_repo, mock_eta_history_repo, mock_chaos_repo, event_bus=None)
+        with pytest.raises(Exception) as exc:
+            await use_case.execute(delivery_id, current_user_id=driver_id, status="em_transito")
 
         assert exc.value.status_code == 422
 
@@ -609,7 +640,7 @@ class TestUpdateDeliveryStatusEvent:
             mock_delivery_repo, mock_place_repo, mock_eta_history_repo,
             mock_chaos_repo, event_bus=mock_event_bus,
         )
-        await use_case.execute(delivery_id, current_user_id=driver_id, status="em_transito")
+        await use_case.execute(delivery_id, current_user_id=driver_id, status="aceita")
 
         mock_event_bus.publish.assert_awaited_once()
         args = mock_event_bus.publish.call_args
@@ -618,7 +649,7 @@ class TestUpdateDeliveryStatusEvent:
         assert isinstance(published, DeliveryStatusChangedEvent)
         assert published.delivery_id == delivery_id
         assert published.old_status == "pendente"
-        assert published.new_status == "em_transito"
+        assert published.new_status == "aceita"
 
     async def test_skips_event_when_no_event_bus(
         self, mock_delivery_repo, mock_place_repo, mock_eta_history_repo, mock_chaos_repo,
@@ -633,9 +664,9 @@ class TestUpdateDeliveryStatusEvent:
             mock_delivery_repo, mock_place_repo, mock_eta_history_repo,
             mock_chaos_repo, event_bus=None,
         )
-        result = await use_case.execute(delivery_id, current_user_id=driver_id, status="em_transito")
+        result = await use_case.execute(delivery_id, current_user_id=driver_id, status="aceita")
 
-        assert result.status == "em_transito"
+        assert result.status == "aceita"
 
 
 class TestEtaRecalculationAsyncPath:

@@ -7,6 +7,7 @@ import { Delivery } from '@/domain/entities/Delivery'
 
 const statusLabel: Record<string, string> = {
   pendente: 'Pendente',
+  aceita: 'Aceita',
   em_transito: 'Em Trânsito',
   em_rota: 'Em Rota',
   entregue: 'Entregue',
@@ -17,12 +18,13 @@ const statusLabel: Record<string, string> = {
 
 interface Props {
   delivery: Delivery
+  onAccept: (id: string) => void
   onStartRoute: (id: string) => void
   onComplete?: (id: string) => void
   onReportProblem: (id: string) => void
 }
 
-export function DeliveryCard({ delivery, onStartRoute, onComplete, onReportProblem }: Props) {
+export function DeliveryCard({ delivery, onAccept, onStartRoute, onComplete, onReportProblem }: Props) {
   const deliveryId = delivery.id
 
   return (
@@ -61,6 +63,11 @@ export function DeliveryCard({ delivery, onStartRoute, onComplete, onReportProbl
       </CardContent>
       <CardFooter className="gap-2 flex-wrap">
         {delivery.status === 'pendente' && deliveryId && (
+          <Button size="sm" onClick={() => onAccept(deliveryId)}>
+            Aceitar Oferta
+          </Button>
+        )}
+        {delivery.status === 'aceita' && deliveryId && (
           <Button size="sm" onClick={() => onStartRoute(deliveryId)}>
             Iniciar Rota
           </Button>

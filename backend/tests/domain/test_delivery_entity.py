@@ -107,3 +107,57 @@ def test_recalculate_eta_returns_none_when_no_before():
     result = d.recalculate_eta(_SP, _RJ, 100.0)
     assert result is None
     assert d.eta_current is not None
+
+
+def test_change_status_pendente_to_aceita_succeeds():
+    d = _delivery()
+    d.change_status("aceita")
+    assert d.status == "aceita"
+    assert d.departed_at is None
+
+
+def test_change_status_pendente_to_em_transito_fails():
+    d = _delivery()
+    from app.core.exceptions import InvalidTransitionException
+    try:
+        d.change_status("em_transito")
+        assert False, "Deveria ter lançado InvalidTransitionException"
+    except InvalidTransitionException:
+        pass
+
+
+def test_change_status_aceita_to_em_transito_succeeds():
+    d = _delivery()
+    d.change_status("aceita")
+    d.change_status("em_transito")
+    assert d.status == "em_transito"
+    assert d.departed_at is not None
+
+
+def test_change_status_aceita_to_em_transito_sets_departed_at_once():
+    d = _delivery()
+    d.change_status("aceita")
+    d.change_status("em_transito")
+    assert d.departed_at is not None
+
+def test_change_status_em_transito_to_em_transito_fails():
+    d = _delivery()
+    d.change_status("aceita")
+    d.change_status("em_transito")
+    from app.core.exceptions import InvalidTransitionException
+    try:
+        d.change_status("em_transito")
+        assert False, "Deveria ter lançado InvalidTransitionException"
+    except InvalidTransitionException:
+        pass
+
+
+def test_change_status_aceita_to_pendente_fails():
+    d = _delivery()
+    d.change_status("aceita")
+    from app.core.exceptions import InvalidTransitionException
+    try:
+        d.change_status("pendente")
+        assert False, "Deveria ter lançado InvalidTransitionException"
+    except InvalidTransitionException:
+        pass

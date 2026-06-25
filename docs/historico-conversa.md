@@ -2073,3 +2073,145 @@ Cada bloco segue rigidamente o fluxo de `docs/obrigacoes.md`:
 - `npm run lint` → **0 erros, 0 warnings**
 - Backend inalterado
 - Nenhum teste existente precisou ser alterado — todos os 7 testes do `CriarEntregaDialog.test.tsx` continuam passando com o `<Dialog>` + `<DialogContent>` nativos
+
+---
+
+## Block E — Backend + Frontend: Status `aceita` (Pendente de commit)
+
+**Motivação:** Implementar fluxo híbrido — lojista atribui entrega a um motorista, mas o motorista precisa aceitar antes de executar.
+
+### O que foi feito (TDD — RED → GREEN)
+
+| Camada | Arquivo | Mudança |
+|--------|---------|---------|
+| **Backend Domínio** | `delivery.py` | `VALID_TRANSITIONS`: `pendente→aceita`, `aceita→em_transito` (antes `pendente→em_transito` direto) |
+| **Backend Testes** | `test_delivery_entity.py` | + `test_change_status_pendente_to_aceita_succeeds`, `test_change_status_pendente_to_em_transito_fails`, `test_change_status_aceita_to_em_transito_succeeds`, `test_change_status_aceita_to_em_transito_sets_departed_at_once`, `test_change_status_em_transito_to_em_transito_fails`, `test_change_status_aceita_to_pendente_fails` |
+| **Backend Testes** | `test_use_cases.py` | + `test_update_status_pendente_to_aceita`, `test_update_status_aceita_to_em_transito` |
+| **Backend Testes** | `test_integration.py` | Ajustado para nova transição `pendente→aceita` |
+| **Frontend Domínio** | `DeliveryStatus.ts` | + `'aceita'` |
+| **Frontend Componente** | `DeliveryCard.tsx` | + botão "Aceitar Oferta" (`onAccept`), + botão "Iniciar Rota" (`onStartRoute`) |
+| **Frontend Página** | `drive/page.tsx` | + `handleAcceptDelivery`, + `handleStartRoute`, lógica `pendingDeliveries` filtrando `pendente` + `aceita` |
+
+### Máquina de estados atual
+
+```
+pendente → aceita → em_transito → entregue → concluida
+                                      ↘ cancelada
+```
+
+### Verificação
+- `pytest backend/tests/` → ✅ (entity + use case + integration)
+- `npm test` → ✅
+- `npm run lint` → 0 erros
+- Estes commits **ainda não foram criados** — aguardando revisão cruzada
+
+---
+
+## Block F — Frontend: Concluir Entrega (Pendente de commit)
+
+**Motivação:** `DeliveryCard` tem `onComplete` mas `DrivePage` nunca passava o callback — motorista não conseguia finalizar entrega.
+
+### O que foi feito
+
+| Camada | Arquivo | Mudança |
+|--------|---------|---------|
+| **Página** | `drive/page.tsx` | + `handleCompleteDelivery(id)`, passagem de `onComplete` para `DeliveryCard` |
+| **Componente** | `DeliveryCard.tsx` | Botão "Concluir Entrega" já existia — só precisava do callback wired |
+
+### Verificação
+- `npm test` → ✅
+- `npm run lint` → 0 erros
+- Aguardando commit
+
+---
+
+### Resumo de Arquivos (atualizado)
+
+| Bloco | Novos | Alterados |
+|-------|-------|-----------|
+| **A** | `users.py` (API) | `user_repo.py` (protocolo + infra), `main.py` |
+| **B** | — | `ApiPlaceRepository.ts` |
+| **C** | `UserRepositoryProtocol.ts`, `ApiUserRepository.ts`, `ListDriversUseCase.ts`, `useUsers.ts` | `PlaceRepositoryProtocol.ts`, `ApiPlaceRepository.ts`, `factories.ts`, `usePlaces.ts` |
+| **D** | `CriarEntregaDialog.tsx` | `dashboard/page.tsx` |
+| **E** | — | `delivery.py` (backend), `DeliveryStatus.ts`, `DeliveryCard.tsx`, `drive/page.tsx` |
+| **F** | — | `drive/page.tsx` |
+
+---
+
+## Verificação Cruzada dos Blocos E + F → Mini-blocos G, H, I, J
+
+**Objetivo:** Garantir que o fluxo completo (`pendente→aceita→em_transito→entregue→concluida`) está funcional e com cobertura adequada.
+
+Durante a verificação, foram identificados 4 gaps que geraram mini-blocos adicionais:
+
+| # | Gap | Severidade | Bloco |
+|---|-----|-----------|-------|
+| 1 | Transição `entregue→concluida` não existe no backend | 🟡 Média | **G** |
+| 2 | `DeliveryCard.tsx` não tem testes unitários | 🟡 Média | **H** |
+| 3 | `test_integration.py` não testa ciclo completo (`pendente→concluida`) | 🟢 Baixa | **I** |
+| 4 | `ActiveDeliveryView.tsx` exibe `DeliveryCard` redundante — card dentro do view que já está dentro do card | 🟢 Baixa | **J** |
+
+### Mini-Block G — Transição `entregue → concluida` (backend + frontend)
+
+**Análise de Impacto:**
+
+| Camada | Arquivo | Mudança |
+|--------|---------|---------|
+| **Backend Domínio** | `delivery.py` | `VALID_TRANSITIONS["entregue"] = ["concluida"]` |
+| **Backend Testes** | `test_delivery_entity.py` | + `test_change_status_entregue_to_concluida_succeeds`, `test_change_status_concluida_to_anything_fails` |
+| **Backend Testes** | `test_use_cases.py` | + `test_update_status_entregue_to_concluida` |
+| **Frontend** | `DrivePage` | `handleCompleteDelivery` → status `'concluida'` em vez de `'entregue'` |
+
+### Mini-Block H — Testes DeliveryCard (frontend)
+
+**Análise de Impacto:**
+
+| Camada | Arquivo | Mudança |
+|--------|---------|---------|
+| **Testes (novo)** | `DeliveryCard.test.tsx` | 5 testes: render botão por status + callbacks |
+| **Componente** | `DeliveryCard.tsx` | Nenhuma (só testar o existente) |
+
+**Testes:**
+1. `test_mostra_aceitar_oferta_quando_pendente`
+2. `test_mostra_iniciar_rota_quando_aceita`
+3. `test_mostra_concluir_entrega_quando_em_transito`
+4. `test_chama_onAccept_ao_clicar`
+5. `test_chama_onComplete_ao_clicar`
+
+### Mini-Block I — Teste Ciclo Completo (backend)
+
+**Análise de Impacto:**
+
+| Camada | Arquivo | Mudança |
+|--------|---------|---------|
+| **Testes** | `test_integration.py` | + `test_full_delivery_cycle` percorrendo `pendente→aceita→em_transito→entregue→concluida` |
+
+### Mini-Block J — Refactor ActiveDeliveryView (frontend)
+
+**Análise de Impacto:**
+
+| Camada | Arquivo | Mudança |
+|--------|---------|---------|
+| **Componente** | `ActiveDeliveryView.tsx` | Extrair ações (botões de ação) do `DeliveryCard` para dentro do `ActiveDeliveryView` |
+| **Testes (novo)** | `ActiveDeliveryView.test.tsx` | Testes de render por status |
+| **Página** | `drive/page.tsx` | Remover `DeliveryCard` redundante da render de `activeDelivery` |
+
+**Ações que precisam migrar para dentro do `ActiveDeliveryView`:**
+- Botão "Concluir Entrega" (status `entregue`/`concluida`)
+- Botão "Reportar Problema"
+- (Os demais botões — "Aceitar Oferta", "Iniciar Rota" — só aparecem em `pendingDeliveries`, não no active)
+
+### Prioridade de Execução
+
+```
+G (backend entregue→concluida) → H (testes DeliveryCard) → I (ciclo completo) → J (refactor)
+```
+
+Dependências:
+- `J` depende de `G` (precisa da transição funcionando)
+
+---
+
+## Block G — Transição `entregue → concluida` (Em execução)
+
+**Status:** 🔨 Em implementação

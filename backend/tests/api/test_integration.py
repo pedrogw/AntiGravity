@@ -215,7 +215,7 @@ class TestDeliveries:
         )
         store_resp = await client.post(
             "/places/stores",
-            json={"name": "S", "lat": -23.55, "lng": -46.63, "owner_id": lojista["id"]},
+            json={"name": "Loja", "lat": -23.5, "lng": -46.6, "owner_id": lojista["id"]},
             headers=lojista["headers"],
         )
         create_resp = await client.post(
@@ -224,6 +224,14 @@ class TestDeliveries:
             headers=lojista["headers"],
         )
         delivery_id = create_resp.json()["id"]
+
+        accept_resp = await client.patch(
+            f"/deliveries/{delivery_id}",
+            json={"status": "aceita"},
+            headers=motorista["headers"],
+        )
+        assert accept_resp.status_code == 200
+        assert accept_resp.json()["status"] == "aceita"
 
         update_resp = await client.patch(
             f"/deliveries/{delivery_id}",
@@ -253,6 +261,13 @@ class TestDeliveries:
         )
         delivery_id = create_resp.json()["id"]
 
+        accept_resp = await client.patch(
+            f"/deliveries/{delivery_id}",
+            json={"status": "aceita"},
+            headers=motorista["headers"],
+        )
+        assert accept_resp.status_code == 200
+
         update_resp = await client.patch(
             f"/deliveries/{delivery_id}",
             json={"status": "em_transito", "lat": -23.55, "lng": -46.63},
@@ -265,7 +280,7 @@ class TestDeliveries:
     async def test_update_nonexistent_delivery_returns_404(self, client: AsyncClient, lojista: dict):
         update_resp = await client.patch(
             f"/deliveries/{uuid.uuid4()}",
-            json={"status": "em_transito"},
+            json={"status": "aceita"},
             headers=lojista["headers"],
         )
         assert update_resp.status_code == 404
@@ -290,7 +305,7 @@ class TestDeliveries:
 
         update_resp = await client.patch(
             f"/deliveries/{delivery_id}",
-            json={"status": "em_transito"},
+            json={"status": "aceita"},
             headers=lojista["headers"],
         )
         assert update_resp.status_code == 403
@@ -326,7 +341,7 @@ class TestDeliveries:
 
         update_resp = await client.patch(
             f"/deliveries/{delivery_id}",
-            json={"status": "em_transito"},
+            json={"status": "aceita"},
             headers=outro_headers,
         )
         assert update_resp.status_code == 403
@@ -421,8 +436,13 @@ class TestChaosInjection:
 
         await client.patch(
             f"/deliveries/{delivery_id}",
+            json={"status": "aceita"},
+            headers=motorista["headers"],
+        )
+        await client.patch(
+            f"/deliveries/{delivery_id}",
             json={"status": "em_transito", "lat": -23.55, "lng": -46.63},
-            headers=lojista["headers"],
+            headers=motorista["headers"],
         )
 
         chaos_resp = await client.post(

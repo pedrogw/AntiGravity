@@ -35,6 +35,15 @@ export default function DrivePage() {
     setTimeout(() => setToast(''), 3000)
   }
 
+  const handleAcceptDelivery = async (id: string) => {
+    try {
+      await updateDeliveryStatus(id, 'aceita')
+      showToast(`Oferta aceita: ${id.slice(0, 8)}`)
+    } catch {
+      showToast('Erro ao aceitar oferta')
+    }
+  }
+
   const handleStartRoute = async (id: string) => {
     try {
       await updateDeliveryStatus(id, 'em_transito')
@@ -44,8 +53,17 @@ export default function DrivePage() {
     }
   }
 
+  const handleCompleteDelivery = async (id: string) => {
+    try {
+      await updateDeliveryStatus(id, 'entregue')
+      showToast(`Entrega concluída: ${id.slice(0, 8)}`)
+    } catch {
+      showToast('Erro ao concluir entrega')
+    }
+  }
+
   const activeDelivery = deliveries.find((d) => d.status === 'em_transito' || d.status === 'em_rota')
-  const pendingDeliveries = deliveries.filter((d) => d.status === 'pendente')
+  const pendingDeliveries = deliveries.filter((d) => d.status === 'pendente' || d.status === 'aceita')
 
   return (
     <AuthGuard>
@@ -84,7 +102,16 @@ export default function DrivePage() {
               Carregando...
             </div>
           ) : activeDelivery ? (
-            <ActiveDeliveryView delivery={activeDelivery} />
+            <div className="space-y-4">
+              <ActiveDeliveryView delivery={activeDelivery} />
+              <DeliveryCard
+                delivery={activeDelivery}
+                onAccept={handleAcceptDelivery}
+                onStartRoute={handleStartRoute}
+                onComplete={handleCompleteDelivery}
+                onReportProblem={() => showToast('Problema reportado à central')}
+              />
+            </div>
           ) : pendingDeliveries.length > 0 ? (
             <div className="space-y-3">
               <h2 className="text-base font-semibold text-slate-700">Entregas Pendentes</h2>
@@ -92,7 +119,9 @@ export default function DrivePage() {
                 <DeliveryCard
                   key={d.id}
                   delivery={d}
+                  onAccept={handleAcceptDelivery}
                   onStartRoute={handleStartRoute}
+                  onComplete={handleCompleteDelivery}
                   onReportProblem={() => showToast('Problema reportado à central')}
                 />
               ))}

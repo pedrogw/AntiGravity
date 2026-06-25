@@ -11,7 +11,8 @@ from app.domain.value_objects.coordinates import Coordinates
 class Delivery:
     """Entrega com rastreamento de status, posição do motorista e ETA."""
     VALID_TRANSITIONS: ClassVar[dict[str, list[str]]] = {
-        "pendente": ["em_transito"],
+        "pendente": ["aceita"],
+        "aceita": ["em_transito"],
         "em_transito": ["entregue", "cancelada"],
         "entregue": [],
         "cancelada": [],
