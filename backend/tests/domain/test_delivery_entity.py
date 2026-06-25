@@ -161,3 +161,37 @@ def test_change_status_aceita_to_pendente_fails():
         assert False, "Deveria ter lançado InvalidTransitionException"
     except InvalidTransitionException:
         pass
+
+
+def _delivery_entregue() -> Delivery:
+    d = _delivery()
+    d.change_status("aceita")
+    d.change_status("em_transito")
+    d.change_status("entregue")
+    return d
+
+
+def test_change_status_entregue_to_concluida_succeeds():
+    d = _delivery_entregue()
+    d.change_status("concluida")
+    assert d.status == "concluida"
+
+
+def test_change_status_concluida_to_anything_fails():
+    d = _delivery_entregue()
+    d.change_status("concluida")
+    from app.core.exceptions import InvalidTransitionException
+    for invalid_status in ["pendente", "aceita", "em_transito", "entregue", "cancelada"]:
+        try:
+            d.change_status(invalid_status)
+            assert False, f"Deveria ter lançado InvalidTransitionException para {invalid_status}"
+        except InvalidTransitionException:
+            pass
+
+
+def test_change_status_em_transito_to_concluida_succeeds():
+    d = _delivery()
+    d.change_status("aceita")
+    d.change_status("em_transito")
+    d.change_status("concluida")
+    assert d.status == "concluida"

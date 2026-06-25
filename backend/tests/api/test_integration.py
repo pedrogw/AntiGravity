@@ -569,6 +569,149 @@ class TestAlerts:
         assert resp.status_code in (401, 403)
 
 
+class TestFullDeliveryCycle:
+    async def test_full_delivery_cycle(self, client: AsyncClient, lojista: dict, motorista: dict):
+        factory_resp = await client.post(
+            "/places/factories",
+            json={"name": "Fábrica Ciclo", "lat": -19.9191, "lng": -43.9386},
+            headers=lojista["headers"],
+        )
+        factory_id = factory_resp.json()["id"]
+
+        store_resp = await client.post(
+            "/places/stores",
+            json={"name": "Loja Ciclo", "lat": -23.5505, "lng": -46.6333, "owner_id": lojista["id"]},
+            headers=lojista["headers"],
+        )
+        store_id = store_resp.json()["id"]
+
+        # Step 1: Create → pendente
+        create_resp = await client.post(
+            "/deliveries/",
+            json={"factory_id": factory_id, "store_id": store_id, "driver_id": motorista["id"]},
+            headers=lojista["headers"],
+        )
+        assert create_resp.status_code == 201
+        delivery = create_resp.json()
+        delivery_id = delivery["id"]
+        assert delivery["status"] == "pendente"
+        assert delivery["departed_at"] is None
+
+        # Step 2: Aceitar → aceita
+        accept_resp = await client.patch(
+            f"/deliveries/{delivery_id}",
+            json={"status": "aceita"},
+            headers=motorista["headers"],
+        )
+        assert accept_resp.status_code == 200
+        assert accept_resp.json()["status"] == "aceita"
+        assert accept_resp.json()["departed_at"] is None
+
+        # Step 3: Iniciar rota → em_transito
+        transit_resp = await client.patch(
+            f"/deliveries/{delivery_id}",
+            json={"status": "em_transito", "lat": -23.5, "lng": -46.6},
+            headers=motorista["headers"],
+        )
+        assert transit_resp.status_code == 200
+        assert transit_resp.json()["status"] == "em_transito"
+        assert transit_resp.json()["departed_at"] is not None
+        assert transit_resp.json()["eta_current"] is not None
+
+        # Step 4: Entregar → entregue
+        deliver_resp = await client.patch(
+            f"/deliveries/{delivery_id}",
+            json={"status": "entregue"},
+            headers=motorista["headers"],
+        )
+        assert deliver_resp.status_code == 200
+        assert deliver_resp.json()["status"] == "entregue"
+
+        # Step 5: Concluir → concluida
+        complete_resp = await client.patch(
+            f"/deliveries/{delivery_id}",
+            json={"status": "concluida"},
+            headers=motorista["headers"],
+        )
+        assert complete_resp.status_code == 200
+        assert complete_resp.json()["status"] == "concluida"
+
+        # Step 6: Verify final state via GET
+        get_resp = await client.get("/deliveries/", headers=lojista["headers"])
+        assert get_resp.status_code == 200
+        deliveries = get_resp.json()
+        final = next(d for d in deliveries if d["id"] == delivery_id)
+        assert final["status"] == "concluida"
+        assert final["factory_id"] == factory_id
+        assert final["store_id"] == store_id
+        assert final["driver_id"] == motorista["id"]
+
+        # Step 7: concluida cannot transition further
+        invalid_resp = await client.patch(
+            f"/deliveries/{delivery_id}",
+            json={"status": "pendente"},
+            headers=motorista["headers"],
+        )
+        assert invalid_resp.status_code == 422
+
+    async def test_direct_em_transito_to_concluida(self, client: AsyncClient, lojista: dict, motorista: dict):
+        factory_resp = await client.post(
+            "/places/factories",
+            json={"name": "Fábrica Direta", "lat": -19.9, "lng": -43.9},
+            headers=lojista["headers"],
+        )
+        store_resp = await client.post(
+            "/places/stores",
+            json={"name": "Loja Direta", "lat": -23.55, "lng": -46.63, "owner_id": lojista["id"]},
+            headers=lojista["headers"],
+        )
+        create_resp = await client.post(
+            "/deliveries/",
+            json={"factory_id": factory_resp.json()["id"], "store_id": store_resp.json()["id"], "driver_id": motorista["id"]},
+            headers=lojista["headers"],
+        )
+        delivery_id = create_resp.json()["id"]
+
+        # pendente → aceita → em_transito
+        await client.patch(f"/deliveries/{delivery_id}", json={"status": "aceita"}, headers=motorista["headers"])
+        await client.patch(f"/deliveries/{delivery_id}", json={"status": "em_transito", "lat": -23.5, "lng": -46.6}, headers=motorista["headers"])
+
+        # em_transito → concluida (direct, G.1 hotfix)
+        direct_resp = await client.patch(
+            f"/deliveries/{delivery_id}",
+            json={"status": "concluida"},
+            headers=motorista["headers"],
+        )
+        assert direct_resp.status_code == 200
+        assert direct_resp.json()["status"] == "concluida"
+
+    async def test_rejects_invalid_transition(self, client: AsyncClient, lojista: dict, motorista: dict):
+        factory_resp = await client.post(
+            "/places/factories",
+            json={"name": "F-invalida", "lat": -23.0, "lng": -46.0},
+            headers=lojista["headers"],
+        )
+        store_resp = await client.post(
+            "/places/stores",
+            json={"name": "S-invalida", "lat": -23.55, "lng": -46.63, "owner_id": lojista["id"]},
+            headers=lojista["headers"],
+        )
+        create_resp = await client.post(
+            "/deliveries/",
+            json={"factory_id": factory_resp.json()["id"], "store_id": store_resp.json()["id"], "driver_id": motorista["id"]},
+            headers=lojista["headers"],
+        )
+        delivery_id = create_resp.json()["id"]
+
+        # pendente → entregue (invalid, should skip aceita and em_transito)
+        invalid_resp = await client.patch(
+            f"/deliveries/{delivery_id}",
+            json={"status": "entregue"},
+            headers=motorista["headers"],
+        )
+        assert invalid_resp.status_code == 422
+
+
 class TestDashboard:
     async def test_dashboard_returns_summary(self, client: AsyncClient, lojista: dict, motorista: dict):
         factory_resp = await client.post(

@@ -2076,7 +2076,7 @@ Cada bloco segue rigidamente o fluxo de `docs/obrigacoes.md`:
 
 ---
 
-## Block E — Backend + Frontend: Status `aceita` (Pendente de commit)
+## Block E — Backend + Frontend: Status `aceita`
 
 **Motivação:** Implementar fluxo híbrido — lojista atribui entrega a um motorista, mas o motorista precisa aceitar antes de executar.
 
@@ -2103,11 +2103,12 @@ pendente → aceita → em_transito → entregue → concluida
 - `pytest backend/tests/` → ✅ (entity + use case + integration)
 - `npm test` → ✅
 - `npm run lint` → 0 erros
-- Estes commits **ainda não foram criados** — aguardando revisão cruzada
+
+**Commit:** `3bba702`
 
 ---
 
-## Block F — Frontend: Concluir Entrega (Pendente de commit)
+## Block F — Frontend: Concluir Entrega
 
 **Motivação:** `DeliveryCard` tem `onComplete` mas `DrivePage` nunca passava o callback — motorista não conseguia finalizar entrega.
 
@@ -2121,7 +2122,8 @@ pendente → aceita → em_transito → entregue → concluida
 ### Verificação
 - `npm test` → ✅
 - `npm run lint` → 0 erros
-- Aguardando commit
+
+**Commit:** `3bba702` (mesmo commit do Block E — E + F foram combinados)
 
 ---
 
@@ -2135,6 +2137,9 @@ pendente → aceita → em_transito → entregue → concluida
 | **D** | `CriarEntregaDialog.tsx` | `dashboard/page.tsx` |
 | **E** | — | `delivery.py` (backend), `DeliveryStatus.ts`, `DeliveryCard.tsx`, `drive/page.tsx` |
 | **F** | — | `drive/page.tsx` |
+| **G** | — | `delivery.py` (backend), `drive/page.tsx` (frontend) |
+| **H** | `DeliveryCard.test.tsx` | — |
+| **G.1** | — | `delivery.py` |
 
 ---
 
@@ -2212,6 +2217,153 @@ Dependências:
 
 ---
 
-## Block G — Transição `entregue → concluida` (Em execução)
+## Block G — Transição `entregue → concluida` ✅
 
-**Status:** 🔨 Em implementação
+**Motivação:** Fechar o ciclo de vida da entrega — motorista entrega fisicamente e confirma no app, transitando de `entregue` para `concluida`.
+
+### O que foi feito (TDD — RED → GREEN)
+
+| Camada | Arquivo | Mudança |
+|--------|---------|---------|
+| **Backend Domínio** | `delivery.py:17` | `VALID_TRANSITIONS["entregue"] = ["concluida"]` + `"concluida": []` (estado terminal) |
+| **Backend Testes (novos)** | `test_delivery_entity.py` | `test_change_status_entregue_to_concluida_succeeds`, `test_change_status_concluida_to_anything_fails` |
+| **Backend Testes (novo)** | `test_use_cases.py` | `test_update_status_entregue_to_concluida` |
+| **Frontend Página** | `drive/page.tsx:58` | `updateDeliveryStatus(id, 'entregue')` → `updateDeliveryStatus(id, 'concluida')` |
+
+### Resultado dos testes
+
+| Suite | Antes | Depois | Resultado |
+|-------|-------|--------|-----------|
+| Backend (pytest) | 243 passed | **246 passed** (+3 novos) | ✅ |
+| Backend (ruff) | 0 errors | 0 errors | ✅ |
+| Frontend (vitest) | 66 passed | 66 passed | ✅ |
+| Frontend (eslint) | 0 errors | 0 errors | ✅ |
+
+### Máquina de estados atualizada
+
+```
+pendente → aceita → em_transito → entregue → concluida (terminal)
+                                      ↘ cancelada (terminal)
+```
+
+**Commit:** (pendente — aguardando blocos H, I, J)
+
+---
+
+## Block H — Testes DeliveryCard ✅
+
+**Motivação:** `DeliveryCard.tsx` não tinha testes unitários — os botões de ação e callbacks estavam sem cobertura.
+
+### O que foi feito
+
+| Camada | Arquivo | Mudança |
+|--------|---------|---------|
+| **Testes (novo)** | `DeliveryCard.test.tsx` | 5 testes cobrindo render + callbacks |
+| **Componente** | `DeliveryCard.tsx` | Nenhuma alteração (só testar o existente) |
+
+### Testes (5/5)
+
+1. `mostra "Aceitar Oferta" quando status é pendente`
+2. `mostra "Iniciar Rota" quando status é aceita`
+3. `mostra "Concluir Entrega" quando status é em_transito e onComplete existe`
+4. `chama onAccept ao clicar em "Aceitar Oferta"`
+5. `chama onComplete ao clicar em "Concluir Entrega"`
+
+### Resultado
+
+| Suite | Antes | Depois | Resultado |
+|-------|-------|--------|-----------|
+| Frontend (vitest) | 66 passed | **71 passed** (+5 novos) | ✅ |
+| Frontend (eslint) | 0 errors | 0 errors | ✅ |
+
+---
+
+## Block G.1 — Hotfix: `em_transito → concluida` ✅
+
+**Motivação:** A verificação cruzada do Bloco G revelou que o frontend envia `updateDeliveryStatus(id, 'concluida')` quando a entrega está `em_transito`, mas a entidade só permitia `em_transito → entregue` — a chamada retornava 422.
+
+### Correção
+
+| Camada | Arquivo | Mudança |
+|--------|---------|---------|
+| **Backend Domínio** | `delivery.py:16` | `"em_transito": ["entregue", "concluida", "cancelada"]` |
+| **Backend Testes (novos)** | `test_delivery_entity.py` | `test_change_status_em_transito_to_concluida_succeeds` |
+| **Backend Testes (novo)** | `test_use_cases.py` | `test_update_status_em_transito_to_concluida` |
+| **Frontend** | `drive/page.tsx` | Nenhuma — já enviava `'concluida'` |
+
+### Máquina de estados final
+
+```
+pendente → aceita → em_transito → entregue → concluida (terminal)
+                                ↘ concluida ↗
+                                      ↘ cancelada (terminal)
+```
+
+### Resultado
+
+| Suite | Antes | Depois | Resultado |
+|-------|-------|--------|-----------|
+| Backend (pytest) | 246 passed | **248 passed** (+2 novos) | ✅ |
+| Backend (ruff) | 0 errors | 0 errors | ✅ |
+| Frontend (vitest) | 71 passed | 71 passed | ✅ |
+| Frontend (eslint) | 0 errors | 0 errors | ✅ |
+
+---
+
+## Block I — Teste Ciclo Completo Backend ✅
+
+**Motivação:** Não existia um teste de integração que percorresse o ciclo de vida completo de uma entrega (`pendente → aceita → em_transito → entregue → concluida`) via API, validando cada transição e o estado final.
+
+### O que foi feito
+
+| Camada | Arquivo | Mudança |
+|--------|---------|---------|
+| **Testes (novo)** | `test_integration.py` | `TestFullDeliveryCycle` com 3 testes |
+
+### Testes (3/3)
+
+1. **`test_full_delivery_cycle`** — Cria entrega, percorre `pendente→aceita→em_transito→entregue→concluida`, verifica `departed_at` e `eta_current`, confirma estado final via GET, e testa que `concluida → pendente` retorna 422.
+2. **`test_direct_em_transito_to_concluida`** — Cobre o hotfix G.1: `em_transito → concluida` direto funciona.
+3. **`test_rejects_invalid_transition`** — `pendente → entregue` sem passar por `aceita`/`em_transito` retorna 422.
+
+### Resultado
+
+| Suite | Antes | Depois | Resultado |
+|-------|-------|--------|-----------|
+| Backend (pytest) | 248 passed | **251 passed** (+3 novos) | ✅ |
+| Backend (ruff) | 0 errors | 0 errors | ✅ |
+| Frontend (vitest) | 71 passed | 71 passed | ✅ |
+| Frontend (eslint) | 0 errors | 0 errors | ✅ |
+
+---
+
+## Block J — Refactor ActiveDeliveryView ✅
+
+**Motivação:** `ActiveDeliveryView.tsx` era um componente puramente de exibição (EtaDisplay, MapPlaceholder, ChaosReportButton, SafeCheckToggle) sem ação própria. O `DeliveryCard` com os botões de ação era renderizado separadamente na `drive/page.tsx`, duplicando lógica de layout.
+
+### O que foi feito
+
+| Camada | Arquivo | Mudança |
+|--------|---------|---------|
+| **Componente** | `ActiveDeliveryView.tsx` | Adicionados `onAccept`, `onStartRoute`, `onComplete`, `onReportProblem`; inclui `DeliveryCard` internamente |
+| **Testes (novo)** | `ActiveDeliveryView.test.tsx` | 5 testes cobrindo render + callbacks |
+| **Página** | `drive/page.tsx` | Seção de entrega ativa simplificada — usa apenas `<ActiveDeliveryView>` com callbacks em vez de `<ActiveDeliveryView> + <DeliveryCard>` |
+
+### Testes (5/5)
+
+1. `renderiza SafeCheckToggle`
+2. `mostra "Concluir Entrega" quando status é em_transito e onComplete existe`
+3. `chama onComplete ao clicar em "Concluir Entrega"`
+4. `não mostra "Concluir Entrega" quando status não é em_transito`
+5. `não mostra "Concluir Entrega" quando onComplete não é fornecido`
+
+### Resultado
+
+| Suite | Antes | Depois | Resultado |
+|-------|-------|--------|-----------|
+| Frontend (vitest) | 71 passed | **76 passed** (+5 novos) | ✅ |
+| Frontend (eslint) | 0 errors | 0 errors | ✅ |
+| Backend (pytest) | 251 passed | 251 passed | ✅ |
+| Backend (ruff) | 0 errors | 0 errors | ✅ |
+
+**Observação:** Todos os blocos E, F, G, H, G.1, I, J concluídos. Pendente commit em lote.

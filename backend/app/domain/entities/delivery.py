@@ -13,8 +13,9 @@ class Delivery:
     VALID_TRANSITIONS: ClassVar[dict[str, list[str]]] = {
         "pendente": ["aceita"],
         "aceita": ["em_transito"],
-        "em_transito": ["entregue", "cancelada"],
-        "entregue": [],
+        "em_transito": ["entregue", "concluida", "cancelada"],
+        "entregue": ["concluida"],
+        "concluida": [],
         "cancelada": [],
     }
 

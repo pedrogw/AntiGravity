@@ -2,12 +2,7 @@
 
 ## Planejado
 
-| Processo | Status | Depende de |
-|---|---|---|
-| **Block G — Transição `entregue → concluida`** (backend + frontend) | 📋 Planejado | — |
-| **Block H — Testes DeliveryCard** (frontend) | 📋 Planejado | — |
-| **Block I — Teste Ciclo Completo** (backend) | 📋 Planejado | — |
-| **Block J — Refactor ActiveDeliveryView** (frontend) | 📋 Planejado | G |
+*Nenhum bloco pendente — todos os blocos planejados foram concluídos.*
 
 ### Detalhamento dos Blocos
 
@@ -19,10 +14,11 @@
 | **D** ✅ | `CriarEntregaDialog.tsx`, `dashboard/page.tsx` | Testes de render + submit (7 testes) |
 | **E** ✅ | `delivery.py`, `DeliveryStatus.ts`, `DeliveryCard.tsx`, `drive/page.tsx`, `test_use_cases.py`, `test_delivery_entity.py`, `test_integration.py` | `test_change_status_pendente_to_aceita`, `test_change_status_pendente_to_em_transito_fails`, `test_change_status_aceita_to_em_transito`, `test_update_status_pendente_to_aceita`, `test_update_status_aceita_to_em_transito`, `test_update_pendente_to_em_transito_fails_422` |
 | **F** ✅ | `drive/page.tsx` | `onComplete` wired |
-| **G** | `delivery.py`, `drive/page.tsx`, `test_delivery_entity.py`, `test_use_cases.py` | `test_change_status_entregue_to_concluida_succeeds`, `test_change_status_concluida_to_anything_fails`, `test_update_status_entregue_to_concluida` |
-| **H** | `DeliveryCard.test.tsx` | `test_mostra_aceitar_oferta_quando_pendente`, `test_mostra_iniciar_rota_quando_aceita`, `test_mostra_concluir_entrega_quando_em_transito`, `test_chama_onAccept_ao_clicar`, `test_chama_onComplete_ao_clicar` |
-| **I** | `test_integration.py` | `test_full_delivery_cycle` percorrendo `pendente→aceita→em_transito→entregue→concluida` |
-| **J** | `ActiveDeliveryView.tsx`, `ActiveDeliveryView.test.tsx`, `drive/page.tsx` | `test_mostra_concluir_entrega_quando_em_transito`, `test_chama_onComplete_ao_clicar` |
+| **G** ✅ | `delivery.py`, `drive/page.tsx`, `test_delivery_entity.py`, `test_use_cases.py` | `test_change_status_entregue_to_concluida_succeeds`, `test_change_status_concluida_to_anything_fails`, `test_update_status_entregue_to_concluida` |
+| **H** ✅ | `DeliveryCard.test.tsx` | `test_mostra_aceitar_oferta_quando_pendente`, `test_mostra_iniciar_rota_quando_aceita`, `test_mostra_concluir_entrega_quando_em_transito`, `test_chama_onAccept_ao_clicar`, `test_chama_onComplete_ao_clicar` |
+| **G.1** ✅ | `delivery.py`, `test_delivery_entity.py`, `test_use_cases.py` | `test_change_status_em_transito_to_concluida_succeeds`, `test_update_status_em_transito_to_concluida` |
+| **I** ✅ | `test_integration.py` | `test_full_delivery_cycle` percorrendo `pendente→aceita→em_transito→entregue→concluida` |
+| **J** ✅ | `ActiveDeliveryView.tsx`, `ActiveDeliveryView.test.tsx`, `drive/page.tsx` | `test_mostra_concluir_entrega_quando_em_transito`, `test_chama_onComplete_ao_clicar`, `test_nao_mostra_quando_status_errado`, `test_nao_mostra_quando_sem_onComplete`, `test_renderiza_safe_check` |
 
 ---
 
@@ -30,8 +26,13 @@
 
 | Processo | Status |
 |---|---|
-| **Block F — Concluir Entrega** (frontend) | ✅ **Implementado (pendente commit)** |
-| **Block E — Status `aceita`** (backend + frontend) | ✅ **Implementado (pendente commit)** |
+| **Block J — Refactor ActiveDeliveryView** (frontend) | ✅ **Concluído** |
+| **Block I — Teste Ciclo Completo** (backend) | ✅ **Concluído** |
+| **Block H — Testes DeliveryCard** (frontend) | ✅ **Concluído** |
+| **Block G.1 — Hotfix: `em_transito → concluida`** (backend) | ✅ **Concluído** |
+| **Block G — Transição `entregue → concluida`** (backend + frontend) | ✅ **Concluído** |
+| **Block F — Concluir Entrega** (frontend) | ✅ **Concluído** |
+| **Block E — Status `aceita`** (backend + frontend) | ✅ **Concluído** |
 | **Block D — CriarEntregaDialog** (frontend) | ✅ **Concluído** |
 | **Block C — Listar places + drivers** (frontend) | ✅ **Concluído** |
 | **Block B — ApiPlaceRepository real** (frontend) | ✅ **Concluído** |

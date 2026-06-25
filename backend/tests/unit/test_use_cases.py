@@ -337,6 +337,46 @@ class TestUpdateDeliveryUseCase:
 
         assert exc.value.status_code == 422
 
+    async def test_update_status_entregue_to_concluida(self, mock_delivery_repo, mock_place_repo, mock_eta_history_repo, mock_chaos_repo):
+        delivery_id = uuid.uuid4()
+        driver_id = uuid.uuid4()
+        existing = Delivery(
+            id=delivery_id, factory_id=uuid.uuid4(), store_id=uuid.uuid4(),
+            driver_id=driver_id, status="entregue",
+        )
+        mock_delivery_repo.get_by_id.return_value = existing
+        mock_delivery_repo.update.return_value = Delivery(
+            id=delivery_id, factory_id=existing.factory_id, store_id=existing.store_id,
+            driver_id=driver_id, status="concluida",
+        )
+
+        use_case = UpdateDeliveryUseCase(mock_delivery_repo, mock_place_repo, mock_eta_history_repo, mock_chaos_repo, event_bus=None)
+        result = await use_case.execute(delivery_id, current_user_id=driver_id, status="concluida")
+
+        mock_delivery_repo.get_by_id.assert_awaited_once_with(delivery_id)
+        mock_delivery_repo.update.assert_awaited_once()
+        assert result.status == "concluida"
+
+    async def test_update_status_em_transito_to_concluida(self, mock_delivery_repo, mock_place_repo, mock_eta_history_repo, mock_chaos_repo):
+        delivery_id = uuid.uuid4()
+        driver_id = uuid.uuid4()
+        existing = Delivery(
+            id=delivery_id, factory_id=uuid.uuid4(), store_id=uuid.uuid4(),
+            driver_id=driver_id, status="em_transito",
+        )
+        mock_delivery_repo.get_by_id.return_value = existing
+        mock_delivery_repo.update.return_value = Delivery(
+            id=delivery_id, factory_id=existing.factory_id, store_id=existing.store_id,
+            driver_id=driver_id, status="concluida",
+        )
+
+        use_case = UpdateDeliveryUseCase(mock_delivery_repo, mock_place_repo, mock_eta_history_repo, mock_chaos_repo, event_bus=None)
+        result = await use_case.execute(delivery_id, current_user_id=driver_id, status="concluida")
+
+        mock_delivery_repo.get_by_id.assert_awaited_once_with(delivery_id)
+        mock_delivery_repo.update.assert_awaited_once()
+        assert result.status == "concluida"
+
     async def test_update_location_recalculates_eta(self, mock_delivery_repo, mock_place_repo, mock_eta_history_repo, mock_chaos_repo):
         store_id = uuid.uuid4()
         delivery_id = uuid.uuid4()

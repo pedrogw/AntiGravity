@@ -4,8 +4,8 @@ import { useEffect, useCallback, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AuthGuard } from '@/components/AuthGuard'
 import { ActiveDeliveryView } from '@/components/driver/ActiveDeliveryView'
-import { BottomNav } from '@/components/driver/BottomNav'
 import { DeliveryCard } from '@/components/driver/DeliveryCard'
+import { BottomNav } from '@/components/driver/BottomNav'
 import { ChaosDevTools } from '@/components/chaos/ChaosDevTools'
 import { useDeliveries } from '@/hooks/useDeliveries'
 import { makeLogoutUseCase } from '@/infrastructure/di/factories'
@@ -55,7 +55,7 @@ export default function DrivePage() {
 
   const handleCompleteDelivery = async (id: string) => {
     try {
-      await updateDeliveryStatus(id, 'entregue')
+      await updateDeliveryStatus(id, 'concluida')
       showToast(`Entrega concluída: ${id.slice(0, 8)}`)
     } catch {
       showToast('Erro ao concluir entrega')
@@ -102,16 +102,13 @@ export default function DrivePage() {
               Carregando...
             </div>
           ) : activeDelivery ? (
-            <div className="space-y-4">
-              <ActiveDeliveryView delivery={activeDelivery} />
-              <DeliveryCard
-                delivery={activeDelivery}
-                onAccept={handleAcceptDelivery}
-                onStartRoute={handleStartRoute}
-                onComplete={handleCompleteDelivery}
-                onReportProblem={() => showToast('Problema reportado à central')}
-              />
-            </div>
+            <ActiveDeliveryView
+              delivery={activeDelivery}
+              onAccept={handleAcceptDelivery}
+              onStartRoute={handleStartRoute}
+              onComplete={handleCompleteDelivery}
+              onReportProblem={() => showToast('Problema reportado à central')}
+            />
           ) : pendingDeliveries.length > 0 ? (
             <div className="space-y-3">
               <h2 className="text-base font-semibold text-slate-700">Entregas Pendentes</h2>
