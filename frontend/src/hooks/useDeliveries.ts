@@ -64,5 +64,22 @@ export function useDeliveries() {
     }
   }, []);
 
-  return { deliveries, isLoading, error, fetchDeliveries, createDelivery, updateDeliveryStatus };
+  const updateDeliveryPosition = useCallback(async (deliveryId: string, lat: number, lng: number) => {
+    setError('');
+    try {
+      const useCase = makeUpdateDeliveryUseCase();
+      const updated = await useCase.execute({ deliveryId, data: { lat, lng } });
+      setDeliveries((prev) => prev.map((d) => (d.id === deliveryId ? updated : d)));
+      return updated;
+    } catch (err) {
+      if (err instanceof AppError) {
+        setError(err.message);
+      } else {
+        setError('Erro ao atualizar posição.');
+      }
+      throw err;
+    }
+  }, []);
+
+  return { deliveries, isLoading, error, fetchDeliveries, createDelivery, updateDeliveryStatus, updateDeliveryPosition };
 }

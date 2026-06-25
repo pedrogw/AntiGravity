@@ -2,6 +2,7 @@ import { ApiAuthRepository } from '../repositories/ApiAuthRepository';
 import { ApiPlaceRepository } from '../repositories/ApiPlaceRepository';
 import { ApiDeliveryRepository } from '../repositories/ApiDeliveryRepository';
 import { ApiUserRepository } from '../repositories/ApiUserRepository';
+import { ApiAlertRepository } from '../repositories/ApiAlertRepository';
 import { TokenStorageAdapter } from '../storage/TokenStorageAdapter';
 
 const deliveryRepository = new ApiDeliveryRepository();
@@ -14,6 +15,7 @@ export const DI = {
   placeRepository: new ApiPlaceRepository(),
   deliveryRepository,
   userRepository: new ApiUserRepository(),
+  alertRepository: new ApiAlertRepository(),
 };
 
 import { LoginUseCase } from '../../application/use_cases/LoginUseCase';
@@ -26,6 +28,7 @@ import { CreateStoreUseCase } from '../../application/use_cases/CreateStoreUseCa
 import { ListDriversUseCase } from '../../application/use_cases/ListDriversUseCase';
 import { ListFactoriesUseCase } from '../../application/use_cases/ListFactoriesUseCase';
 import { ListStoresUseCase } from '../../application/use_cases/ListStoresUseCase';
+import { ListAlertsUseCase } from '../../application/use_cases/ListAlertsUseCase';
 
 export const makeLoginUseCase = () => new LoginUseCase(DI.authRepository, DI.tokenStorage);
 export const makeLogoutUseCase = () => new LogoutUseCase(DI.authRepository, DI.tokenStorage);
@@ -37,3 +40,4 @@ export const makeCreateStoreUseCase = () => new CreateStoreUseCase(DI.placeRepos
 export const makeListDriversUseCase = () => new ListDriversUseCase(DI.userRepository);
 export const makeListFactoriesUseCase = () => new ListFactoriesUseCase(DI.placeRepository);
 export const makeListStoresUseCase = () => new ListStoresUseCase(DI.placeRepository);
+export const makeListAlertsUseCase = () => new ListAlertsUseCase(DI.alertRepository);

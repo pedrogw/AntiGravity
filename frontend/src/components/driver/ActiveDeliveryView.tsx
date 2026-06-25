@@ -17,6 +17,7 @@ interface Props {
   onStartRoute?: (id: string) => void
   onComplete?: (id: string) => void
   onCancel?: (id: string) => void
+  onPositionChange?: (lat: number, lng: number) => void
 }
 
 export function ActiveDeliveryView({
@@ -25,12 +26,13 @@ export function ActiveDeliveryView({
   onStartRoute,
   onComplete,
   onCancel,
+  onPositionChange,
 }: Props) {
   return (
     <div className="flex-1 flex flex-col gap-6">
       <div className="flex-1 flex flex-col items-center justify-center gap-8 bg-white rounded-3xl p-8 shadow-sm border border-slate-100">
         <EtaDisplay delivery={delivery} />
-        <DeliveryMap delivery={delivery} />
+        <DeliveryMap delivery={delivery} onPositionChange={onPositionChange} />
       </div>
       <DeliveryCard
         delivery={delivery}

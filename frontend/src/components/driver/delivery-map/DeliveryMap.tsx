@@ -1,6 +1,7 @@
 'use client';
 
-import { MapContainer, TileLayer, Marker, Circle } from 'react-leaflet'
+import { useState, useCallback } from 'react'
+import { MapContainer, TileLayer, Marker, Circle, useMapEvents } from 'react-leaflet'
 import { Delivery } from '@/domain/entities/Delivery'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -14,32 +15,61 @@ const driverIcon = L.divIcon({
 
 interface Props {
   delivery: Delivery
+  onPositionChange?: (lat: number, lng: number) => void
 }
 
-export function DeliveryMap({ delivery }: Props) {
-  const lat = delivery.currentLat ?? -23.5505
-  const lng = delivery.currentLng ?? -46.6333
-  const position: [number, number] = [lat, lng]
+function MapClickHandler({ onClick }: { onClick?: (lat: number, lng: number) => void }) {
+  useMapEvents({
+    click(e) {
+      onClick?.(e.latlng.lat, e.latlng.lng)
+    },
+  })
+  return null
+}
+
+export function DeliveryMap({ delivery, onPositionChange }: Props) {
+  const [pos, setPos] = useState<[number, number]>(() => [
+    delivery.currentLat ?? -23.5505,
+    delivery.currentLng ?? -46.6333,
+  ])
+
+  const handleDragEnd = useCallback((e: L.LeafletEvent) => {
+    const marker = e.target
+    const newPos = marker.getLatLng()
+    setPos([newPos.lat, newPos.lng])
+    onPositionChange?.(newPos.lat, newPos.lng)
+  }, [onPositionChange])
+
+  const handleMapClick = useCallback((lat: number, lng: number) => {
+    setPos([lat, lng])
+    onPositionChange?.(lat, lng)
+  }, [onPositionChange])
 
   return (
     <div className="w-full h-48 rounded-2xl overflow-hidden">
       <MapContainer
-        center={position}
+        center={pos}
         zoom={14}
         className="w-full h-full"
         zoomControl={false}
-        dragging={false}
-        scrollWheelZoom={false}
-        touchZoom={false}
-        doubleClickZoom={false}
-        keyboard={false}
+        dragging={!!onPositionChange}
+        scrollWheelZoom={!!onPositionChange}
+        touchZoom={!!onPositionChange}
+        doubleClickZoom={!!onPositionChange}
+        keyboard={!!onPositionChange}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        <Marker position={position} icon={driverIcon} />
-        <Circle center={position} radius={50} pathOptions={{ color: '#3B82F6', fillOpacity: 0.1 }} />
+        <MapClickHandler onClick={onPositionChange ? handleMapClick : undefined} />
+        <Marker
+          position={pos}
+          icon={driverIcon}
+          draggable={!!onPositionChange}
+          eventHandlers={onPositionChange ? { dragend: handleDragEnd } : undefined}
+        />
+        <Circle center={pos} radius={50} pathOptions={{ color: '#3B82F6', fillOpacity: 0.1 }} />
       </MapContainer>
     </div>
   )

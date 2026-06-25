@@ -11,7 +11,7 @@ import { useDeliveries } from '@/hooks/useDeliveries'
 import { makeLogoutUseCase } from '@/infrastructure/di/factories'
 
 export default function DrivePage() {
-  const { deliveries, isLoading, error, fetchDeliveries, updateDeliveryStatus } = useDeliveries()
+  const { deliveries, isLoading, error, fetchDeliveries, updateDeliveryStatus, updateDeliveryPosition } = useDeliveries()
   const router = useRouter()
   const [toast, setToast] = useState('')
 
@@ -59,6 +59,15 @@ export default function DrivePage() {
       showToast(`Entrega cancelada: ${id.slice(0, 8)}`)
     } catch {
       showToast('Erro ao cancelar entrega')
+    }
+  }
+
+  const handlePositionChange = async (lat: number, lng: number) => {
+    if (!activeDelivery) return
+    try {
+      await updateDeliveryPosition(activeDelivery.id, lat, lng)
+    } catch {
+      showToast('Erro ao atualizar posição')
     }
   }
 
@@ -116,6 +125,7 @@ export default function DrivePage() {
               onAccept={handleAcceptDelivery}
               onStartRoute={handleStartRoute}
               onComplete={handleCompleteDelivery}
+              onPositionChange={handlePositionChange}
             />
           ) : pendingDeliveries.length > 0 ? (
             <div className="space-y-3">

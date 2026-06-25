@@ -2573,34 +2573,93 @@ Após M, `cancelada` só será acessível via `aceita`.
 
 ---
 
-## Block N — Alertas Visíveis (Planejado)
+## Block N — Alertas Visíveis ✅
 
 **Objetivo:** Exibir alertas (reportados pelo motorista via "Reportar Problema") no dashboard do lojista.
 
 **Motivação:** O backend cria e persiste alerts via `GET /alerts`, mas o frontend nunca chama esse endpoint. O `AlertasCriticos` antigo era mock estático e foi removido junto com a Control Tower.
 
-### Mini-blocos
+### O que foi feito (TDD — 17 novos testes, RED → GREEN):
 
 | Mini-bloco | Arquivos | O que faz |
 |-----------|----------|-----------|
 | **N.1** | `Alert.ts`, `AlertRepositoryProtocol.ts` | Entidade + protocolo de repositório |
 | **N.2** | `ApiAlertRepository.ts`, `ListAlertsUseCase.ts`, `factories.ts` | Infraestrutura + use case + DI |
-| **N.3** | `useAlerts.ts` | Hook com polling 15s |
-| **N.4** | `AlertasCriticos.tsx` | Componente de UI |
-| **N.5** | `Sidebar.tsx`, `dashboard/page.tsx` | Integração (nav item + active view) |
+| **N.3** | `useAlerts.ts` | Hook com polling 15s (setTimeout inicial + setInterval) |
+| **N.4** | `AlertList.tsx`, `AlertList.test.tsx` | Componente de UI com testes (5 cenários) |
+| **N.5** | `Sidebar.tsx` (criticalAlertsCount prop + badge) | Badge vermelho de alertas críticos no nav item Dashboard |
+| **N.6** | `dashboard/page.tsx` | Integração: AlertList + Sidebar badge |
+
+### Testes
+- `ApiAlertRepository.test.ts`: 4 testes (fetch success, param mapping, AppError, generic error)
+- `ListAlertsUseCase.test.ts`: 3 testes (success, params passthrough, empty)
+- `useAlerts.test.ts`: 6 testes (+1: polling error)
+- `AlertList.test.tsx`: 7 testes (+2: CSS classes critical/normal)
+- `Sidebar.test.tsx`: 4 testes (badge: >0, >99, zero, sem prop)
+
+### Verificação Final
+- **Backend:** 257/257 ✅ (inalterado)
+- **Frontend:** 115/115 ✅ (+24 novos)
+- **Lint:** 0 erros ✅ (fix: setTimeout para evitar setState síncrono em useEffect)
+- **TypeScript:** erro TS em `ListAlertsUseCase.test.ts` eliminado (N1.1)
 
 ---
 
-## Block O — Mapa Arrastável + Simulação de Posição (Planejado)
+## Bloco N.1 — Correções Pós-Verificação (Alertas Visíveis) ✅
+
+**Objetivo:** Corrigir 5 problemas identificados na verificação intensiva do Bloco N.
+
+### Problemas e Correções
+
+| # | Severidade | Arquivo | Problema | Correção |
+|---|-----------|---------|----------|----------|
+| N1.1 | 🟡 Médio | `ListAlertsUseCase.test.ts` | TS error: `{ listAll: vi.fn() }` não assignável a `AlertRepositoryProtocol` | Importado protocolo + `vi.mocked()` nas chamadas |
+| N1.2 | 🟢 Baixo | `useAlerts.test.ts` | Sem teste para erro em polling subsequente | Teste: mount OK → polling falha → error atualizado |
+| N1.3 | 🟢 Baixo | `ApiAlertRepository.ts` | `AlertApiResponse` com campos camelCase nunca usados | Interface simplificada: só snake_case |
+| N1.4 | 🟢 Baixo | `Sidebar.test.tsx` (novo) | Badge sem testes | 4 testes: >0, >99, zero, sem prop |
+| N1.5 | 🟢 Baixo | `AlertList.test.tsx` | Estilos visuais não testados | 2 testes: `.bg-red-50` e `.bg-amber-50` |
+
+### Verificação Final (N.1)
+- **Frontend:** 115/115 ✅ (108 + 7 novos)
+- **Lint:** 0 erros, 0 warnings ✅
+- **TS error N1.1 eliminado:** `grep ListAlertsUseCase tsc --noEmit` → vazio
+- **Backend:** 257/257 inalterado ✅
+
+---
+
+## Block O — Mapa Arrastável + Simulação de Posição ✅
 
 **Objetivo:** Permitir que o motorista arraste o marcador no mapa para simular mudança de posição (contas teste), com inputs de coordenadas no ChaosDevTools.
 
 **Motivação:** Só existem contas teste; não há GPS real. O motorista precisa conseguir simular "iniciei a rota em X, agora estou em Y, ainda não cheguei em Z (loja)".
 
-### Mini-blocos
+### O que foi feito
 
-| Mini-bloco | Arquivos | O que faz |
-|-----------|----------|-----------|
-| **O.1** | `DeliveryMap.tsx` | `onPositionChange` prop, marker draggable, clique no mapa, mapEvents |
-| **O.2** | `ActiveDeliveryView.tsx`, `drive/page.tsx` | Wiring do callback de posição → PATCH |
-| **O.3** | `ChaosDevTools.tsx` | Seção "Simular Posição" com inputs lat/lng + botão Atualizar |
+#### O.1 — DeliveryMap: onPositionChange + draggable marker
+- `DeliveryMap.tsx`: Adicionada prop opcional `onPositionChange?: (lat: number, lng: number) => void`
+- Marker torna-se `draggable` apenas quando `onPositionChange` é fornecido
+- `MapClickHandler` component com `useMapEvents` para reposicionar o marcador ao clicar no mapa
+- Estado local `pos` para acompanhar a posição durante drag/clique
+- Interações do mapa (drag, scroll, touch, doubleClick, keyboard) habilitadas condicionalmente (apenas quando há callback)
+
+#### O.2 — ActiveDeliveryView + drive/page: wiring PATCH position
+- `ActiveDeliveryView.tsx`: Nova prop `onPositionChange` passada ao `DeliveryMap`
+- `useDeliveries.ts`: Novo método `updateDeliveryPosition(deliveryId, lat, lng)` que chama `PATCH /deliveries/{id}` com `{ lat, lng }`
+- `drive/page.tsx`: Handler `handlePositionChange` que chama `updateDeliveryPosition` no delivery ativo
+
+#### O.3 — ChaosDevTools: Simular Posição
+- `ChaosDevTools.tsx`: Nova seção "Simular Posição" com inputs de latitude/longitude + botão "Atualizar"
+- Inputs pré-preenchidos com coordenadas SP (-23.5505, -46.6333)
+- Chama `PATCH /deliveries/{id}` com `{ lat: Number(simLat), lng: Number(simLng) }`
+- Log de sucesso/erro no painel de logs do ChaosDevTools
+
+### Testes novos (5)
+| Arquivo | Testes |
+|---------|--------|
+| `DeliveryMap.test.tsx` | marker não-draggable sem `onPositionChange`, marker draggable com `onPositionChange` (2 novos) |
+| `useDeliveries.test.ts` | `updateDeliveryPosition` success, AppError, generic error (3 novos) |
+
+### Verificação Final
+- **Backend:** 257/257 ✅ (inalterado)
+- **Frontend:** 120/120 ✅ (+5 novos)
+- **Lint:** 0 erros ✅

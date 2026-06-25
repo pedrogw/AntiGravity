@@ -6,13 +6,16 @@ import { Sidebar } from '@/components/dashboard/Sidebar'
 import { JanelaRecebimento } from '@/components/dashboard/JanelaRecebimento'
 import { KanbanBoard } from '@/components/dashboard/KanbanBoard'
 import { StatsFooter } from '@/components/dashboard/StatsFooter'
+import { AlertList } from '@/components/dashboard/AlertList'
 import { ChaosDevTools } from '@/components/chaos/ChaosDevTools'
 import { CriarEntregaDialog } from '@/components/dashboard/CriarEntregaDialog'
 import { Button } from '@/components/ui/button'
 import { useDeliveries } from '@/hooks/useDeliveries'
+import { useAlerts } from '@/hooks/useAlerts'
 
 export default function DashboardPage() {
   const { deliveries, isLoading, error, fetchDeliveries } = useDeliveries()
+  const { alerts, criticalAlerts, isLoading: alertsLoading, error: alertsError } = useAlerts()
   const [dialogOpen, setDialogOpen] = useState(false)
 
   useEffect(() => {
@@ -22,7 +25,7 @@ export default function DashboardPage() {
   return (
     <AuthGuard>
       <div className="min-h-screen bg-[#f8f6f6] flex">
-        <Sidebar />
+        <Sidebar criticalAlertsCount={criticalAlerts.length} />
 
         <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
           <JanelaRecebimento />
@@ -50,6 +53,15 @@ export default function DashboardPage() {
             </div>
           ) : (
             <KanbanBoard deliveries={deliveries} />
+          )}
+
+          {alerts.length > 0 && (
+            <div className="px-6 pt-6">
+              <h2 className="text-sm font-semibold text-slate-700 mb-3 uppercase tracking-wider">
+                Alertas Recentes
+              </h2>
+              <AlertList alerts={alerts.slice(0, 10)} isLoading={alertsLoading} error={alertsError} />
+            </div>
           )}
 
           <StatsFooter deliveries={deliveries} />

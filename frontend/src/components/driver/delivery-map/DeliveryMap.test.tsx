@@ -11,8 +11,9 @@ vi.mock('react-leaflet', () => {
   return {
     MapContainer: FakeMapContainer,
     TileLayer: () => <div data-testid="tile-layer" />,
-    Marker: () => <div data-testid="marker" />,
+    Marker: ({ draggable }: Record<string, unknown>) => <div data-testid="marker" data-draggable={String(draggable)} />,
     Circle: () => <div data-testid="circle" />,
+    useMapEvents: () => null,
   }
 });
 
@@ -62,5 +63,16 @@ describe('DeliveryMap', () => {
     expect(screen.getByTestId('tile-layer')).toBeInTheDocument();
     expect(screen.getByTestId('marker')).toBeInTheDocument();
     expect(screen.getByTestId('circle')).toBeInTheDocument();
+  });
+
+  it('torna marker não-draggable quando onPositionChange não é passado', () => {
+    render(<DeliveryMap delivery={makeDelivery({ lat: -23.55, lng: -46.63 })} />);
+    expect(screen.getByTestId('marker')).toHaveAttribute('data-draggable', 'false');
+  });
+
+  it('torna marker draggable quando onPositionChange é passado', () => {
+    const onChange = vi.fn();
+    render(<DeliveryMap delivery={makeDelivery({ lat: -23.55, lng: -46.63 })} onPositionChange={onChange} />);
+    expect(screen.getByTestId('marker')).toHaveAttribute('data-draggable', 'true');
   });
 });

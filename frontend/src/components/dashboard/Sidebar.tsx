@@ -6,11 +6,15 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { makeLogoutUseCase } from '@/infrastructure/di/factories'
 import { useCallback, useState } from 'react'
 
+interface Props {
+  criticalAlertsCount?: number;
+}
+
 const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: '▦', href: '/dashboard' },
 ]
 
-export function Sidebar() {
+export function Sidebar({ criticalAlertsCount = 0 }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const [email] = useState(() => {
@@ -56,6 +60,11 @@ export function Sidebar() {
             >
               <span className="text-lg">{item.icon}</span>
               <span>{item.label}</span>
+              {item.id === 'dashboard' && criticalAlertsCount > 0 && (
+                <span className="ml-auto bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                  {criticalAlertsCount > 99 ? '99+' : criticalAlertsCount}
+                </span>
+              )}
             </Link>
           )
         })}

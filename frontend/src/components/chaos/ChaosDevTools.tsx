@@ -33,6 +33,8 @@ export function ChaosDevTools({ deliveries }: Props) {
   const [logs, setLogs] = useState<string[]>([])
   const [selectedId, setSelectedId] = useState('')
   const [delayMinutes, setDelayMinutes] = useState(15)
+  const [simLat, setSimLat] = useState('-23.5505')
+  const [simLng, setSimLng] = useState('-46.6333')
 
   if (!TEST_ACCOUNTS.includes(userEmail)) return null;
 
@@ -50,6 +52,24 @@ export function ChaosDevTools({ deliveries }: Props) {
         delay_minutes: delayMinutes,
         impact_factor: action.id === 'delay' ? 1.5 : 1.0,
       })
+      setLogs((prev) => [msg, ...prev])
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { detail?: string } }; message?: string };
+      const detail = axiosErr?.response?.data?.detail || axiosErr?.message || 'Erro desconhecido';
+      setLogs((prev) => [`${msg} — ERRO: ${detail}`, ...prev])
+    }
+  }
+
+  const updatePosition = async () => {
+    const deliveryId = selectedId || deliveries?.[0]?.id
+    if (!deliveryId) {
+      setLogs((prev) => [`[Posição] Selecione uma entrega primeiro`, ...prev])
+      return
+    }
+
+    const msg = `[Posição] Simular → ${simLat}, ${simLng} (${new Date().toLocaleTimeString('pt-BR')})`
+    try {
+      await apiClient.patch(`/deliveries/${deliveryId}`, { lat: Number(simLat), lng: Number(simLng) })
       setLogs((prev) => [msg, ...prev])
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { detail?: string } }; message?: string };
@@ -119,6 +139,29 @@ export function ChaosDevTools({ deliveries }: Props) {
               {action.icon} {action.label}
             </Button>
           ))}
+        </div>
+
+        <div className="border-t pt-2">
+          <div className="text-xs font-medium text-muted-foreground mb-1">Simular Posição</div>
+          <div className="flex gap-2">
+            <Input
+              type="text"
+              value={simLat}
+              onChange={(e) => setSimLat(e.target.value)}
+              className="h-8 text-xs flex-1"
+              placeholder="Latitude"
+            />
+            <Input
+              type="text"
+              value={simLng}
+              onChange={(e) => setSimLng(e.target.value)}
+              className="h-8 text-xs flex-1"
+              placeholder="Longitude"
+            />
+          </div>
+          <Button variant="outline" size="sm" className="w-full mt-1" onClick={updatePosition}>
+            Atualizar
+          </Button>
         </div>
 
         {logs.length > 0 && (

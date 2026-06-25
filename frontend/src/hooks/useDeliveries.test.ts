@@ -88,6 +88,55 @@ describe('useDeliveries hook', () => {
     });
   });
 
+  describe('updateDeliveryPosition', () => {
+    it('deve atualizar posição e modificar o item na lista', async () => {
+      const updatedDelivery = new Delivery({ factoryId: 'f1', storeId: 's1', driverId: 'd1', currentLat: -23.55, currentLng: -46.63 }, 'del1');
+      mockListExecute.mockResolvedValue([fakeDelivery]);
+      mockUpdateExecute.mockResolvedValue(updatedDelivery);
+
+      const { result } = renderHook(() => useDeliveries());
+
+      await act(async () => {
+        await result.current.fetchDeliveries();
+      });
+      expect(result.current.deliveries[0].currentLat).toBeUndefined();
+
+      await act(async () => {
+        const updated = await result.current.updateDeliveryPosition('del1', -23.55, -46.63);
+        expect(updated.currentLat).toBe(-23.55);
+        expect(updated.currentLng).toBe(-46.63);
+      });
+
+      expect(mockUpdateExecute).toHaveBeenCalledWith({ deliveryId: 'del1', data: { lat: -23.55, lng: -46.63 } });
+      expect(result.current.deliveries[0].currentLat).toBe(-23.55);
+      expect(result.current.deliveries[0].currentLng).toBe(-46.63);
+    });
+
+    it('deve definir erro e relançar ao receber AppError', async () => {
+      mockUpdateExecute.mockRejectedValue(new AppError('Falha na posição'));
+
+      const { result } = renderHook(() => useDeliveries());
+
+      await act(async () => {
+        await expect(result.current.updateDeliveryPosition('del1', -23.55, -46.63)).rejects.toThrow('Falha na posição');
+      });
+
+      expect(result.current.error).toBe('Falha na posição');
+    });
+
+    it('deve definir erro genérico e relançar ao receber erro comum', async () => {
+      mockUpdateExecute.mockRejectedValue(new Error('erro'));
+
+      const { result } = renderHook(() => useDeliveries());
+
+      await act(async () => {
+        await expect(result.current.updateDeliveryPosition('del1', -23.55, -46.63)).rejects.toThrow('erro');
+      });
+
+      expect(result.current.error).toBe('Erro ao atualizar posição.');
+    });
+  });
+
   describe('createDelivery', () => {
     it('deve criar entrega e adicionar à lista', async () => {
       mockCreateExecute.mockResolvedValue(fakeDelivery);
