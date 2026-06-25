@@ -28,8 +28,7 @@ export function Dialog({
 
   return (
     <DialogContext.Provider value={{ open, onOpenChange }}>
-      {children}
-      {open && (
+      {open ? (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center"
           onClick={() => onOpenChange(false)}
@@ -39,6 +38,8 @@ export function Dialog({
             {children}
           </div>
         </div>
+      ) : (
+        children
       )}
     </DialogContext.Provider>
   )

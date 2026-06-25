@@ -111,3 +111,15 @@
 | 1. Login E2E | ✅ Resolvido | Todas as 6 camadas investigadas (backend, CORS, bundle, rede, logs, axios): 100% funcionais. Causa provável: cache corrompido do build Docker. Login funciona no navegador. |
 | 2. Remover Control Tower | ✅ Commitado | `db85e90`: `app/control-tower/` + `components/control-tower/` (11 arquivos) deletados; `Sidebar.tsx` reduzido. |
 | 3. ChaosDevTools gated | ✅ Commitado | `db85e90`: `ChaosDevTools.tsx` com gate por test account; logout cleanup em `Sidebar.tsx` + `drive/page.tsx`. |
+
+## Correção Pós-Verificação (Blocos C + D)
+
+| Item | Bloco | Severidade | Arquivo | Status |
+|------|-------|-----------|---------|--------|
+| P-D1 — Dialog: children duplicados | D | 🟢 Baixo | `ui/dialog.tsx` | ✅ **Concluído** |
+| P-D2 — Reverter workaround para `<Dialog>` nativo | D | 🟢 Baixo | `CriarEntregaDialog.tsx` | ✅ **Concluído** |
+| P-D3 — `key` para resetar estado ao reabrir | D | 🟢 Baixo | `dashboard/page.tsx` | ✅ **Concluído** |
+| P-D4 — `catch` com `AppError` | D | 🟢 Baixo | `CriarEntregaDialog.tsx:47` | ✅ **Concluído** |
+| P-D5 — Teste "Criando..." | D | 🟢 Baixo | `CriarEntregaDialog.test.tsx` | 🔵 **Mantido** (limitação de mock) |
+
+**Verificação:** `npm test` → 66/66 ✅ | `npm run lint` → 0 erros ✅ | Nenhum teste alterado

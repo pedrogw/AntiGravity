@@ -42,7 +42,7 @@ export default function DashboardPage() {
             </div>
           )}
 
-          <CriarEntregaDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+          <CriarEntregaDialog key={String(dialogOpen)} open={dialogOpen} onOpenChange={setDialogOpen} />
 
           {isLoading ? (
             <div className="flex-1 flex items-center justify-center text-sm text-slate-400">

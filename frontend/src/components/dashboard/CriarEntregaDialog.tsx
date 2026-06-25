@@ -1,7 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { AppError } from '@/domain/errors/AppError';
 import {
+  Dialog,
+  DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
@@ -44,7 +47,7 @@ export function CriarEntregaDialog({ open, onOpenChange }: CriarEntregaDialogPro
       await createDelivery(selectedFactory, selectedStore, selectedDriver);
       onOpenChange(false);
     } catch (err) {
-      if (err instanceof Error) {
+      if (err instanceof AppError) {
         setSubmitError(err.message);
       } else {
         setSubmitError('Erro ao criar entrega.');
@@ -52,12 +55,9 @@ export function CriarEntregaDialog({ open, onOpenChange }: CriarEntregaDialogPro
     }
   }
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="fixed inset-0 bg-black/50" onClick={() => onOpenChange(false)} />
-      <div className="fixed z-50 grid w-full max-w-lg gap-4 border bg-background p-6 shadow-lg sm:rounded-lg left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%]">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Nova Entrega</DialogTitle>
           <DialogDescription>
@@ -123,7 +123,7 @@ export function CriarEntregaDialog({ open, onOpenChange }: CriarEntregaDialogPro
             {isLoading ? 'Criando...' : 'Criar'}
           </Button>
         </DialogFooter>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

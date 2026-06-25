@@ -1977,6 +1977,34 @@ Cada bloco segue rigidamente o fluxo de `docs/obrigacoes.md`:
 → 4. pytest / npm test → 5. ruff / lint → 6. Commit atômico
 ```
 
+## Block C — Listar Places e Drivers (Frontend) ✅
+
+**Objetivo:** Adicionar repositórios, use cases e hooks para buscar fábricas, lojas e motoristas do backend no frontend.
+
+**O que foi feito (TDD — RED → GREEN):**
+
+| Camada | Arquivo | Mudança |
+|--------|---------|---------|
+| **Domínio (protocolo, novo)** | `UserRepositoryProtocol.ts` | Protocolo com `listDrivers()` |
+| **Domínio (protocolo, alterado)** | `PlaceRepositoryProtocol.ts` | + `listFactories()`, `listStores()` |
+| **Infra (repositório, novo)** | `ApiUserRepository.ts` | Implementa `listDrivers` via `apiClient.get('/users/drivers')` |
+| **Infra (repositório, alterado)** | `ApiPlaceRepository.ts` | Implementa `listFactories`, `listStores` reais |
+| **Application (novo)** | `ListDriversUseCase.ts` | Use case thin |
+| **Application (novo)** | `ListFactoriesUseCase.ts` | Use case thin |
+| **Application (novo)** | `ListStoresUseCase.ts` | Use case thin |
+| **Hooks (novo)** | `useUsers.ts` | Hook com `fetchDrivers()` |
+| **Hooks (alterado)** | `usePlaces.ts` | + `listFactories()`, `listStores()` + estado `factories[]`, `stores[]` |
+| **DI (alterado)** | `factories.ts` | `userRepository`, 3 novos `make*UseCase` |
+
+**Testes:** 15 testes nos 3 novos use cases + hooks, todos passando.
+
+**Verificação:**
+- `npm test` → ✅
+- `npm run lint` → 0 erros
+- Backend inalterado
+
+---
+
 ## Block D — CriarEntregaDialog (Frontend) ✅
 
 **Objetivo:** Criar diálogo modal no dashboard para lojista criar entregas com selects de fábrica, loja e motorista.
@@ -2025,3 +2053,23 @@ Cada bloco segue rigidamente o fluxo de `docs/obrigacoes.md`:
 - `npm run lint` → **0 erros, 0 warnings**
 - Backend inalterado (nenhum .py tocado)
 - Nenhum teste existente alterado
+
+---
+
+### Correções Pós-Blocos C + D — Executadas (P-D1 a P-D4) ✅
+
+**Contexto:** Após verificação cruzada dos Blocos C e D, foram identificados 5 itens de correção (severidade 🟢 baixa). P-D1 a P-D4 foram executados com TDD; P-D5 mantido por decisão arquitetural.
+
+| Item | Bloco | Arquivo | Problema | Correção |
+|------|-------|---------|----------|----------|
+| P-D1 | D | `ui/dialog.tsx` | Renderiza children duas vezes quando `open=true` | Substituir `{children}{open && overlay}` por `{open ? overlay : children}` ✅ |
+| P-D2 | D | `CriarEntregaDialog.tsx` | Usa `fixed` overlay direto (workaround do P-D1) | Reverter para `<Dialog>` + `<DialogContent>` após P-D1 ✅ |
+| P-D3 | D | `dashboard/page.tsx` | `submitError` persiste quando diálogo reabre | `key={String(dialogOpen)}` força remount limpo ✅ |
+| P-D4 | D | `CriarEntregaDialog.tsx:47` | `catch` usa `Error` em vez de `AppError` | `Error` → `AppError` + fallback genérico ✅ |
+| P-D5 | D | `CriarEntregaDialog.test.tsx` | Teste "Criando..." é pré-setado, não testa transição async | **Manter** (limitação de mock de hooks) |
+
+**Resultado:**
+- `npm test` → **66/66 passed** (19 arquivos) — nenhum teste alterado
+- `npm run lint` → **0 erros, 0 warnings**
+- Backend inalterado
+- Nenhum teste existente precisou ser alterado — todos os 7 testes do `CriarEntregaDialog.test.tsx` continuam passando com o `<Dialog>` + `<DialogContent>` nativos
