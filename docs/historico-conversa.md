@@ -3039,3 +3039,23 @@ São apenas branches de erro — nenhum bug real:
 | Frontend testes | **143**, 0 falhas |
 | ESLint | 0 errors |
 | `tsc --noEmit` | 0 errors |
+
+## Hotfix — Migration `dismissed_at` no Neon
+
+**Problema:** Após deploy do Bloco 36, o endpoint `POST /deliveries/{id}/chaos` (reportar problema no drive) retornava 500 com erro CORS. Causa: a ORM `Alert` passou a incluir `dismissed_at` nas operações, mas a coluna nunca foi criada no banco Neon.
+
+**Correção:**
+1. Script de migration criado em `backend/migrations/001_add_dismissed_at.sql`
+2. Migration executada no Neon e no Docker local: `ALTER TABLE alert ADD COLUMN dismissed_at TIMESTAMPTZ;`
+3. Coluna verificada em ambos os ambientes via `information_schema.columns`/`\d alert` — presente como `timestamp with time zone`, nullable
+
+**Impacto:** Nenhuma alteração de código. Apenas DDL aditivo no banco. Todos os alertas existentes mantêm `dismissed_at = NULL`, o filtro `dismissed_at.is_(None)` no `list_all` os exibe normalmente.
+
+**Verificação pós-fix (mesma suite pré-fix):**
+| Métrica | Resultado |
+|---------|-----------|
+| Backend testes | **266**, 0 falhas |
+| Frontend testes | **143**, 0 falhas |
+| `tsc --noEmit` | 0 errors |
+| ESLint | 0 errors |
+| Ruff | (pre-existing: 11 errors, não relacionados) |
