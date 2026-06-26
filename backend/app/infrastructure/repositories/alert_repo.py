@@ -26,10 +26,11 @@ class AlertRepository:
         return entity
 
     async def list_all(self, delivery_id: Optional[uuid.UUID] = None, limit: int = 50, offset: int = 0) -> List[AlertEntity]:
-        stmt = select(AlertModel).order_by(desc(AlertModel.created_at)).limit(limit).offset(offset)
         ttl_limit = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=settings.ALERT_TTL_DAYS)
+        stmt = select(AlertModel).order_by(desc(AlertModel.created_at)).limit(limit).offset(offset)
         stmt = stmt.where(
-            AlertModel.dismissed_at.is_(None) | (AlertModel.dismissed_at >= ttl_limit)
+            AlertModel.dismissed_at.is_(None),
+            AlertModel.created_at >= ttl_limit,
         )
         if delivery_id is not None:
             stmt = stmt.where(AlertModel.delivery_id == delivery_id)
@@ -51,7 +52,8 @@ class AlertRepository:
         stmt = select(func.count(AlertModel.id))
         ttl_limit = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=settings.ALERT_TTL_DAYS)
         stmt = stmt.where(
-            AlertModel.dismissed_at.is_(None) | (AlertModel.dismissed_at >= ttl_limit)
+            AlertModel.dismissed_at.is_(None),
+            AlertModel.created_at >= ttl_limit,
         )
         if is_critical is not None:
             stmt = stmt.where(AlertModel.is_critical == is_critical)

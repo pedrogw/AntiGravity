@@ -3059,3 +3059,110 @@ São apenas branches de erro — nenhum bug real:
 | `tsc --noEmit` | 0 errors |
 | ESLint | 0 errors |
 | Ruff | (pre-existing: 11 errors, não relacionados) |
+
+---
+
+## Bloco 37 — README.md (Documentação do Projeto)
+
+**Objetivo:** Criar documentação completa do projeto na raiz do repositório, substituir template padrão do frontend.
+
+**O que foi feito:**
+
+- `README.md` (173 linhas) na raiz com:
+  - Identificação (autor, curso, período, datas)
+  - Resumo (2 parágrafos)
+  - Problema / Motivação
+  - Arquitetura (Clean Architecture / DDD com diagrama de diretórios)
+  - Stack tecnológica completa
+  - Funcionalidades (backend + frontend)
+  - Qualidade (testes, cobertura, lint)
+  - Deploy (Render, Vercel, Neon, DockerHub, CI/CD)
+  - Como rodar localmente (Docker Compose + seed + credenciais)
+  - Lições Aprendidas (6 tópicos com decisões-chave do projeto)
+- `frontend/README.md` (39 linhas) substituído — template padrão do `create-next-app` removido, conteúdo específico do projeto
+
+**Verificação:**
+| Métrica | Resultado |
+|---------|-----------|
+| Backend testes | **266**, 0 falhas (inalterado) |
+| Frontend testes | **143**, 0 falhas (inalterado) |
+| Lint | 0 erros (inalterado) |
+| `git status` | Apenas os 2 READMEs como mudança |
+
+---
+
+## Bloco 38 — Bug: Alertas Dispensados Reaparecem Após Polling
+
+**Data:** 2026-06-26
+
+### Problema
+
+Usuários reportaram que alertas dispensados (via `PATCH /alerts/{id}/dismiss`) reapareciam na tela após o ciclo de polling do frontend (15s). Ao recarregar a página, todos os alertas que haviam sido dispensados voltavam.
+
+### Causa Raiz
+
+`backend/app/infrastructure/repositories/alert_repo.py:31-33` e `:52-54`:
+
+```python
+# ANTES (BUG)
+stmt = stmt.where(
+    AlertModel.dismissed_at.is_(None) | (AlertModel.dismissed_at >= ttl_limit)
+)
+```
+
+O filtro OR dizia: "inclua alertas que **não foram dispensados** OU que **foram dispensados há menos de 7 dias**". Isso fazia com que alertas dispensados continuassem aparecendo por até 7 dias após o dismiss — exatamente o oposto do desejado.
+
+### Análise de Impacto
+
+| Camada | Arquivo | Mudança |
+|--------|---------|---------|
+| **Backend Repositório** | `alert_repo.py:31-33` (list_all) | Filtro OR → AND exclusivo |
+| **Backend Repositório** | `alert_repo.py:52-54` (count_all) | Mesma correção |
+| **Frontend Hook** | `useAlerts.ts:18` | Filtro extra `!a.isDismissed` (defesa em profundidade) |
+| **Testes (novos)** | `test_integration.py` | 3 testes de integração |
+
+### Por que o bug passou despercebido
+
+Os testes de integração para verificar que alertas dispensados não aparecem na listagem (`test_dismissed_alert_not_in_list`, `test_old_alert_not_in_list`, `test_count_all_excludes_dismissed`) foram **planejados no Bloco 36 mas nunca implementados** — a regressão só foi detectada em produção.
+
+### Correção (TDD — RED → GREEN)
+
+**Filtro corrigido:**
+
+```python
+# DEPOIS (FIX)
+stmt = stmt.where(
+    AlertModel.dismissed_at.is_(None),
+    AlertModel.created_at >= ttl_limit,
+)
+```
+
+- `dismissed_at.is_(None)` — alertas dispensados somem **imediatamente**
+- `created_at >= ttl_limit` — alertas não-dispensados expiram após `ALERT_TTL_DAYS` (7 dias)
+
+**Frontend (`useAlerts.ts:18`):**
+
+```typescript
+setAlerts(result.filter((a) => !a.isDismissed));
+```
+
+Defesa em profundidade: mesmo que o backend por algum motivo retorne alertas dispensados (race condition entre polling e cache do React), o frontend os filtra.
+
+### Testes (RED → GREEN)
+
+| Teste | Descrição | Resultado |
+|-------|-----------|-----------|
+| `test_dismissed_alert_not_in_list` | Cria alerta via chaos → dismiss → GET /alerts deve excluí-lo | RED: alerta ainda aparecia ✅ → GREEN agora |
+| `test_old_alert_not_in_list` | Insere alerta com `created_at = 30 dias atrás` → não deve aparecer | RED: aparecia (sem filtro de created_at) ✅ → GREEN agora |
+| `test_count_all_excludes_dismissed` | Dismiss reduz contagem de alertas em 1 | RED: count não mudava ✅ → GREEN agora |
+
+### Verificação Pós-Correção
+
+| Métrica | Resultado |
+|---------|-----------|
+| Backend testes | **269**, 0 falhas (+3 novos) |
+| Cobertura | **99%** |
+| Ruff | 0 novos (11 pré-existentes, não relacionados) |
+| Frontend testes | **143**, 0 falhas (inalterado) |
+| ESLint | 0 errors |
+| `tsc --noEmit` | 0 errors |

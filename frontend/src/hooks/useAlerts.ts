@@ -15,7 +15,7 @@ export function useAlerts(pollingInterval = 15000) {
     try {
       const useCase = makeListAlertsUseCase();
       const result = await useCase.execute({ deliveryId, limit: 100 });
-      setAlerts(result);
+      setAlerts(result.filter((a) => !a.isDismissed));
     } catch (err) {
       if (err instanceof AppError) {
         setError(err.message);

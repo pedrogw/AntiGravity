@@ -1,6 +1,8 @@
 import pytest
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 import uuid
+import datetime
 
 pytestmark = pytest.mark.anyio
 
@@ -657,6 +659,101 @@ class TestAlerts:
     async def test_list_alerts_requires_auth(self, client: AsyncClient):
         resp = await client.get("/alerts")
         assert resp.status_code in (401, 403)
+
+    async def test_dismissed_alert_not_in_list(self, client: AsyncClient, lojista: dict, motorista: dict):
+        store_resp = await client.post(
+            "/places/stores",
+            json={"name": "Loja Dismiss", "lat": -23.55, "lng": -46.63, "owner_id": lojista["id"]},
+            headers=lojista["headers"],
+        )
+        factory_resp = await client.post(
+            "/places/factories",
+            json={"name": "F-Dismiss", "lat": -23.0, "lng": -46.0},
+            headers=lojista["headers"],
+        )
+        create_resp = await client.post(
+            "/deliveries/",
+            json={"factory_id": factory_resp.json()["id"], "store_id": store_resp.json()["id"], "driver_id": motorista["id"]},
+            headers=lojista["headers"],
+        )
+        delivery_id = create_resp.json()["id"]
+
+        await client.post(
+            f"/deliveries/{delivery_id}/chaos",
+            json={"event_type": "deslizamento", "impact_factor": 3.0, "delay_minutes": 90},
+            headers=lojista["headers"],
+        )
+
+        alerts_resp = await client.get("/alerts", headers=lojista["headers"])
+        assert alerts_resp.status_code == 200
+        alerts = alerts_resp.json()
+        assert len(alerts) >= 1
+        alert_id = alerts[0]["id"]
+
+        dismiss_resp = await client.patch(f"/alerts/{alert_id}/dismiss", headers=lojista["headers"])
+        assert dismiss_resp.status_code == 200
+        assert dismiss_resp.json()["dismissed_at"] is not None
+
+        final_resp = await client.get("/alerts", headers=lojista["headers"])
+        assert final_resp.status_code == 200
+        final_alerts = final_resp.json()
+        assert all(a["id"] != alert_id for a in final_alerts)
+
+    async def test_old_alert_not_in_list(self, client: AsyncClient, lojista: dict, db_session: AsyncSession):
+        from app.infrastructure.orm.alert import Alert as AlertModel
+
+        old_alert = AlertModel(
+            id=uuid.uuid4(),
+            delivery_id=uuid.uuid4(),
+            message="Alerta antigo além do TTL",
+            is_critical=False,
+            created_at=datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=30),
+            dismissed_at=None,
+        )
+        db_session.add(old_alert)
+        await db_session.commit()
+
+        resp = await client.get("/alerts", headers=lojista["headers"])
+        assert resp.status_code == 200
+        data = resp.json()
+        assert all(a["id"] != str(old_alert.id) for a in data)
+
+    async def test_count_all_excludes_dismissed(self, client: AsyncClient, lojista: dict, motorista: dict):
+        store_resp = await client.post(
+            "/places/stores",
+            json={"name": "Loja Count", "lat": -23.55, "lng": -46.63, "owner_id": lojista["id"]},
+            headers=lojista["headers"],
+        )
+        factory_resp = await client.post(
+            "/places/factories",
+            json={"name": "F-Count", "lat": -23.0, "lng": -46.0},
+            headers=lojista["headers"],
+        )
+        create_resp = await client.post(
+            "/deliveries/",
+            json={"factory_id": factory_resp.json()["id"], "store_id": store_resp.json()["id"], "driver_id": motorista["id"]},
+            headers=lojista["headers"],
+        )
+        delivery_id = create_resp.json()["id"]
+
+        await client.post(
+            f"/deliveries/{delivery_id}/chaos",
+            json={"event_type": "deslizamento", "impact_factor": 3.0, "delay_minutes": 90},
+            headers=lojista["headers"],
+        )
+
+        alerts_resp = await client.get("/alerts", headers=lojista["headers"])
+        assert alerts_resp.status_code == 200
+        pre_alerts = alerts_resp.json()
+        pre_count = len(pre_alerts)
+
+        alert_id = pre_alerts[0]["id"]
+        await client.patch(f"/alerts/{alert_id}/dismiss", headers=lojista["headers"])
+
+        final_resp = await client.get("/alerts", headers=lojista["headers"])
+        assert final_resp.status_code == 200
+        final_alerts = final_resp.json()
+        assert len(final_alerts) == pre_count - 1
 
 
 class TestFullDeliveryCycle:

@@ -28,6 +28,8 @@
 | **Bloco 35** ✅ | `ListFactoriesUseCase.test.ts`, `ListStoresUseCase.test.ts`, `CriarEntregaDialog.test.tsx`, `ActiveDeliveryView.test.tsx` | Correção de 18 TS errors + 1 extra. Item 1: `getStoreById: vi.fn()`. Item 2: `as unknown as ReturnType<>` em 10 mockReturnValues. Item 3: `npx next build` regenerou `.next/types`. Extra: `status: DeliveryStatus` em `ActiveDeliveryView.test.tsx`. Pré: 136 tests, 18 TS errors. Pós: 136 tests, **0 TS errors**, ESLint 0, next build OK. |
 | **Bloco 36** ✅ | `alert.py` (entity + ORM + repo + schema + use case + API), `config.py`, `Alert.ts`, `AlertRepositoryProtocol.ts`, `ApiAlertRepository.ts`, `DismissAlertUseCase.ts`, `useAlerts.ts`, `AlertList.tsx`, `factories.ts`, `dashboard/page.tsx` | Dismiss + 7-day expiry. Backend: `dismissed_at`, `dismiss()`, `PATCH /alerts/{id}/dismiss`, `ALERT_TTL_DAYS=7`. Frontend: botão "Dispensar", `dismissAlert()`, optimist remove. TDD. Pré: 136 FE tests, 260 BE tests. Pós: **143 FE tests**, **266 BE tests**, **0 TS errors**, ESLint 0. |
 | **Hotfix** ✅ | `backend/migrations/001_add_dismissed_at.sql` | Migration `ALTER TABLE alert ADD COLUMN dismissed_at TIMESTAMPTZ` executada no Neon. Coluna faltante após Bloco 36 causava 500 ao reportar problema no drive. Nenhuma alteração de código. |
+| **README.md** ✅ | `README.md`, `frontend/README.md` | Documentação completa do projeto (173 linhas + 39 linhas): resumo, arquitetura, stack, funcionalidades, qualidade, deploy, setup, lições aprendidas. Substituído template padrão do Next.js no `frontend/README.md`. |
+| **Bloco 38 — Bug: alertas dispensados reaparecem após polling** ✅ | `backend/app/infrastructure/repositories/alert_repo.py`, `frontend/src/hooks/useAlerts.ts`, `backend/tests/api/test_integration.py` | Filtro OR com TTL de 7 dias (`dismissed_at.is_(None) \| (dismissed_at >= ttl_limit)`) substituído por AND exclusivo (`dismissed_at.is_(None)` AND `created_at >= ttl_limit`). Frontend: filtro extra `!a.isDismissed`. 3 novos testes de integração (RED → GREEN). |
 
 ---
 
@@ -46,6 +48,7 @@
 | **Bloco 35 — Correção TS Frontend (18→0 errors)** | ✅ **Concluído** |
 | **Bloco 36 — Alert Dismiss + Expiração de 7 dias** | ✅ **Concluído** |
 | **Hotfix — Migration dismissed_at no Neon** | ✅ **Concluído** |
+| **README.md — Documentação do Projeto** | ✅ **Concluído** |
 | **Block O — Mapa Arrastável + Simulação de Posição** (frontend) | ✅ **Concluído** |
 | **Block P — Localização da Loja no Mapa** (backend + frontend) | ✅ **Concluído** |
 | **Block L — Mapa Interativo Leaflet** (frontend) | ✅ **Concluído** |
