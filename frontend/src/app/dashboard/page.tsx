@@ -15,7 +15,7 @@ import { useAlerts } from '@/hooks/useAlerts'
 
 export default function DashboardPage() {
   const { deliveries, isLoading, error, fetchDeliveries } = useDeliveries()
-  const { alerts, criticalAlerts, isLoading: alertsLoading, error: alertsError } = useAlerts()
+  const { alerts, criticalAlerts, isLoading: alertsLoading, error: alertsError, dismissAlert } = useAlerts()
   const [dialogOpen, setDialogOpen] = useState(false)
 
   useEffect(() => {
@@ -60,7 +60,7 @@ export default function DashboardPage() {
               <h2 className="text-sm font-semibold text-slate-700 mb-3 uppercase tracking-wider">
                 Alertas Recentes
               </h2>
-              <AlertList alerts={alerts.slice(0, 10)} isLoading={alertsLoading} error={alertsError} />
+              <AlertList alerts={alerts.slice(0, 10)} isLoading={alertsLoading} error={alertsError} onDismiss={dismissAlert} />
             </div>
           )}
 

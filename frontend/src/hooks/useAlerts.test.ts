@@ -1,13 +1,14 @@
 import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useAlerts } from './useAlerts';
-import { makeListAlertsUseCase } from '../infrastructure/di/factories';
+import { makeListAlertsUseCase, makeDismissAlertUseCase } from '../infrastructure/di/factories';
 import { ListAlertsUseCase } from '../application/use_cases/ListAlertsUseCase';
 import { Alert } from '../domain/entities/Alert';
 import { AppError } from '../domain/errors/AppError';
 
 vi.mock('../infrastructure/di/factories', () => ({
   makeListAlertsUseCase: vi.fn(),
+  makeDismissAlertUseCase: vi.fn(),
 }));
 
 describe('useAlerts', () => {
@@ -129,5 +130,46 @@ describe('useAlerts', () => {
       await vi.advanceTimersByTimeAsync(10000);
     });
     expect(mockExecute).toHaveBeenCalledTimes(3);
+  });
+
+  it('deve remover alerta da lista ao dismiss com sucesso', async () => {
+    mockExecute.mockResolvedValue([fakeAlert, fakeNonCritical]);
+    const mockDismissExecute = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(makeDismissAlertUseCase).mockReturnValue({ execute: mockDismissExecute } as never);
+
+    const { result } = renderHook(() => useAlerts(60000));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(result.current.alerts).toHaveLength(2);
+
+    await act(async () => {
+      await result.current.dismissAlert('alert1');
+    });
+
+    expect(mockDismissExecute).toHaveBeenCalledOnce();
+    expect(mockDismissExecute).toHaveBeenCalledWith({ alertId: 'alert1' });
+    expect(result.current.alerts).toHaveLength(1);
+    expect(result.current.alerts[0].id).toBe('alert2');
+  });
+
+  it('deve definir mensagem de erro quando dismiss falha', async () => {
+    mockExecute.mockResolvedValue([fakeAlert]);
+    const mockDismissExecute = vi.fn().mockRejectedValue(new AppError('Falha ao dispensar'));
+    vi.mocked(makeDismissAlertUseCase).mockReturnValue({ execute: mockDismissExecute } as never);
+
+    const { result } = renderHook(() => useAlerts(60000));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    await act(async () => {
+      await result.current.dismissAlert('alert1');
+    });
+
+    expect(result.current.error).toBe('Falha ao dispensar');
   });
 });

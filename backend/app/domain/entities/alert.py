@@ -1,6 +1,7 @@
 import uuid
 import datetime
 from dataclasses import dataclass, field
+from typing import Optional
 
 @dataclass
 class Alert:
@@ -10,6 +11,15 @@ class Alert:
     is_critical: bool = False
     id: uuid.UUID = field(default_factory=uuid.uuid4)
     created_at: datetime.datetime = field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc))
+    dismissed_at: Optional[datetime.datetime] = None
+
+    @property
+    def is_dismissed(self) -> bool:
+        return self.dismissed_at is not None
+
+    def dismiss(self, now: datetime.datetime) -> None:
+        if self.dismissed_at is None:
+            self.dismissed_at = now
 
     @classmethod
     def from_chaos(

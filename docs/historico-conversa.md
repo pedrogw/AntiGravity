@@ -2935,3 +2935,107 @@ São apenas branches de erro — nenhum bug real:
 | `npx next build` | N/A | **Compiled successfully** | ✅ |
 | Testes (backend) | 260 passed | **260 passed** | ✅ Inalterado |
 | Nenhum arquivo de produção alterado | — | — | ✅ |
+
+---
+
+## Bloco 36 — Dismiss + Expiração Automática de Alertas (Planejado)
+
+**Objetivo:** Adicionar botão "Dispensar" nos alertas do frontend e expiração automática após 7 dias no backend.
+
+### Análise de Impacto
+
+| Camada | Arquivos | Mudança |
+|--------|----------|---------|
+| **Domínio (entidade)** | `backend/app/domain/entities/alert.py` | + `dismissed_at: Optional[datetime]`, + `dismiss()` |
+| **Domínio (protocolo)** | `backend/app/domain/repositories/alert_repo.py` | + `dismiss(id)`, `list_all` filtra expirados/dismissed |
+| **ORM** | `backend/app/infrastructure/orm/alert.py` | + `dismissed_at: Optional[datetime]` |
+| **Infra (repo)** | `backend/app/infrastructure/repositories/alert_repo.py` | implementar `dismiss()`, `list_all` com filtro |
+| **Migration** | `backend/migrations/versions_pedro/` | `ALTER TABLE alert ADD COLUMN dismissed_at` |
+| **Schema** | `backend/app/schemas/alert.py` | + `dismissed_at: Optional[datetime]` |
+| **Use Case** | `backend/app/use_cases/alert_use_cases.py` | + `DismissAlertUseCase` |
+| **API** | `backend/app/api/alerts.py` | + `PATCH /alerts/{id}/dismiss` |
+| **Config** | `backend/app/core/config.py` | + `ALERT_TTL_DAYS: int = 7` |
+| **Frontend entity** | `frontend/src/domain/entities/Alert.ts` | + `dismissedAt?: Date` |
+| **Frontend protocol** | `frontend/src/domain/repositories/AlertRepositoryProtocol.ts` | + `dismiss(id)` |
+| **Frontend API repo** | `frontend/src/infrastructure/repositories/ApiAlertRepository.ts` | implementar `dismiss()` |
+| **Frontend use case** | `frontend/src/application/use_cases/DismissAlertUseCase.ts` | novo (1 ação) |
+| **Frontend hook** | `frontend/src/hooks/useAlerts.ts` | + `dismissAlert()` |
+| **Frontend component** | `frontend/src/components/dashboard/AlertList.tsx` | + botão "Dispensar" |
+| **Frontend factory** | `frontend/src/infrastructure/di/factories.ts` | + `makeDismissAlertUseCase` |
+
+### Backend — Testes (TDD)
+
+| Teste | Arquivo | O quê |
+|-------|---------|-------|
+| `test_dismiss_marks_dismissed_at` | `test_alert_entity.py` | `alert.dismiss(now)` → `alert.dismissed_at == now` |
+| `test_dismiss_twice_does_not_overwrite` | `test_alert_entity.py` | chamar `dismiss()` duas vezes mantém o primeiro |
+| `test_is_dismissed_property` | `test_alert_entity.py` | `is_dismissed` → `True` após dismiss |
+| `test_dismiss_alert_calls_repo_dismiss` | `test_alert_use_cases.py` | `DismissAlertUseCase.execute(id)` → `repo.dismiss(id)` |
+| `test_dismiss_nonexistent_alert_returns_none` | `test_alert_use_cases.py` | `repo.dismiss` retorna `None` → use case retorna `None` |
+| `test_dismiss_alert_returns_200` | `test_integration.py` | `PATCH /alerts/{id}/dismiss` → 200 |
+| `test_dismiss_nonexistent_alert_returns_404` | `test_integration.py` | alerta inexistente → 404 |
+| `test_dismissed_alert_not_in_list` | `test_integration.py` | após dismiss, `GET /alerts` não retorna |
+| `test_old_alert_not_in_list` | `test_integration.py` | alerta com `created_at > 7 dias` não aparece |
+
+### Frontend — Testes (TDD)
+
+| Teste | Arquivo | O quê |
+|-------|---------|-------|
+| `deve chamar dismiss no repositorio` | `DismissAlertUseCase.test.ts` | `execute(id)` → `repo.dismiss(id)` |
+| `deve remover alerta da lista ao dismiss` | `useAlerts.test.ts` | `dismissAlert(id)` → alerta some do state local |
+| `deve mostrar botao dispensar em cada alerta` | `AlertList.test.tsx` | renderiza botão "Dispensar" |
+| `deve chamar onDismiss ao clicar em dispensar` | `AlertList.test.tsx` | `fireEvent.click` → `onDismiss` chamado |
+
+**Nenhum teste existente precisa ser alterado** — `dismissed_at` é `Optional`, schema backward compatible, filtro extra só exclui resultados. Testes que criam alertas com `now()` continuam dentro dos 7 dias. ✅
+
+### Verificação Esperada
+
+| Métrica | Esperado |
+|---------|----------|
+| Backend testes | **260+**, 0 falhas |
+| Cobertura domínio | **100%** |
+| Cobertura use cases | **100%** |
+| Ruff | All checks passed |
+| Frontend testes | **136+**, 0 falhas |
+| ESLint | 0 errors |
+| `tsc --noEmit` | 0 errors |
+| Nenhum teste existente alterado | ✅ |
+
+## Bloco 36 — Alert Dismiss + Expiração de 7 dias
+### Resultado
+- **Backend:** 266 testes, 98% cobertura, 1 warning (PytestCacheWarning), Ruff limpo
+- **Frontend:** 143 testes, **0 TS errors**, ESLint 0, `npx next build` compila
+- Todos os 4 novos testes de backend (domain + use case) + 6 novos testes de frontend (use case + repo + hook + component) passando
+
+### O que foi feito
+1. **Domínio (`backend/app/domain/entities/alert.py`):** `dismissed_at: Optional[datetime]`, `is_dismissed` property, `dismiss(now)` — já existiam do planejamento
+2. **Protocolo (`backend/app/domain/repositories/alert_repo.py`):** +`dismiss(alert_id) -> Optional[AlertEntity]`
+3. **ORM (`backend/app/infrastructure/orm/alert.py`):** +`dismissed_at: Mapped[Optional[datetime]]`
+4. **Schema (`backend/app/schemas/alert.py`):** +`dismissed_at: Optional[datetime]`
+5. **Repositório (`backend/app/infrastructure/repositories/alert_repo.py`):** `create()` agora salva `dismissed_at`; `list_all()` e `count_all()` filtram alertas dispensados > 7 dias (`ALERT_TTL_DAYS`); novo método `dismiss()` que busca ORM, chama `entity.dismiss(now)`, persiste e retorna entidade
+6. **Config (`backend/app/core/config.py`):** +`ALERT_TTL_DAYS: int = 7`
+7. **Use Case (`backend/app/use_cases/alert_use_cases.py`):** +`DismissAlertUseCase.execute(alert_id)`
+8. **API (`backend/app/api/alerts.py`):** +`PATCH /alerts/{alert_id}/dismiss` → 200 ou 404
+9. **Entidade frontend (`frontend/src/domain/entities/Alert.ts`):** +`dismissedAt`, `isDismissed`
+10. **Protocolo frontend (`frontend/src/domain/repositories/AlertRepositoryProtocol.ts`):** +`dismiss(id)`
+11. **ApiAlertRepository:** +`dismiss(id)` → `PATCH /alerts/{id}/dismiss`, `toAlert` mapeia `dismissed_at`
+12. **DismissAlertUseCase (frontend, novo):** `execute({ alertId })` → `repo.dismiss(alertId)`
+13. **Hook (`useAlerts.ts`):** +`dismissAlert(alertId)` → chama use case + otimist remove da lista
+14. **Componente (`AlertList.tsx`):** +prop `onDismiss`, botão `✕` com `aria-label="Dispensar alerta"`
+15. **Dashboard (`dashboard/page.tsx`):** passa `onDismiss={dismissAlert}` ao `<AlertList>`
+16. **Factories:** +`makeDismissAlertUseCase`
+
+### Testes (TDD)
+- **Backend (4 novos):** `test_dismiss_alert_calls_repo_dismiss`, `test_dismiss_nonexistent_alert_returns_none` (use cases); domain tests já existiam (4 tests)
+- **Frontend (6 novos):** `DismissAlertUseCase.test.ts` (1), `ApiAlertRepository.test.ts` (+dismiss, 1), `useAlerts.test.ts` (+dismiss success + dismiss error, 2), `AlertList.test.tsx` (+dismiss button render + click + hidden, 3)
+- **Ajustes:** `ListAlertsUseCase.test.ts` (+`dismiss: vi.fn()` no mockRepo), `AlertList.test.tsx` (+`vi` no import)
+
+### Verificação
+| Métrica | Resultado |
+|---------|-----------|
+| Backend testes | **266**, 0 falhas |
+| Cobertura | **98%** (domínio 100%, use cases 100%) |
+| Ruff | All checks passed |
+| Frontend testes | **143**, 0 falhas |
+| ESLint | 0 errors |
+| `tsc --noEmit` | 0 errors |

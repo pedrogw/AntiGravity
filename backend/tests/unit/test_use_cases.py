@@ -681,6 +681,33 @@ class TestListAlertsUseCase:
         assert result[0].message == "Alerta crítico"
 
 
+class TestDismissAlertUseCase:
+    async def test_dismiss_alert_calls_repo_dismiss(self):
+        from app.domain.entities.alert import Alert
+        from app.use_cases.alert_use_cases import DismissAlertUseCase
+        alert_id = uuid.uuid4()
+        mock_repo = AsyncMock()
+        mock_repo.dismiss = AsyncMock(return_value=Alert(delivery_id=uuid.uuid4(), message="teste"))
+
+        use_case = DismissAlertUseCase(mock_repo)
+        result = await use_case.execute(alert_id)
+
+        mock_repo.dismiss.assert_awaited_once_with(alert_id)
+        assert result is not None
+
+    async def test_dismiss_nonexistent_alert_returns_none(self):
+        from app.use_cases.alert_use_cases import DismissAlertUseCase
+        alert_id = uuid.uuid4()
+        mock_repo = AsyncMock()
+        mock_repo.dismiss = AsyncMock(return_value=None)
+
+        use_case = DismissAlertUseCase(mock_repo)
+        result = await use_case.execute(alert_id)
+
+        mock_repo.dismiss.assert_awaited_once_with(alert_id)
+        assert result is None
+
+
 class TestGetDashboardUseCase:
     async def test_dashboard_returns_aggregated_data(
         self, mock_delivery_repo, mock_alert_repo, mock_chaos_repo,

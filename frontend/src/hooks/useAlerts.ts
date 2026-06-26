@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { makeListAlertsUseCase } from '../infrastructure/di/factories';
+import { makeListAlertsUseCase, makeDismissAlertUseCase } from '../infrastructure/di/factories';
 import { Alert } from '../domain/entities/Alert';
 import { AppError } from '../domain/errors/AppError';
 
@@ -27,6 +27,20 @@ export function useAlerts(pollingInterval = 15000) {
     }
   }, []);
 
+  const dismissAlert = useCallback(async (alertId: string) => {
+    try {
+      const useCase = makeDismissAlertUseCase();
+      await useCase.execute({ alertId });
+      setAlerts((prev) => prev.filter((a) => a.id !== alertId));
+    } catch (err) {
+      if (err instanceof AppError) {
+        setError(err.message);
+      } else {
+        setError('Erro ao dispensar alerta.');
+      }
+    }
+  }, []);
+
   useEffect(() => {
     const timer = setTimeout(() => fetchAlerts(), 0);
     intervalRef.current = setInterval(() => fetchAlerts(), pollingInterval);
@@ -38,5 +52,5 @@ export function useAlerts(pollingInterval = 15000) {
 
   const criticalAlerts = alerts.filter((a) => a.isCritical);
 
-  return { alerts, criticalAlerts, isLoading, error, fetchAlerts };
+  return { alerts, criticalAlerts, isLoading, error, fetchAlerts, dismissAlert };
 }

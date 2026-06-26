@@ -13,7 +13,7 @@ describe('ListAlertsUseCase', () => {
   );
 
   beforeEach(() => {
-    mockRepo = { listAll: vi.fn() };
+    mockRepo = { listAll: vi.fn(), dismiss: vi.fn() };
     useCase = new ListAlertsUseCase(mockRepo);
   });
 

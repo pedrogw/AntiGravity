@@ -29,6 +29,7 @@ import { ListDriversUseCase } from '../../application/use_cases/ListDriversUseCa
 import { ListFactoriesUseCase } from '../../application/use_cases/ListFactoriesUseCase';
 import { ListStoresUseCase } from '../../application/use_cases/ListStoresUseCase';
 import { ListAlertsUseCase } from '../../application/use_cases/ListAlertsUseCase';
+import { DismissAlertUseCase } from '../../application/use_cases/DismissAlertUseCase';
 import { GetStoreByIdUseCase } from '../../application/use_cases/GetStoreByIdUseCase';
 
 export const makeLoginUseCase = () => new LoginUseCase(DI.authRepository, DI.tokenStorage);
@@ -42,4 +43,5 @@ export const makeListDriversUseCase = () => new ListDriversUseCase(DI.userReposi
 export const makeListFactoriesUseCase = () => new ListFactoriesUseCase(DI.placeRepository);
 export const makeListStoresUseCase = () => new ListStoresUseCase(DI.placeRepository);
 export const makeListAlertsUseCase = () => new ListAlertsUseCase(DI.alertRepository);
+export const makeDismissAlertUseCase = () => new DismissAlertUseCase(DI.alertRepository);
 export const makeGetStoreByIdUseCase = () => new GetStoreByIdUseCase(DI.placeRepository);

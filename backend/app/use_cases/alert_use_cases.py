@@ -18,3 +18,12 @@ class ListAlertsUseCase:
         return await self.alert_repo.list_all(
             delivery_id=delivery_id, limit=limit, offset=offset,
         )
+
+
+class DismissAlertUseCase:
+    """Marca um alerta como dispensado (dismissed_at = now)."""
+    def __init__(self, alert_repo: AlertRepositoryProtocol):
+        self.alert_repo = alert_repo
+
+    async def execute(self, alert_id: uuid.UUID) -> Optional[AlertEntity]:
+        return await self.alert_repo.dismiss(alert_id)

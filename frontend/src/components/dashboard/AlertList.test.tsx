@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { AlertList } from './AlertList';
 import { Alert } from '@/domain/entities/Alert';
 
@@ -60,5 +60,40 @@ describe('AlertList', () => {
     render(<AlertList alerts={[alert]} isLoading={false} error="" />);
 
     expect(screen.getByText(fixedDate.toLocaleString('pt-BR'))).toBeTruthy();
+  });
+
+  it('deve renderizar botao de dismiss quando onDismiss é fornecido', () => {
+    render(
+      <AlertList alerts={[criticalAlert]} isLoading={false} error="" onDismiss={vi.fn()} />,
+    );
+
+    expect(screen.getByLabelText('Dispensar alerta')).toBeTruthy();
+  });
+
+  it('deve chamar onDismiss com o id do alerta ao clicar', () => {
+    const onDismiss = vi.fn();
+    render(
+      <AlertList
+        alerts={[criticalAlert, infoAlert]}
+        isLoading={false}
+        error=""
+        onDismiss={onDismiss}
+      />,
+    );
+
+    const buttons = screen.getAllByLabelText('Dispensar alerta');
+    expect(buttons).toHaveLength(2);
+
+    buttons[0].click();
+    expect(onDismiss).toHaveBeenCalledWith('alert1');
+
+    buttons[1].click();
+    expect(onDismiss).toHaveBeenCalledWith('alert2');
+  });
+
+  it('deve ocultar botao de dismiss quando onDismiss nao é fornecido', () => {
+    render(<AlertList alerts={[criticalAlert]} isLoading={false} error="" />);
+
+    expect(screen.queryByLabelText('Dispensar alerta')).toBeNull();
   });
 });

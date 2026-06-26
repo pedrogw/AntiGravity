@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 import uuid
 from app.db.session import get_db
 from app.schemas.alert import AlertResponse
 from app.infrastructure.repositories.alert_repo import AlertRepository
-from app.use_cases.alert_use_cases import ListAlertsUseCase
+from app.use_cases.alert_use_cases import ListAlertsUseCase, DismissAlertUseCase
 from app.api.deps import get_current_user
 
 router = APIRouter()
@@ -21,3 +21,16 @@ async def list_alerts(
     repo = AlertRepository(db)
     use_case = ListAlertsUseCase(repo)
     return await use_case.execute(delivery_id=delivery_id, limit=limit, offset=offset)
+
+@router.patch("/alerts/{alert_id}/dismiss", response_model=AlertResponse)
+async def dismiss_alert(
+    alert_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    repo = AlertRepository(db)
+    use_case = DismissAlertUseCase(repo)
+    result = await use_case.execute(alert_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Alerta não encontrado")
+    return result

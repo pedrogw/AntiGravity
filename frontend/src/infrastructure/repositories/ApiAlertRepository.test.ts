@@ -5,6 +5,7 @@ import { apiClient } from '../api/api_client';
 vi.mock('../api/api_client', () => ({
   apiClient: {
     get: vi.fn(),
+    patch: vi.fn(),
   },
 }));
 
@@ -65,5 +66,24 @@ describe('ApiAlertRepository', () => {
     const result = await repo.listAll();
 
     expect(result).toEqual([]);
+  });
+
+  it('deve chamar PATCH /alerts/{id}/dismiss', async () => {
+    vi.mocked(apiClient.patch).mockResolvedValue({
+      data: {
+        id: 'alert1',
+        delivery_id: 'del1',
+        message: 'Alerta',
+        is_critical: false,
+        created_at: '2026-06-25T10:00:00Z',
+        dismissed_at: '2026-06-26T10:00:00Z',
+      },
+    });
+
+    const result = await repo.dismiss('alert1');
+
+    expect(apiClient.patch).toHaveBeenCalledWith('/alerts/alert1/dismiss');
+    expect(result.id).toBe('alert1');
+    expect(result.dismissedAt).toBeInstanceOf(Date);
   });
 });

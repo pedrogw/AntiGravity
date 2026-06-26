@@ -26,12 +26,14 @@
 | **Q** ✅ | `frontend/src/components/ui/select.tsx`, `select.test.tsx` | `SelectValue` renderizava UUID (value) em vez do label. Corrigido com registro value→label via `labelMap`. 4 testes TDD. |
 | **Bloco 34** ✅ | `pyproject.toml` (novo), `pytest.ini` (remove), `.coveragerc` (remove), `requirements.txt` | `pyproject.toml` unificado (pytest + coverage + ruff), `fakeredis` atualizado `==2.26.0` → `>=2.36.2`. Pre: 260, 11 warnings. Post: 260, **1 warning** (PytestCacheWarning, permission). Ruff: all checks passed. |
 | **Bloco 35** ✅ | `ListFactoriesUseCase.test.ts`, `ListStoresUseCase.test.ts`, `CriarEntregaDialog.test.tsx`, `ActiveDeliveryView.test.tsx` | Correção de 18 TS errors + 1 extra. Item 1: `getStoreById: vi.fn()`. Item 2: `as unknown as ReturnType<>` em 10 mockReturnValues. Item 3: `npx next build` regenerou `.next/types`. Extra: `status: DeliveryStatus` em `ActiveDeliveryView.test.tsx`. Pré: 136 tests, 18 TS errors. Pós: 136 tests, **0 TS errors**, ESLint 0, next build OK. |
+| **Bloco 36** ✅ | `alert.py` (entity + ORM + repo + schema + use case + API), `config.py`, `Alert.ts`, `AlertRepositoryProtocol.ts`, `ApiAlertRepository.ts`, `DismissAlertUseCase.ts`, `useAlerts.ts`, `AlertList.tsx`, `factories.ts`, `dashboard/page.tsx` | Dismiss + 7-day expiry. Backend: `dismissed_at`, `dismiss()`, `PATCH /alerts/{id}/dismiss`, `ALERT_TTL_DAYS=7`. Frontend: botão "Dispensar", `dismissAlert()`, optimist remove. TDD. Pré: 136 FE tests, 260 BE tests. Pós: **143 FE tests**, **266 BE tests**, **0 TS errors**, ESLint 0. |
 
 ---
 
 ## Planejado
 
-_Nenhum bloco pendente no momento._
+| Bloco | Descrição | Prioridade |
+|-------|-----------|------------|
 
 ## Concluídos
 
@@ -41,6 +43,7 @@ _Nenhum bloco pendente no momento._
 | **Block Q — Select: UUIDs → nomes** (frontend) | ✅ **Concluído** |
 | **Bloco 34 — Limpeza Backend (pyproject.toml + fakeredis)** | ✅ **Concluído** |
 | **Bloco 35 — Correção TS Frontend (18→0 errors)** | ✅ **Concluído** |
+| **Bloco 36 — Alert Dismiss + Expiração de 7 dias** | ✅ **Concluído** |
 | **Block O — Mapa Arrastável + Simulação de Posição** (frontend) | ✅ **Concluído** |
 | **Block P — Localização da Loja no Mapa** (backend + frontend) | ✅ **Concluído** |
 | **Block L — Mapa Interativo Leaflet** (frontend) | ✅ **Concluído** |
