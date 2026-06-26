@@ -2744,3 +2744,194 @@ Após criar a loja, recarregar a página de drive com entrega `em_transito` faz 
 - Factory criada: `Fábrica Central SP` (lat -23.5505, lng -46.6333) → 201, ID `02eab21d-...`
 - Verificação: usuário e loja existem no Neon — marcador deve aparecer ao criar nova entrega com esta store
 - Testes pós-P.1: 260 backend ✅ + 132 frontend ✅ + lint 0 ✅
+
+### Pós-P.1 — Efeitos colaterais
+
+**1. Dados duplicados no Neon (resolvido ✅):** O seed já havia criado fábrica e loja anteriormente (com UUIDs diferentes). P.1 criou novos registros via API. Resultado: 2 fábricas e 2 lojas no banco.
+
+- **Factory:** Renomeada para "Fábrica Santos" via SQL UPDATE (ambas tinham entregas referenciando).
+- **Store duplicada deletada** diretamente no Neon pela equipe.
+
+**2. CriarEntregaDialog mostra UUIDs em vez de nomes (diagnosticado — ver Bloco Q abaixo):** Investigação completa realizada — causa raiz identificada no componente `SelectValue`.
+
+**3. Container roda como root:** Dockerfile não cria usuário não-root. Discutido mas sem prioridade de correção imediata.
+
+---
+
+## Bloco Q — Select mostra UUIDs em vez de nomes ✅
+
+**Objetivo:** Corrigir `CriarEntregaDialog` que exibe UUIDs nos selects de Fábrica, Loja e Motorista em vez dos nomes/emails.
+
+### Investigação (6 camadas)
+
+| Camada | Resultado |
+|--------|-----------|
+| Backend API (`GET /places/factories`, etc.) | ✅ Retorna `name`/`email` corretamente |
+| Backend schemas (`FactoryResponse`, `UserResponse`) | ✅ Campo `name` presente |
+| Backend repositories (`place_repo.py`, `user_repo.py`) | ✅ Carrega entidades com nome |
+| Frontend repositories (`ApiPlaceRepository`, `ApiUserRepository`) | ✅ Mapeia resposta para entidades com `name`/`email` |
+| Frontend hooks (`usePlaces`, `useUsers`) | ✅ Retorna objetos com `name`/`email` |
+| `CriarEntregaDialog.tsx` | ✅ Passa `{f.name}`, `{s.name}`, `{d.email}` como `children` do `<SelectItem>` |
+
+### Causa Raiz
+
+**Arquivo:** `frontend/src/components/ui/select.tsx:68`
+
+`SelectValue` renderizava o raw `value` (UUID) em vez do label visível. O `children` aparecia corretamente **no dropdown**, mas o contexto só armazenava o UUID — sem mecanismo para mapear valor de volta ao texto de exibição.
+
+### Implementação (TDD — RED → GREEN)
+
+**Fase RED:** 4 testes escritos em `frontend/src/components/ui/select.test.tsx`:
+1. Renderiza placeholder quando nenhum valor selecionado ✅
+2. Renderiza label do item selecionado (falhou: mostrava "1" em vez de "Item Um") ❌
+3. Atualiza label ao mudar valor via rerender (falhou) ❌
+4. Item selecionado pelo onClick chama `onValueChange` ✅
+
+**Fase GREEN — Arquivo alterado:** `frontend/src/components/ui/select.tsx`
+
+| Mudança | Detalhe |
+|---------|---------|
+| `SelectContextType` | + `selectedLabel: string` + `registerLabel: (val, label) => void` |
+| `Select` | + `labelMap` state tracking value→label; `selectedLabel = labelMap[ctxValue]` |
+| Helper `getDisplayText()` | Extrai texto puro de `React.ReactNode` children |
+| `SelectItem` | `useEffect` registra value→label via `registerLabel` |
+| `SelectValue` | Renderiza `selectedLabel \|\| placeholder` em vez de `value \|\| placeholder` |
+| `SelectContent` | Não retorna `null` quando fechado — usa CSS `display:none` p/ manter `SelectItem` montado e registrar labels |
+
+**Observação:** `SelectContent` precisou manter os `SelectItem` sempre montados (ocultos via CSS) para que o registro value→label funcionasse mesmo com o dropdown fechado.
+
+### Verificação Final
+
+- **136/136 frontend** (132 existentes + 4 novos) ✅
+- **0 testes alterados** ✅
+- **Lint 0 erros** ✅
+- **Nenhuma alteração em backend, hooks, repositórios ou `CriarEntregaDialog.tsx`**
+
+---
+
+## Bloco 34 — Verificação Intensiva do Backend + Limpeza ✅
+
+**Objetivo:** Rodar verificação intensiva no backend (testes, cobertura, lint, dead code, warnings) e executar correções.
+
+### Resultado da Verificação
+
+| Métrica | Resultado |
+|---------|-----------|
+| Testes | **260 passed, 0 failures** |
+| Cobertura | **99%** (7 linhas descobertas — branches de erro) |
+| Lint (ruff) | **All checks passed** |
+| TODOs/FIXMEs | **Zero** em toda a base |
+| `print()` em produção | **Zero** |
+| `except:` sem tipo | **Zero** |
+| `# type: ignore` em produção | **Zero** |
+| Deprecation warnings | **11** (todas do `fakeredis`, zero do código) |
+
+### 7 Linhas Descobertas (99%)
+
+São apenas branches de erro — nenhum bug real:
+
+| Arquivo | Linha | Situação |
+|---------|-------|----------|
+| `_eta_recalculation.py:20` | `if not store: return False` | Store não encontrada |
+| `auth_use_cases.py:60` | `raise InvalidCredentialsException` | Usuário não encontrado no refresh |
+| `idempotency_repo.py:25` | `return None` (key expirada) | Expired key |
+| `user_repo.py:26` | `return None` (user não achado) | User não encontrado |
+| `cache_service.py:30` | `return None` (cache miss) | Cache miss |
+
+### Dead Code? Não!
+
+`safe_check.py` e `domain/chaos.py` foram investigados como possível dead code, mas ambos **têm testes e estão documentados no `obrigacoes.md`** (linhas 65-66) como parte da arquitetura planejada. São funcionalidades futuras (driver ping monitoring, revert de caos no ETA) ainda não integradas à produção. Removê-los quebraria testes existentes.
+
+### Execução
+
+| Item | Resultado |
+|------|-----------|
+| **1 — `pyproject.toml`** | Criado com `[tool.pytest.ini_options]`, `[tool.coverage.*]`, `[tool.ruff]` (line-length=120, target-version=py312). `pytest.ini` e `.coveragerc` removidos. |
+| **2 — `fakeredis`** | `==2.26.0` → `>=2.26.0`. Instalado `2.36.2`. **11 deprecation warnings eliminados** — restam 0 do fakeredis. |
+
+### Verificação Pós-Implementação
+
+| Métrica | Pré | Pós | Resultado |
+|---------|-----|-----|-----------|
+| Testes | 260 passed | **260 passed** | ✅ Idêntico |
+| Warnings | 11 (fakeredis) | **1** (PytestCacheWarning, permissão) | ✅ 10 eliminados |
+| Cobertura | 99% | **99%** | ✅ Mantida |
+| Ruff | All checks passed | **All checks passed** | ✅ |
+| Nenhum teste alterado | — | — | ✅ |
+
+**Nota:** `safe_check.py` e `domain/chaos.py` foram investigados como possível dead code, mas **mantidos** — possuem testes e estão documentados no `obrigacoes.md` (linhas 65-66) como parte da arquitetura planejada (features futuras não integradas).
+
+---
+
+## Bloco 35 — Verificação Intensiva do Frontend + Plano de Correção
+
+**Objetivo:** Rodar verificação intensiva no frontend (testes, lint, TypeScript, dead code, cobertura) e planejar correções de 18 TS errors.
+
+### Resultado da Verificação
+
+| Métrica | Resultado |
+|---------|-----------|
+| Testes | **136 passed, 30 arquivos, 0 failures** |
+| ESLint | **0 errors, 0 warnings** |
+| `as any` em produção | **Zero** |
+| TODOs/FIXMEs | **Zero** |
+| `console.log` em produção | **Zero** |
+| TS errors | **18** (todos em testes/auto-generated, zero em produção) |
+
+### 18 TypeScript Errors — Diagnóstico
+
+| Origem | Qtd | Causa |
+|--------|-----|-------|
+| `CriarEntregaDialog.test.tsx` | **14** | Vitest v4: `vi.fn()` retorna `Mock<Procedure \| Constructable>`, não assignável a `() => Promise<void>` |
+| `.next/types/validator.ts` | **2** | Stale ref a `control-tower/page.js` (página removida no Plano 3) |
+| `ListFactoriesUseCase.test.ts`, `ListStoresUseCase.test.ts` | **2** | `getStoreById` faltando no mock do `PlaceRepositoryProtocol` |
+
+### Plano de Correção (3 itens)
+
+| Item | O quê | Arquivos | Fix |
+|------|-------|----------|-----|
+| **1** | `getStoreById` em mocks | `ListFactoriesUseCase.test.ts`, `ListStoresUseCase.test.ts` | + `getStoreById: vi.fn()` |
+| **2** | Mock typing Vitest v4 | `CriarEntregaDialog.test.tsx` | `as unknown as <tipo>` nas 10 atribuições mock |
+| **3** | `.next/types` stale | (auto-generated) | `npx next build` para regenerar |
+
+**Nenhum arquivo de produção alterado.** Nenhum contrato de API ou runtime modificado.
+
+### Análise de Impacto
+
+| Alteração | Quebra contrato? | Testes afetados? | Produção afetada? |
+|-----------|-----------------|------------------|-------------------|
+| Item 1 | Não | Não (mock property added) | Não |
+| Item 2 | Não | Não (type cast only) | Não |
+| Item 3 | Não | Não (auto-generated) | Não |
+
+### Cobertura de Testes (fora do escopo agora)
+
+**Sem testes diretos:** `CreateFactoryUseCase`, `CreateStoreUseCase`, `ListDeliveriesUseCase`, `UpdateDeliveryUseCase`, `DashboardPage`, `DrivePage`, `DeliveryDataTable`, `KanbanBoard`, `KanbanCard`, `LoginForm`, `ChaosDevTools`, `BottomNav`, `EtaDisplay`, `SafeCheckToggle` (~15 arquivos). Bloco separado para futuro.
+
+### Verificação Pós-Correção (esperado)
+
+| Métrica | Antes | Depois (esperado) |
+|---------|-------|-------------------|
+| Testes | 136 passed | **136 passed** |
+| Lint | 0 errors | **0 errors** |
+| TS errors | 18 | **0** |
+
+### Execução
+
+| Item | Status | Detalhe |
+|------|--------|---------|
+| **1** — `getStoreById` em mocks | ✅ | `ListFactoriesUseCase.test.ts`, `ListStoresUseCase.test.ts` — adicionado `getStoreById: vi.fn()` ao `mockRepo` |
+| **2** — Vitest v4 typing | ✅ | `CriarEntregaDialog.test.tsx` — 4× `as unknown as ReturnType<typeof usePlaces>`, 4× `as unknown as ReturnType<typeof useUsers>`, 2× `as unknown as ReturnType<typeof useDeliveries>`. Propriedades faltantes (`fetchStoreById`, `updateDeliveryPosition`) adicionadas. |
+| **3** — `.next/types` stale | ✅ | `rm -rf .next` + `npx next build` — regenerado. |
+| **Extra** — `ActiveDeliveryView.test.tsx` | ✅ | `status: string` → `status: DeliveryStatus` no tipo `overrides` |
+
+### Verificação Pós-Implementação
+
+| Métrica | Pré | Pós | Resultado |
+|---------|-----|-----|-----------|
+| Testes (frontend) | 136 passed | **136 passed** | ✅ Idêntico |
+| ESLint | 0 errors | **0 errors** | ✅ Mantido |
+| `tsc --noEmit` | 18 errors | **0 errors** | ✅ 18 eliminados |
+| `npx next build` | N/A | **Compiled successfully** | ✅ |
+| Testes (backend) | 260 passed | **260 passed** | ✅ Inalterado |
+| Nenhum arquivo de produção alterado | — | — | ✅ |

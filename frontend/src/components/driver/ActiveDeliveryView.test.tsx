@@ -2,8 +2,9 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { ActiveDeliveryView } from './ActiveDeliveryView';
 import { Delivery } from '@/domain/entities/Delivery';
+import { DeliveryStatus } from '@/domain/DeliveryStatus';
 
-function makeDelivery(overrides: Partial<{ status: string; id: string }> = {}): Delivery {
+function makeDelivery(overrides: Partial<{ status: DeliveryStatus; id: string }> = {}): Delivery {
   return new Delivery(
     {
       factoryId: '00000000-0000-0000-0000-000000000001',

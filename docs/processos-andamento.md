@@ -22,22 +22,25 @@
 | **N.1** ✅ | `ListAlertsUseCase.test.ts`, `useAlerts.test.ts`, `ApiAlertRepository.ts`, `Sidebar.test.tsx` (novo), `AlertList.test.tsx` | N1.1 a N1.5 (ver historico-conversa.md) |
 | **O** ✅ | `DeliveryMap.tsx`, `ActiveDeliveryView.tsx`, `drive/page.tsx`, `ChaosDevTools.tsx`, `useDeliveries.ts` | Pre: 115 frontend, 257 backend, lint 0 ✅ Post: 120 frontend, 257 backend, lint 0 ✅ |
 | **P** ✅ | `places.py` (API), `PlaceRepositoryProtocol.ts`, `ApiPlaceRepository.ts`, `GetStoreByIdUseCase.ts`, `usePlaces.ts`, `DeliveryMap.tsx`, `ActiveDeliveryView.tsx`, `drive/page.tsx` | Pre: 120 frontend, 257 backend, lint 0 ✅ Post: 132 frontend, 260 backend, lint 0 ✅ |
+| **Pós-P.1** ✅ | Dados duplicados no Neon resolvidos: store duplicada deletada diretamente no banco. | — |
+| **Q** ✅ | `frontend/src/components/ui/select.tsx`, `select.test.tsx` | `SelectValue` renderizava UUID (value) em vez do label. Corrigido com registro value→label via `labelMap`. 4 testes TDD. |
+| **Bloco 34** ✅ | `pyproject.toml` (novo), `pytest.ini` (remove), `.coveragerc` (remove), `requirements.txt` | `pyproject.toml` unificado (pytest + coverage + ruff), `fakeredis` atualizado `==2.26.0` → `>=2.36.2`. Pre: 260, 11 warnings. Post: 260, **1 warning** (PytestCacheWarning, permission). Ruff: all checks passed. |
+| **Bloco 35** ✅ | `ListFactoriesUseCase.test.ts`, `ListStoresUseCase.test.ts`, `CriarEntregaDialog.test.tsx`, `ActiveDeliveryView.test.tsx` | Correção de 18 TS errors + 1 extra. Item 1: `getStoreById: vi.fn()`. Item 2: `as unknown as ReturnType<>` em 10 mockReturnValues. Item 3: `npx next build` regenerou `.next/types`. Extra: `status: DeliveryStatus` em `ActiveDeliveryView.test.tsx`. Pré: 136 tests, 18 TS errors. Pós: 136 tests, **0 TS errors**, ESLint 0, next build OK. |
 
 ---
 
 ## Planejado
 
-| Processo | Status | Depende de |
-|---|---|---|
-| **Block P.1 — Hotfix: Store ausente no Neon** | ✅ **Concluído** | Nenhum |
-| **Block N — Alertas Visíveis** | ✅ **Concluído** | Nenhum |
-| **Block O — Mapa Arrastável + Simulação** | ✅ **Concluído** | Nenhum |
+_Nenhum bloco pendente no momento._
 
 ## Concluídos
 
 | Processo | Status |
 |---|---|
 | **Block M — Cancelamento de Entrega** (backend + frontend) | ✅ **Concluído** |
+| **Block Q — Select: UUIDs → nomes** (frontend) | ✅ **Concluído** |
+| **Bloco 34 — Limpeza Backend (pyproject.toml + fakeredis)** | ✅ **Concluído** |
+| **Bloco 35 — Correção TS Frontend (18→0 errors)** | ✅ **Concluído** |
 | **Block O — Mapa Arrastável + Simulação de Posição** (frontend) | ✅ **Concluído** |
 | **Block P — Localização da Loja no Mapa** (backend + frontend) | ✅ **Concluído** |
 | **Block L — Mapa Interativo Leaflet** (frontend) | ✅ **Concluído** |

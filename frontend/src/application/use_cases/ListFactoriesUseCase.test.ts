@@ -14,6 +14,7 @@ describe('ListFactoriesUseCase', () => {
       createStore: vi.fn(),
       listFactories: vi.fn(),
       listStores: vi.fn(),
+      getStoreById: vi.fn(),
     };
     useCase = new ListFactoriesUseCase(mockRepo);
   });

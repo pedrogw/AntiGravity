@@ -8,6 +8,8 @@ interface SelectContextType {
   onValueChange: (value: string) => void
   open: boolean
   setOpen: (open: boolean) => void
+  selectedLabel: string
+  registerLabel: (val: string, label: string) => void
 }
 
 const SelectContext = React.createContext<SelectContextType>({
@@ -15,7 +17,19 @@ const SelectContext = React.createContext<SelectContextType>({
   onValueChange: () => {},
   open: false,
   setOpen: () => {},
+  selectedLabel: '',
+  registerLabel: () => {},
 })
+
+function getDisplayText(children: React.ReactNode): string {
+  let text = ''
+  React.Children.forEach(children, (child) => {
+    if (typeof child === 'string' || typeof child === 'number') {
+      text += String(child)
+    }
+  })
+  return text
+}
 
 export function Select({
   value,
@@ -28,12 +42,18 @@ export function Select({
 }) {
   const [open, setOpen] = React.useState(false)
   const [internalValue, setInternalValue] = React.useState('')
+  const [labelMap, setLabelMap] = React.useState<Record<string, string>>({})
 
   const ctxValue = value !== undefined ? value : internalValue
   const ctxOnChange = onValueChange ?? setInternalValue
+  const selectedLabel = labelMap[ctxValue] || ''
+
+  const registerLabel = React.useCallback((val: string, label: string) => {
+    setLabelMap(prev => ({ ...prev, [val]: label }))
+  }, [])
 
   return (
-    <SelectContext.Provider value={{ value: ctxValue, onValueChange: ctxOnChange, open, setOpen }}>
+    <SelectContext.Provider value={{ value: ctxValue, onValueChange: ctxOnChange, open, setOpen, selectedLabel, registerLabel }}>
       {children}
     </SelectContext.Provider>
   )
@@ -64,8 +84,8 @@ export function SelectValue({
 }: {
   placeholder?: string
 }) {
-  const { value } = React.useContext(SelectContext)
-  return <span>{value || placeholder}</span>
+  const { selectedLabel } = React.useContext(SelectContext)
+  return <span>{selectedLabel || placeholder}</span>
 }
 
 export function SelectContent({
@@ -76,14 +96,14 @@ export function SelectContent({
   children: React.ReactNode
 }) {
   const { open } = React.useContext(SelectContext)
-  if (!open) return null
-
   return (
     <div
       className={cn(
         "absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border bg-popover p-1 shadow-md",
-        className
+        !open && "hidden",
+        className,
       )}
+      style={{ display: open ? undefined : 'none' }}
     >
       {children}
     </div>
@@ -96,7 +116,12 @@ export function SelectItem({
   value,
   ...props
 }: React.LiHTMLAttributes<HTMLLIElement> & { value: string }) {
-  const { onValueChange, setOpen } = React.useContext(SelectContext)
+  const { onValueChange, setOpen, registerLabel } = React.useContext(SelectContext)
+
+  React.useEffect(() => {
+    registerLabel(value, getDisplayText(children))
+  }, [value, children, registerLabel])
+
   return (
     <li
       className={cn(

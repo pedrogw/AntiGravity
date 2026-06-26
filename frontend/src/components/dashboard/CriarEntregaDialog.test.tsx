@@ -35,14 +35,15 @@ describe('CriarEntregaDialog', () => {
       error: '',
       createFactory: vi.fn(),
       createStore: vi.fn(),
-    });
+      fetchStoreById: vi.fn(),
+    } as unknown as ReturnType<typeof usePlaces>);
 
     vi.mocked(useUsers).mockReturnValue({
       drivers: [],
       fetchDrivers: mockFetchDrivers,
       isLoading: false,
       error: '',
-    });
+    } as unknown as ReturnType<typeof useUsers>);
 
     vi.mocked(useDeliveries).mockReturnValue({
       createDelivery: mockCreateDelivery,
@@ -51,7 +52,8 @@ describe('CriarEntregaDialog', () => {
       deliveries: [],
       fetchDeliveries: vi.fn(),
       updateDeliveryStatus: vi.fn(),
-    });
+      updateDeliveryPosition: vi.fn(),
+    } as unknown as ReturnType<typeof useDeliveries>);
   });
 
   it('deve renderizar o dialogo quando open=true', () => {
@@ -98,14 +100,15 @@ describe('CriarEntregaDialog', () => {
       error: '',
       createFactory: vi.fn(),
       createStore: vi.fn(),
-    });
+      fetchStoreById: vi.fn(),
+    } as unknown as ReturnType<typeof usePlaces>);
 
     vi.mocked(useUsers).mockReturnValue({
       drivers: [fakeDriver],
       fetchDrivers: mockFetchDrivers,
       isLoading: false,
       error: '',
-    });
+    } as unknown as ReturnType<typeof useUsers>);
 
     mockCreateDelivery.mockResolvedValue({ id: 'del1' });
 
@@ -152,14 +155,15 @@ describe('CriarEntregaDialog', () => {
       error: '',
       createFactory: vi.fn(),
       createStore: vi.fn(),
-    });
+      fetchStoreById: vi.fn(),
+    } as unknown as ReturnType<typeof usePlaces>);
 
     vi.mocked(useUsers).mockReturnValue({
       drivers: [fakeDriver],
       fetchDrivers: mockFetchDrivers,
       isLoading: false,
       error: '',
-    });
+    } as unknown as ReturnType<typeof useUsers>);
 
     mockCreateDelivery.mockRejectedValue(new AppError('Erro ao criar entrega.'));
 
@@ -201,14 +205,15 @@ describe('CriarEntregaDialog', () => {
       error: '',
       createFactory: vi.fn(),
       createStore: vi.fn(),
-    });
+      fetchStoreById: vi.fn(),
+    } as unknown as ReturnType<typeof usePlaces>);
 
     vi.mocked(useUsers).mockReturnValue({
       drivers: [fakeDriver],
       fetchDrivers: mockFetchDrivers,
       isLoading: false,
       error: '',
-    });
+    } as unknown as ReturnType<typeof useUsers>);
 
     vi.mocked(useDeliveries).mockReturnValue({
       createDelivery: mockCreateDelivery,
@@ -217,7 +222,8 @@ describe('CriarEntregaDialog', () => {
       deliveries: [],
       fetchDeliveries: vi.fn(),
       updateDeliveryStatus: vi.fn(),
-    });
+      updateDeliveryPosition: vi.fn(),
+    } as unknown as ReturnType<typeof useDeliveries>);
 
     mockCreateDelivery.mockResolvedValue({ id: 'del1' });
 
